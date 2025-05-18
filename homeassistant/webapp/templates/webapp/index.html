@@ -1,0 +1,583 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablet Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css"
+        rel="stylesheet">
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .dashboard-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .button-panel {
+            background-color: #1e1e1e;
+            border-right: 1px solid #333;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 15px;
+            width: 40%;
+        }
+
+        .info-panel {
+            background-color: #1e1e1e;
+            padding: 15px;
+            width: 60%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-content {
+            flex-grow: 0;
+        }
+
+        .image-container {
+            margin-top: 20px;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .abstract-image {
+            width: 100%;
+            max-width: 300px;
+            aspect-ratio: 1/1;
+            background-color: #252525;
+            border-radius: 10px;
+            border: 1px solid #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .chat-window {
+            height: 30vh;
+            background-color: #1e1e1e;
+            border-top: 1px solid #333;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .btn-tile {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #252525;
+            border: 3px solid;
+            color: #e0e0e0;
+            border-radius: 10px;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .btn-tile:hover {
+            background-color: #333;
+            transform: scale(1.05);
+        }
+
+        .btn-light {
+            border-color: #f8f9fa;
+        }
+
+        .btn-light i {
+            color: #f8f9fa;
+        }
+
+        .btn-music {
+            border-color: #8e44ad;
+        }
+
+        .btn-music i {
+            color: #8e44ad;
+        }
+
+        .btn-docs {
+            border-color: #f39c12;
+        }
+
+        .btn-docs i {
+            color: #f39c12;
+        }
+
+        .btn-camera {
+            border-color: #e74c3c;
+        }
+
+        .btn-camera i {
+            color: #e74c3c;
+        }
+
+        .btn-climate {
+            border-color: #3498db;
+        }
+
+        .btn-climate i {
+            color: #3498db;
+        }
+
+        .btn-media {
+            border-color: #2ecc71;
+        }
+
+        .btn-media i {
+            color: #2ecc71;
+        }
+
+        .btn-security {
+            border-color: #d35400;
+        }
+
+        .btn-security i {
+            color: #d35400;
+        }
+
+        .btn-settings {
+            border-color: #7f8c8d;
+        }
+
+        .btn-settings i {
+            color: #7f8c8d;
+        }
+
+        .btn-tile i {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        #datetime {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            background-color: #252525;
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #333;
+        }
+
+        .chat-input {
+            display: flex;
+        }
+
+        .chat-input input {
+            flex: 1;
+            background-color: #252525;
+            border: 1px solid #3498db;
+            color: #e0e0e0;
+            border-radius: 20px;
+            padding: 8px 15px;
+        }
+
+        .chat-input button {
+            margin-left: 10px;
+            background-color: #3498db;
+            border: none;
+            border-radius: 20px;
+            width: 40px;
+            height: 40px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+
+        .user-message {
+            background-color: #3498db;
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        .ai-message {
+            background-color: #2c3e50;
+            color: white;
+            align-self: flex-start;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <div class="main-content">
+            <!-- Левая панель с кнопками 2x4 -->
+            <div class="button-panel">
+                <button class="btn-tile btn-light" id="light-btn" data-api="/api/light">
+                    <i class="bi bi-lightbulb"></i>
+                    <span>Свет</span>
+                </button>
+                <button class="btn-tile btn-music" id="music-btn" data-api="/api/music">
+                    <i class="bi bi-music-note-beamed"></i>
+                    <span>Музыка</span>
+                </button>
+                <button class="btn-tile btn-docs" id="docs-btn" data-api="/api/docs">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span>Документы</span>
+                </button>
+                <button class="btn-tile btn-camera" data-api="/api/camera">
+                    <i class="bi bi-camera"></i>
+                    <span>Камера</span>
+                </button>
+                <button class="btn-tile btn-climate" data-api="/api/climate">
+                    <i class="bi bi-thermometer-half"></i>
+                    <span>Климат</span>
+                </button>
+                <button class="btn-tile btn-media" data-api="/api/media">
+                    <i class="bi bi-tv"></i>
+                    <span>Медиа</span>
+                </button>
+                <button class="btn-tile btn-security" data-api="/api/security">
+                    <i class="bi bi-shield-lock"></i>
+                    <span>Безопасность</span>
+                </button>
+                <button class="btn-tile btn-settings" data-api="/api/settings">
+                    <i class="bi bi-gear"></i>
+                    <span>Настройки</span>
+                </button>
+            </div>
+
+            <!-- Правая панель с информацией -->
+            <div class="info-panel">
+                <div class="info-content">
+                    <div id="datetime" class="text-center"></div>
+
+                    <div class="weather-card">
+                        <h5><i class="bi bi-cloud-sun" style="color: #3498db;"></i> Погода</h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2>24°C</h2>
+                                <p>Малооблачно</p>
+                            </div>
+                            <i class="bi bi-cloud-sun" style="color: #3498db; font-size: 3rem;"></i>
+                        </div>
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Утро</span>
+                                <span>День</span>
+                                <span>Вечер</span>
+                                <span>Ночь</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>18°</span>
+                                <span>24°</span>
+                                <span>22°</span>
+                                <span>16°</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="calendar-card">
+                        <h5><i class="bi bi-calendar3" style="color: #2ecc71;"></i> События</h5>
+                        <ul class="list-group list-group-flush bg-transparent">
+                            <li class="list-group-item bg-transparent border-bottom border-secondary">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">Встреча с командой</h6>
+                                    <small>10:00</small>
+                                </div>
+                                <small>Обсуждение нового проекта</small>
+                            </li>
+                            <li class="list-group-item bg-transparent border-bottom border-secondary">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">Обед с клиентом</h6>
+                                    <small>13:30</small>
+                                </div>
+                                <small>Ресторан "Панорама"</small>
+                            </li>
+                            <li class="list-group-item bg-transparent">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">Презентация</h6>
+                                    <small>16:00</small>
+                                </div>
+                                <small>Подготовить слайды</small>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="image-container">
+                    <div class="abstract-image" id="dynamicImage">
+                        <canvas id="matrix" style="width: 100%; height: 100%; display: block;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Окно чата снизу -->
+        <div class="chat-window">
+            <div class="chat-messages">
+                <div class="message ai-message">
+                    Добрый день! Я ваш ИИ-ассистент. Чем могу помочь вам сегодня?
+                </div>
+                <div class="message user-message">
+                    Напомни мне о встрече сегодня
+                </div>
+                <div class="message ai-message">
+                    У вас запланирована встреча с командой в 10:00, обед с клиентом в 13:30 и презентация в 16:00.
+                    Что-нибудь еще?
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" placeholder="Введите сообщение..." class="form-control">
+                <button class="btn btn-primary"><i class="bi bi-send"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Обновление даты и времени
+        function updateDateTime() {
+            const now = new Date();
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            document.getElementById('datetime').textContent = now.toLocaleDateString('ru-RU', options);
+        }
+
+        // Обновление времени при загрузке и каждую минуту
+        updateDateTime();
+        setInterval(updateDateTime, 60000);
+
+        // Функция для отправки API-запросов на бэкенд
+        async function sendApiRequest(endpoint, action = 'toggle') {
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action: action })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('API request failed:', error);
+                // Для демонстрации сейчас показываем alert, но в реальном приложении
+                // лучше показать уведомление на странице
+                alert(`API запрос к ${endpoint} не выполнен: ${error.message}`);
+                return null;
+            }
+        }
+
+        // Получение погодных данных
+        async function fetchWeatherData() {
+            // В реальном приложении здесь будет запрос к API бэкенда
+            // Сейчас используем заглушку
+            console.log('Запрос погодных данных с бэкенда...');
+            // Имитация запроса к API
+            // await sendApiRequest('/api/weather/current');
+        }
+
+        // Получение данных календаря
+        async function fetchCalendarEvents() {
+            // В реальном приложении здесь будет запрос к API бэкенда
+            console.log('Запрос событий календаря с бэкенда...');
+            // Имитация запроса к API
+            // await sendApiRequest('/api/calendar/today');
+        }
+
+        // Получение абстрактного изображения
+        async function fetchAbstractImage() {
+            // В реальном приложении здесь будет запрос к API бэкенда
+            console.log('Запрос абстрактного изображения с бэкенда...');
+            // Имитация запроса к API, в реальном приложении раскомментировать и заменить на реальный путь:
+            // document.getElementById('abstractImagePlaceholder').src = '/api/abstract-image';
+        }
+
+        // Обработчики для всех кнопок
+        document.querySelectorAll('.btn-tile').forEach(button => {
+            button.addEventListener('click', async function () {
+                const apiEndpoint = this.getAttribute('data-api');
+                if (apiEndpoint) {
+                    console.log(`Отправка запроса на ${apiEndpoint}`);
+                    // Для демонстрации сейчас используем alert
+                    alert(`Отправка запроса на ${apiEndpoint}`);
+                    // В реальном приложении раскомментировать:
+                    // const response = await sendApiRequest(apiEndpoint);
+                    // if (response) {
+                    //     console.log('Получен ответ:', response);
+                    //     // Обработка ответа
+                    // }
+                }
+            });
+        });
+
+        // Отправка сообщения в чат
+        document.querySelector('.chat-input button').addEventListener('click', function () {
+            const input = document.querySelector('.chat-input input');
+            const message = input.value.trim();
+
+            if (message) {
+                const chatMessages = document.querySelector('.chat-messages');
+
+                // Добавление сообщения пользователя
+                const userMessageDiv = document.createElement('div');
+                userMessageDiv.classList.add('message', 'user-message');
+                userMessageDiv.textContent = message;
+                chatMessages.appendChild(userMessageDiv);
+
+                // Очистка поля ввода
+                input.value = '';
+
+                // В реальном приложении здесь будет запрос к API бэкенда
+                // sendApiRequest('/api/assistant/message', 'send')
+                //     .then(response => {
+                //         // Обработка ответа
+                //         const aiMessageDiv = document.createElement('div');
+                //         aiMessageDiv.classList.add('message', 'ai-message');
+                //         aiMessageDiv.textContent = response.message;
+                //         chatMessages.appendChild(aiMessageDiv);
+                //     });
+
+                // Имитация ответа ИИ (через 1 секунду)
+                setTimeout(function () {
+                    const aiMessageDiv = document.createElement('div');
+                    aiMessageDiv.classList.add('message', 'ai-message');
+                    aiMessageDiv.textContent = 'Я получил ваше сообщение: "' + message + '". Обрабатываю запрос...';
+                    chatMessages.appendChild(aiMessageDiv);
+
+                    // Прокрутка чата вниз
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 1000);
+
+                // Прокрутка чата вниз
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
+
+        // Отправка сообщения по нажатию Enter
+        document.querySelector('.chat-input input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                document.querySelector('.chat-input button').click();
+            }
+        });
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function () {
+            fetchWeatherData();
+            fetchCalendarEvents();
+            fetchAbstractImage();
+            console.log('Страница готова к работе с Python бэкендом');
+        });
+
+        // Matrix rain effect for the abstract-image canvas
+        const matrixContainer = document.getElementById('dynamicImage');
+        const matrixCanvas = document.getElementById('matrix');
+        if (matrixContainer && matrixCanvas) {
+            const ctx = matrixCanvas.getContext('2d');
+            function resizeMatrixCanvas() {
+                matrixCanvas.width = matrixContainer.offsetWidth;
+                matrixCanvas.height = matrixContainer.offsetHeight;
+            }
+            resizeMatrixCanvas();
+            window.addEventListener('resize', resizeMatrixCanvas);
+            const chars = "アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズヅブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴ".split("");
+            const baseFontSize = 18;
+            let columns = Math.floor(matrixCanvas.width / baseFontSize);
+            let drops = Array(columns).fill().map(() => ({
+                y: 1,
+                speed: 0.5 + Math.random() * 1.5,
+                depth: Math.random(),
+                fontSize: 0,
+                opacity: 0
+            }));
+            function updateDropProps(drop) {
+                drop.fontSize = baseFontSize * (0.8 + drop.depth * 0.7);
+                drop.opacity = 0.5 + drop.depth * 0.5;
+            }
+            drops.forEach(updateDropProps);
+            function drawMatrix() {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+                ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+                const sortedDrops = [...drops].sort((a, b) => a.depth - b.depth);
+                for (let i = 0; i < sortedDrops.length; i++) {
+                    const drop = sortedDrops[i];
+                    const colIndex = drops.indexOf(drop);
+                    ctx.fillStyle = `rgba(0, 255, 65, ${drop.opacity})`;
+                    ctx.font = `${drop.fontSize}px monospace`;
+                    const text = chars[Math.floor(Math.random() * chars.length)];
+                    ctx.fillText(text, colIndex * baseFontSize, Math.floor(drop.y) * baseFontSize);
+                    if (drop.y * baseFontSize > matrixCanvas.height && Math.random() > 0.975) {
+                        drop.y = 0;
+                        drop.speed = 0.5 + Math.random() * 1.5;
+                        drop.depth = Math.random();
+                        updateDropProps(drop);
+                    }
+                    drop.y += drop.speed;
+                }
+            }
+            setInterval(drawMatrix, 40);
+            window.addEventListener('resize', () => {
+                resizeMatrixCanvas();
+                columns = Math.floor(matrixCanvas.width / baseFontSize);
+                if (columns > drops.length) {
+                    const newDrops = Array(columns - drops.length).fill().map(() => {
+                        const depth = Math.random();
+                        const drop = {
+                            y: Math.floor(Math.random() * matrixCanvas.height / baseFontSize),
+                            speed: 0.5 + Math.random() * 1.5,
+                            depth: depth,
+                            fontSize: 0,
+                            opacity: 0
+                        };
+                        updateDropProps(drop);
+                        return drop;
+                    });
+                    drops.push(...newDrops);
+                } else {
+                    drops.length = columns;
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
