@@ -36,6 +36,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'homeassistant.webapp',
     'homeassistant.api',
+    'homeassistant.camera',
+    'homeassistant.light',
 ]
 
 MIDDLEWARE = [

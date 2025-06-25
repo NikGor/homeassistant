@@ -1,0 +1,364 @@
+{% extends 'light/base.html' %}
+
+{% block title %}Панель управления освещением{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-lightbulb"></i> Панель управления освещением
+            </h1>
+            <div class="btn-group">
+                <button class="btn btn-outline-primary" id="scan-devices">
+                    <i class="bi bi-arrow-clockwise"></i> Сканировать сеть
+                </button>
+                <button class="btn btn-outline-info" id="refresh-devices">
+                    <i class="bi bi-arrow-repeat"></i> Обновить состояние
+                </button>
+            </div>
+        </div>
+        
+        {% if discovered_count > 0 %}
+            <div class="alert alert-success" role="alert">
+                <i class="bi bi-check-circle"></i> Найдено {{ discovered_count }} новых устройств при последнем сканировании
+            </div>
+        {% elif is_demo %}
+            <div class="alert alert-info" role="alert">
+                <i class="bi bi-info-circle"></i> Демо режим: В сети не найдено Yeelight устройств. Показаны примеры устройств для демонстрации интерфейса.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Устройства -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-lightbulb"></i> Устройства освещения
+                </h5>
+                <a href="{% url 'light:device_list' %}" class="btn btn-outline-primary btn-sm">
+                    Все устройства
+                </a>
+            </div>
+            <div class="card-body">
+                {% if devices %}
+                    <div class="row">
+                        {% for device in devices %}
+                            <div class="col-lg-4 col-md-6 mb-3">
+                                <div class="card device-card {% if device.is_on %}device-on{% else %}device-off{% endif %}">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <h6 class="card-title mb-0">{{ device.name }}</h6>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-router"></i> {{ device.ip }}
+                                                    {% if device.model != 'Unknown' %} • {{ device.model }}{% endif %}
+                                                </small>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input device-toggle" 
+                                                       type="checkbox" 
+                                                       id="device-{{ device.id }}"
+                                                       data-device-id="{{ device.id }}"
+                                                       {% if device.is_on %}checked{% endif %}>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-3">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <label class="form-label small">Яркость</label>
+                                                    <input type="range" 
+                                                           class="form-range control-slider brightness-slider" 
+                                                           min="1" max="100" 
+                                                           value="{{ device.brightness }}"
+                                                           data-device-id="{{ device.id }}">
+                                                    <small class="text-muted brightness-value">{{ device.brightness }}%</small>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label small">Температура</label>
+                                                    <input type="range" 
+                                                           class="form-range control-slider temp-slider" 
+                                                           min="1700" max="6500" 
+                                                           value="{{ device.color_temp }}"
+                                                           data-device-id="{{ device.id }}">
+                                                    <small class="text-muted temp-value">{{ device.color_temp }}K</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-2 d-flex justify-content-between align-items-center">
+                                            <input type="color" 
+                                                   class="color-picker" 
+                                                   value="{{ device.rgb_color }}"
+                                                   data-device-id="{{ device.id }}"
+                                                   title="RGB цвет">
+                                            <a href="{% url 'light:device_detail' device.id %}" 
+                                               class="btn btn-outline-info btn-sm">
+                                                <i class="bi bi-gear"></i> Управление
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-lightbulb text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-2">Устройства Yeelight не найдены в сети</p>
+                        <button class="btn btn-primary" onclick="document.getElementById('scan-devices').click()">
+                            <i class="bi bi-search"></i> Сканировать сеть
+                        </button>
+                        <p class="text-muted mt-2 small">Убедитесь, что ваши Yeelight лампы включены и подключены к сети</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Статистика -->
+<div class="row">
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-lightbulb text-primary" style="font-size: 2rem;"></i>
+                <h4 class="mt-2">{{ devices|length }}</h4>
+                <p class="text-muted mb-0">Всего устройств</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-power text-success" style="font-size: 2rem;"></i>
+                <h4 class="mt-2" id="devices-on-count">0</h4>
+                <p class="text-muted mb-0">Включено</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-wifi text-info" style="font-size: 2rem;"></i>
+                <h4 class="mt-2">{{ total_devices }}</h4>
+                <p class="text-muted mb-0">В сети</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-search text-warning" style="font-size: 2rem;"></i>
+                <h4 class="mt-2">{{ discovered_count }}</h4>
+                <p class="text-muted mb-0">Найдено сейчас</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Подсчитываем включенные устройства
+    updateDeviceStats();
+    
+    // Сканирование устройств
+    document.getElementById('scan-devices').addEventListener('click', async function() {
+        const button = this;
+        const originalText = button.innerHTML;
+        
+        button.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Сканирование...';
+        button.disabled = true;
+        
+        try {
+            const result = await makeApiRequest('/light/api/scan/', {}, 'GET');
+            
+            if (result.success) {
+                showToast(`Найдено ${result.discovered_count} устройств`, 'success');
+                setTimeout(() => location.reload(), 1000);
+            }
+        } finally {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    });
+    
+    // Обновление состояния устройств
+    document.getElementById('refresh-devices').addEventListener('click', async function() {
+        const button = this;
+        const originalText = button.innerHTML;
+        
+        button.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Обновление...';
+        button.disabled = true;
+        
+        try {
+            const result = await makeApiRequest('/light/api/devices/status/', {}, 'GET');
+            
+            if (result.success) {
+                showToast(`Обновлено состояние ${result.total_count} устройств`, 'success');
+                // Обновляем состояние на странице
+                updateDevicesOnPage(result.devices);
+            }
+        } finally {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    });
+    
+    // Обработчики для переключателей устройств
+    document.querySelectorAll('.device-toggle').forEach(toggle => {
+        toggle.addEventListener('change', async function() {
+            const deviceId = this.dataset.deviceId;
+            const result = await makeApiRequest(`/light/api/device/${deviceId}/toggle/`);
+            
+            if (result.success) {
+                // Обновляем визуальное состояние карточки
+                const card = this.closest('.device-card');
+                if (result.is_on) {
+                    card.classList.remove('device-off');
+                    card.classList.add('device-on');
+                } else {
+                    card.classList.remove('device-on');
+                    card.classList.add('device-off');
+                }
+                updateDeviceStats();
+            } else {
+                // Возвращаем переключатель в исходное состояние
+                this.checked = !this.checked;
+            }
+        });
+    });
+    
+    // Обработчики для слайдеров яркости
+    document.querySelectorAll('.brightness-slider').forEach(slider => {
+        let timeout;
+        slider.addEventListener('input', function() {
+            const deviceId = this.dataset.deviceId;
+            const brightness = this.value;
+            
+            // Обновляем отображение значения
+            const label = this.parentNode.querySelector('.brightness-value');
+            label.textContent = brightness + '%';
+            
+            // Отправляем запрос с задержкой
+            clearTimeout(timeout);
+            timeout = setTimeout(async () => {
+                await makeApiRequest(`/light/api/device/${deviceId}/brightness/`, {
+                    brightness: parseInt(brightness)
+                });
+            }, 500);
+        });
+    });
+    
+    // Обработчики для слайдеров температуры
+    document.querySelectorAll('.temp-slider').forEach(slider => {
+        let timeout;
+        slider.addEventListener('input', function() {
+            const deviceId = this.dataset.deviceId;
+            const temp = this.value;
+            
+            // Обновляем отображение значения
+            const label = this.parentNode.querySelector('.temp-value');
+            label.textContent = temp + 'K';
+            
+            // Отправляем запрос с задержкой
+            clearTimeout(timeout);
+            timeout = setTimeout(async () => {
+                await makeApiRequest(`/light/api/device/${deviceId}/temperature/`, {
+                    temperature: parseInt(temp)
+                });
+            }, 500);
+        });
+    });
+    
+    // Обработчики для цветовых пикеров
+    document.querySelectorAll('.color-picker').forEach(picker => {
+        let timeout;
+        
+        // Обработчик для немедленного применения цвета при изменении
+        picker.addEventListener('input', function() {
+            const deviceId = this.dataset.deviceId;
+            const color = this.value;
+            
+            // Конвертируем hex в RGB
+            const r = parseInt(color.substr(1, 2), 16);
+            const g = parseInt(color.substr(3, 2), 16);
+            const b = parseInt(color.substr(5, 2), 16);
+            
+            // Отправляем запрос с небольшой задержкой для оптимизации
+            clearTimeout(timeout);
+            timeout = setTimeout(async () => {
+                await makeApiRequest(`/light/api/device/${deviceId}/rgb/`, {
+                    red: r,
+                    green: g,
+                    blue: b
+                });
+            }, 200);
+        });
+        
+        // Дублируем обработчик для change (для совместимости)
+        picker.addEventListener('change', function() {
+            const deviceId = this.dataset.deviceId;
+            const color = this.value;
+            
+            // Конвертируем hex в RGB
+            const r = parseInt(color.substr(1, 2), 16);
+            const g = parseInt(color.substr(3, 2), 16);
+            const b = parseInt(color.substr(5, 2), 16);
+            
+            // Немедленно отправляем запрос для change
+            makeApiRequest(`/light/api/device/${deviceId}/rgb/`, {
+                red: r,
+                green: g,
+                blue: b
+            });
+        });
+    });
+    
+    function updateDevicesOnPage(devices) {
+        devices.forEach(device => {
+            const toggle = document.querySelector(`[data-device-id="${device.id}"]`);
+            if (toggle) {
+                toggle.checked = device.is_on;
+                
+                const card = toggle.closest('.device-card');
+                if (device.is_on) {
+                    card.classList.remove('device-off');
+                    card.classList.add('device-on');
+                } else {
+                    card.classList.remove('device-on');
+                    card.classList.add('device-off');
+                }
+            }
+        });
+        updateDeviceStats();
+    }
+    
+    function updateDeviceStats() {
+        const devicesOnCount = document.querySelectorAll('.device-toggle:checked').length;
+        const statsElement = document.getElementById('devices-on-count');
+        if (statsElement) {
+            statsElement.textContent = devicesOnCount;
+        }
+    }
+});
+</script>
+
+<style>
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

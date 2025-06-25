@@ -7,6 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tablet Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     <!-- Bootstrap CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -239,7 +240,7 @@
         <div class="main-content">
             <!-- Левая панель с кнопками 2x4 -->
             <div class="button-panel">
-                <button class="btn-tile btn-light" id="light-btn" data-api="/api/light">
+                <button class="btn-tile btn-light" onclick="window.location.href='/light/'">
                     <i class="bi bi-lightbulb"></i>
                     <span>Свет</span>
                 </button>
@@ -251,7 +252,7 @@
                     <i class="bi bi-file-earmark-text"></i>
                     <span>Документы</span>
                 </button>
-                <button class="btn-tile btn-camera" data-api="/api/camera">
+                <button class="btn-tile btn-camera" onclick="window.location.href='/camera/'">
                     <i class="bi bi-camera"></i>
                     <span>Камера</span>
                 </button>

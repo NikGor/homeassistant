@@ -21,4 +21,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('homeassistant.webapp.urls')),
     path('api/', include('homeassistant.api.urls')),
+    path('camera/', include('homeassistant.camera.urls')),
+    path('light/', include('homeassistant.light.urls')),
 ]

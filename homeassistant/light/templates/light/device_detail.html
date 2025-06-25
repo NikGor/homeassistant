@@ -1,0 +1,440 @@
+{% extends 'light/base.html' %}
+
+{% block title %}{{ device.name }} - Управление устройством{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-lightbulb"></i> {{ device.name }}
+            </h1>
+            <div class="btn-group">
+                <a href="{% url 'light:device_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> К списку
+                </a>
+                <a href="/admin/light/lightdevice/{{ device.id }}/change/" class="btn btn-outline-warning">
+                    <i class="bi bi-pencil"></i> Редактировать
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Информация об устройстве -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Информация об устройстве
+                </h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Название:</dt>
+                    <dd class="col-sm-8">{{ device.name }}</dd>
+                    
+                    <dt class="col-sm-4">Тип:</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge bg-info">{{ device.get_device_type_display }}</span>
+                    </dd>
+                    
+                    <dt class="col-sm-4">IP адрес:</dt>
+                    <dd class="col-sm-8">
+                        <code>{{ device.ip_address }}:{{ device.port }}</code>
+                    </dd>
+                    
+                    <dt class="col-sm-4">Комната:</dt>
+                    <dd class="col-sm-8">
+                        {% if device.room %}
+                            <i class="bi bi-geo-alt"></i> {{ device.room }}
+                        {% else %}
+                            <span class="text-muted">Не указана</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Статус:</dt>
+                    <dd class="col-sm-8">
+                        {% if device.is_active %}
+                            <span class="badge bg-success">Активен</span>
+                        {% else %}
+                            <span class="badge bg-danger">Неактивен</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Добавлен:</dt>
+                    <dd class="col-sm-8">{{ device.created_at|date:"d.m.Y H:i" }}</dd>
+                </dl>
+                
+                <div class="mt-3">
+                    <button class="btn btn-primary w-100" id="refresh-status">
+                        <i class="bi bi-arrow-clockwise"></i> Обновить состояние
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Управление -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-sliders"></i> Управление освещением
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if device.is_active %}
+                    <!-- Главный переключатель -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <div class="form-check form-switch d-flex justify-content-center">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="main-toggle"
+                                               style="transform: scale(2);"
+                                               {% if device.state.is_on %}checked{% endif %}>
+                                    </div>
+                                    <h4 class="mt-3">
+                                        <span id="status-text">
+                                            {% if device.state.is_on %}Включено{% else %}Выключено{% endif %}
+                                        </span>
+                                    </h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Яркость -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <label class="form-label">
+                                        <i class="bi bi-brightness-high"></i> Яркость: 
+                                        <span id="brightness-value">{{ device.state.brightness|default:100 }}%</span>
+                                    </label>
+                                    <input type="range" 
+                                           class="form-range" 
+                                           id="brightness-slider"
+                                           min="1" max="100" 
+                                           value="{{ device.state.brightness|default:100 }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Цветовая температура -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <label class="form-label">
+                                        <i class="bi bi-thermometer"></i> Цветовая температура: 
+                                        <span id="temp-value">{{ device.state.color_temp|default:4000 }}K</span>
+                                    </label>
+                                    <input type="range" 
+                                           class="form-range" 
+                                           id="temp-slider"
+                                           min="1700" max="6500" 
+                                           value="{{ device.state.color_temp|default:4000 }}">
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-muted">Теплый (1700K)</small>
+                                        <small class="text-muted">Холодный (6500K)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- RGB цвет -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <label class="form-label">
+                                        <i class="bi bi-palette"></i> RGB цвет
+                                    </label>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <input type="color" 
+                                                   class="form-control form-control-color w-100" 
+                                                   id="color-picker"
+                                                   value="{{ device.state.rgb_color|default:'#FFFFFF' }}"
+                                                   style="height: 60px;">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="row g-2">
+                                                <div class="col-4">
+                                                    <label class="form-label small">R</label>
+                                                    <input type="number" class="form-control" id="red-input" min="0" max="255" value="255">
+                                                </div>
+                                                <div class="col-4">
+                                                    <label class="form-label small">G</label>
+                                                    <input type="number" class="form-control" id="green-input" min="0" max="255" value="255">
+                                                </div>
+                                                <div class="col-4">
+                                                    <label class="form-label small">B</label>
+                                                    <input type="number" class="form-control" id="blue-input" min="0" max="255" value="255">
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm mt-2 w-100" id="apply-rgb">
+                                                Применить RGB
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Предустановленные цвета -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <label class="form-label">
+                                        <i class="bi bi-circle-fill"></i> Предустановки
+                                    </label>
+                                    <div class="row g-2">
+                                        <div class="col-2">
+                                            <button class="btn btn-outline-light w-100 preset-color" 
+                                                    data-color="#FFFFFF" style="background-color: #FFFFFF; color: #000;">
+                                                Белый
+                                            </button>
+                                        </div>
+                                        <div class="col-2">
+                                            <button class="btn btn-outline-light w-100 preset-color" 
+                                                    data-color="#FF0000" style="background-color: #FF0000;">
+                                                Красный
+                                            </button>
+                                        </div>
+                                        <div class="col-2">
+                                            <button class="btn btn-outline-light w-100 preset-color" 
+                                                    data-color="#00FF00" style="background-color: #00FF00; color: #000;">
+                                                Зеленый
+                                            </button>
+                                        </div>
+                                        <div class="col-2">
+                                            <button class="btn btn-outline-light w-100 preset-color" 
+                                                    data-color="#0000FF" style="background-color: #0000FF;">
+                                                Синий
+                                            </button>
+                                        </div>
+                                        <div class="col-2">
+                                            <button class="btn btn-outline-light w-100 preset-color" 
+                                                    data-color="#FFFF00" style="background-color: #FFFF00; color: #000;">
+                                                Желтый
+                                            </button>
+                                        </div>
+                                        <div class="col-2">
+                                            <button class="btn btn-outline-light w-100 preset-color" 
+                                                    data-color="#FF00FF" style="background-color: #FF00FF;">
+                                                Розовый
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-exclamation-triangle text-warning" style="font-size: 4rem;"></i>
+                        <h4 class="text-muted mt-3">Устройство неактивно</h4>
+                        <p class="text-muted">Активируйте устройство для управления</p>
+                        <a href="/admin/light/lightdevice/{{ device.id }}/change/" class="btn btn-warning">
+                            Активировать устройство
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if properties %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-code-square"></i> Техническая информация
+                </h5>
+            </div>
+            <div class="card-body">
+                <pre class="bg-dark p-3 rounded"><code>{{ properties|pprint }}</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deviceId = {{ device.id }};
+    
+    // Главный переключатель
+    document.getElementById('main-toggle').addEventListener('change', async function() {
+        const result = await makeApiRequest(`/light/api/device/${deviceId}/toggle/`);
+        
+        if (result.success) {
+            document.getElementById('status-text').textContent = 
+                result.is_on ? 'Включено' : 'Выключено';
+        } else {
+            this.checked = !this.checked;
+        }
+    });
+    
+    // Слайдер яркости
+    const brightnessSlider = document.getElementById('brightness-slider');
+    const brightnessValue = document.getElementById('brightness-value');
+    let brightnessTimeout;
+    
+    brightnessSlider.addEventListener('input', function() {
+        brightnessValue.textContent = this.value + '%';
+        
+        clearTimeout(brightnessTimeout);
+        brightnessTimeout = setTimeout(async () => {
+            await makeApiRequest(`/light/api/device/${deviceId}/brightness/`, {
+                brightness: parseInt(this.value)
+            });
+        }, 500);
+    });
+    
+    // Слайдер температуры
+    const tempSlider = document.getElementById('temp-slider');
+    const tempValue = document.getElementById('temp-value');
+    let tempTimeout;
+    
+    tempSlider.addEventListener('input', function() {
+        tempValue.textContent = this.value + 'K';
+        
+        clearTimeout(tempTimeout);
+        tempTimeout = setTimeout(async () => {
+            await makeApiRequest(`/light/api/device/${deviceId}/temperature/`, {
+                temperature: parseInt(this.value)
+            });
+        }, 500);
+    });
+    
+    // Цветовой пикер
+    const colorPicker = document.getElementById('color-picker');
+    const redInput = document.getElementById('red-input');
+    const greenInput = document.getElementById('green-input');
+    const blueInput = document.getElementById('blue-input');
+    
+    function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+    
+    function rgbToHex(r, g, b) {
+        return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+    
+    colorPicker.addEventListener('change', function() {
+        const rgb = hexToRgb(this.value);
+        if (rgb) {
+            redInput.value = rgb.r;
+            greenInput.value = rgb.g;
+            blueInput.value = rgb.b;
+            applyRgbColor(rgb.r, rgb.g, rgb.b);
+        }
+    });
+    
+    // Обновление цветового пикера при изменении RGB
+    [redInput, greenInput, blueInput].forEach(input => {
+        input.addEventListener('input', function() {
+            const r = parseInt(redInput.value) || 0;
+            const g = parseInt(greenInput.value) || 0;
+            const b = parseInt(blueInput.value) || 0;
+            
+            colorPicker.value = rgbToHex(r, g, b);
+        });
+    });
+    
+    // Применить RGB
+    document.getElementById('apply-rgb').addEventListener('click', function() {
+        const r = parseInt(redInput.value) || 0;
+        const g = parseInt(greenInput.value) || 0;
+        const b = parseInt(blueInput.value) || 0;
+        
+        applyRgbColor(r, g, b);
+    });
+    
+    async function applyRgbColor(r, g, b) {
+        await makeApiRequest(`/light/api/device/${deviceId}/rgb/`, {
+            red: r,
+            green: g,
+            blue: b
+        });
+    }
+    
+    // Предустановленные цвета
+    document.querySelectorAll('.preset-color').forEach(button => {
+        button.addEventListener('click', function() {
+            const color = this.dataset.color;
+            colorPicker.value = color;
+            
+            const rgb = hexToRgb(color);
+            if (rgb) {
+                redInput.value = rgb.r;
+                greenInput.value = rgb.g;
+                blueInput.value = rgb.b;
+                applyRgbColor(rgb.r, rgb.g, rgb.b);
+            }
+        });
+    });
+    
+    // Обновить состояние
+    document.getElementById('refresh-status').addEventListener('click', async function() {
+        const button = this;
+        const originalText = button.innerHTML;
+        
+        button.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Обновление...';
+        button.disabled = true;
+        
+        try {
+            const result = await makeApiRequest(`/light/api/device/${deviceId}/status/`, {}, 'GET');
+            
+            if (result.success) {
+                location.reload();
+            }
+        } finally {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    });
+    
+    // Инициализация RGB полей из текущего цвета
+    const currentColor = "{{ device.state.rgb_color|default:'#FFFFFF' }}";
+    const currentRgb = hexToRgb(currentColor);
+    if (currentRgb) {
+        redInput.value = currentRgb.r;
+        greenInput.value = currentRgb.g;
+        blueInput.value = currentRgb.b;
+    }
+});
+</script>
+
+<style>
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}
