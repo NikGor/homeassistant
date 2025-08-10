@@ -5,7 +5,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tablet Dashboard</title>
     <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     <!-- Bootstrap CSS -->
@@ -14,7 +14,28 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css"
         rel="stylesheet">
     <style>
+        :root {
+            --screen-width: 1024px; /* фикс целевой */
+            --screen-height: 600px; /* фикс целевой */
+            --chat-height: 165px; /* было 180 */
+            --tile-gap: 10px; /* было 12 */
+            --tile-columns: 2;
+            --tile-rows: 4;
+            --base-font: 15px;
+            --scale: 1; /* динамическое масштабирование содержимого info-panel */
+            --tile-scale: 1; /* динамический масштаб плиток */
+        }
+
+        html,
         body {
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            font-size: var(--base-font);
             background-color: #121212;
             color: #e0e0e0;
             height: 100vh;
@@ -23,6 +44,8 @@
 
         .dashboard-container {
             height: 100vh;
+            max-width: var(--screen-width);
+            margin: 0 auto;
             display: flex;
             flex-direction: column;
         }
@@ -31,22 +54,23 @@
             flex: 1;
             display: flex;
             overflow: hidden;
+            height: calc(100vh - var(--chat-height));
         }
 
         .button-panel {
             background-color: #1e1e1e;
             border-right: 1px solid #333;
-            padding: 15px;
+            padding: 12px;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             grid-template-rows: repeat(4, 1fr);
-            gap: 15px;
+            gap: var(--tile-gap);
             width: 40%;
         }
 
         .info-panel {
             background-color: #1e1e1e;
-            padding: 15px;
+            padding: 10px 14px 8px;
             width: 60%;
             overflow-y: auto;
             display: flex;
@@ -55,34 +79,16 @@
 
         .info-content {
             flex-grow: 0;
-        }
-
-        .image-container {
-            margin-top: 20px;
-            flex-grow: 1;
             display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .abstract-image {
-            width: 100%;
-            max-width: 300px;
-            aspect-ratio: 1/1;
-            background-color: #252525;
-            border-radius: 10px;
-            border: 1px solid #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .chat-window {
-            height: 30vh;
+            height: var(--chat-height);
             background-color: #1e1e1e;
             border-top: 1px solid #333;
-            padding: 15px;
+            padding: 10px 14px;
             display: flex;
             flex-direction: column;
         }
@@ -94,16 +100,24 @@
             align-items: center;
             justify-content: center;
             background-color: #252525;
-            border: 3px solid;
+            border: 2px solid;
             color: #e0e0e0;
             border-radius: 10px;
             transition: all 0.3s;
             text-align: center;
+            font-size: 0.85rem; /* чуть меньше */
+            min-height: 0; /* убрать фикс минимум */
         }
 
         .btn-tile:hover {
             background-color: #333;
             transform: scale(1.05);
+        }
+
+        .btn-tile:active,
+        .btn-tile.touch-active {
+            filter: brightness(1.3);
+            transform: scale(1.04);
         }
 
         .btn-light {
@@ -171,14 +185,20 @@
         }
 
         .btn-tile i {
-            font-size: 2rem;
-            margin-bottom: 8px;
+            font-size: calc(2.2rem * var(--tile-scale));
+            margin-bottom: 4px;
+        }
+
+        .button-panel .btn-tile span {
+            font-size: calc(0.85rem * var(--tile-scale));
+            line-height: 1.1;
         }
 
         #datetime {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
+            font-size: calc(1.4rem * var(--scale));
+            margin-bottom: calc(10px * var(--scale));
             color: #e0e0e0;
+            line-height: 1.1;
         }
 
         .chat-messages {
@@ -187,8 +207,9 @@
             margin-bottom: 15px;
             background-color: #252525;
             border-radius: 10px;
-            padding: 15px;
+            padding: 10px 12px;
             border: 1px solid #333;
+            font-size: 0.95rem;
         }
 
         .chat-input {
@@ -201,21 +222,22 @@
             border: 1px solid #3498db;
             color: #e0e0e0;
             border-radius: 20px;
-            padding: 8px 15px;
+            padding: 10px 16px;
+            font-size: 1rem;
         }
 
         .chat-input button {
             margin-left: 10px;
             background-color: #3498db;
             border: none;
-            border-radius: 20px;
-            width: 40px;
-            height: 40px;
+            border-radius: 16px;
+            width: 48px;
+            height: 48px;
         }
 
         .message {
             margin-bottom: 10px;
-            padding: 10px;
+            padding: 8px 12px;
             border-radius: 10px;
             max-width: 80%;
         }
@@ -232,6 +254,51 @@
             color: white;
             align-self: flex-start;
         }
+
+        @media (orientation: portrait) {
+            /* fallback если повернули устройство */
+            :root {
+                --chat-height: 220px;
+            }
+
+            .main-content {
+                flex-direction: column;
+            }
+
+            .button-panel {
+                width: 100%;
+                grid-template-columns: repeat(4, 1fr);
+                grid-auto-rows: 110px;
+            }
+
+            .info-panel {
+                width: 100%;
+                flex: 1;
+            }
+        }
+
+        /* Скрыть скроллбар но оставить прокрутку */
+        .info-panel::-webkit-scrollbar,
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .info-panel::-webkit-scrollbar-thumb,
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        .image-container, .abstract-image { display:none; }
+
+        .weather-card, .calendar-card { padding: 8px 10px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:10px; }
+        .weather-card .d-flex, .calendar-card .d-flex { align-items: flex-start; }
+        .weather-card h2 { font-size: calc(1.8rem * var(--scale)); margin: 0; }
+        .weather-card p { margin: 2px 0 0; font-size: calc(0.9rem * var(--scale)); }
+        .weather-card h5, .calendar-card h5 { font-size: calc(1rem * var(--scale)); margin-bottom: 6px; }
+        .calendar-card .list-group-item { padding: 4px 0; font-size: calc(0.85rem * var(--scale)); }
+        .calendar-card h6 { font-size: calc(0.85rem * var(--scale)); margin: 0 0 2px; }
+        .calendar-card small { font-size: calc(0.7rem * var(--scale)); }
     </style>
 </head>
 
@@ -329,11 +396,6 @@
                                 <small>Подготовить слайды</small>
                             </li>
                         </ul>
-                    </div>
-                </div>
-                <div class="image-container">
-                    <div class="abstract-image" id="dynamicImage">
-                        <canvas id="matrix" style="width: 100%; height: 100%; display: block;"></canvas>
                     </div>
                 </div>
             </div>
@@ -509,75 +571,54 @@
             console.log('Страница готова к работе с Python бэкендом');
         });
 
-        // Matrix rain effect for the abstract-image canvas
-        const matrixContainer = document.getElementById('dynamicImage');
-        const matrixCanvas = document.getElementById('matrix');
-        if (matrixContainer && matrixCanvas) {
-            const ctx = matrixCanvas.getContext('2d');
-            function resizeMatrixCanvas() {
-                matrixCanvas.width = matrixContainer.offsetWidth;
-                matrixCanvas.height = matrixContainer.offsetHeight;
-            }
-            resizeMatrixCanvas();
-            window.addEventListener('resize', resizeMatrixCanvas);
-            const chars = "アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズヅブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴ".split("");
-            const baseFontSize = 18;
-            let columns = Math.floor(matrixCanvas.width / baseFontSize);
-            let drops = Array(columns).fill().map(() => ({
-                y: 1,
-                speed: 0.5 + Math.random() * 1.5,
-                depth: Math.random(),
-                fontSize: 0,
-                opacity: 0
-            }));
-            function updateDropProps(drop) {
-                drop.fontSize = baseFontSize * (0.8 + drop.depth * 0.7);
-                drop.opacity = 0.5 + drop.depth * 0.5;
-            }
-            drops.forEach(updateDropProps);
-            function drawMatrix() {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
-                ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
-                const sortedDrops = [...drops].sort((a, b) => a.depth - b.depth);
-                for (let i = 0; i < sortedDrops.length; i++) {
-                    const drop = sortedDrops[i];
-                    const colIndex = drops.indexOf(drop);
-                    ctx.fillStyle = `rgba(0, 255, 65, ${drop.opacity})`;
-                    ctx.font = `${drop.fontSize}px monospace`;
-                    const text = chars[Math.floor(Math.random() * chars.length)];
-                    ctx.fillText(text, colIndex * baseFontSize, Math.floor(drop.y) * baseFontSize);
-                    if (drop.y * baseFontSize > matrixCanvas.height && Math.random() > 0.975) {
-                        drop.y = 0;
-                        drop.speed = 0.5 + Math.random() * 1.5;
-                        drop.depth = Math.random();
-                        updateDropProps(drop);
-                    }
-                    drop.y += drop.speed;
-                }
-            }
-            setInterval(drawMatrix, 40);
-            window.addEventListener('resize', () => {
-                resizeMatrixCanvas();
-                columns = Math.floor(matrixCanvas.width / baseFontSize);
-                if (columns > drops.length) {
-                    const newDrops = Array(columns - drops.length).fill().map(() => {
-                        const depth = Math.random();
-                        const drop = {
-                            y: Math.floor(Math.random() * matrixCanvas.height / baseFontSize),
-                            speed: 0.5 + Math.random() * 1.5,
-                            depth: depth,
-                            fontSize: 0,
-                            opacity: 0
-                        };
-                        updateDropProps(drop);
-                        return drop;
-                    });
-                    drops.push(...newDrops);
-                } else {
-                    drops.length = columns;
-                }
-            });
+        function adjustLayout() {
+            const vh = window.innerHeight; // реальная высота
+            const chat = document.querySelector('.chat-window');
+            const main = document.querySelector('.main-content');
+            const buttonPanel = document.querySelector('.button-panel');
+            if (!chat || !main || !buttonPanel) return;
+            const chatH = chat.offsetHeight; // задан через var(--chat-height)
+            const available = vh - chatH;
+            main.style.height = available + 'px';
+            // Расчёт высоты строк сетки для равномерного заполнения
+            const rows = parseInt(getComputedStyle(buttonPanel).getPropertyValue('--tile-rows')) || 4;
+            const gap = parseInt(getComputedStyle(buttonPanel).gap) || 10;
+            const paddingY = 24; // top+bottom padding (approx)
+            let rowHeight = Math.floor((available - paddingY - gap * (rows - 1)) / rows);
+            if (rowHeight < 70) rowHeight = 70; // минимально допустимое
+            buttonPanel.style.gridAutoRows = rowHeight + 'px';
+            // Масштаб иконок и текста на плитках относительно базовых 100px
+            const base = 100;
+            const scale = Math.min(1, Math.max(0.72, rowHeight / base));
+            document.documentElement.style.setProperty('--tile-scale', scale.toFixed(2));
         }
+        window.addEventListener('resize', () => { adjustLayout(); packInfoPanel(); });
+        document.addEventListener('DOMContentLoaded', () => { adjustLayout(); packInfoPanel(); });
+        function packInfoPanel() {
+            const infoPanel = document.querySelector('.info-panel');
+            if (!infoPanel) return;
+            const rootStyle = document.documentElement.style;
+            let scale = 1.0;
+            const minScale = 0.7;
+            rootStyle.setProperty('--scale', scale.toString());
+            // цикл уменьшает масштаб пока всё не влезет без вертикальной прокрутки или пока не достигнут предел
+            // (используем scrollHeight после применения стиля)
+            while (scale > minScale && infoPanel.scrollHeight > infoPanel.clientHeight + 2) {
+                scale -= 0.05;
+                rootStyle.setProperty('--scale', scale.toFixed(2));
+            }
+        }
+        // Тактильная подсветка
+        document.addEventListener('pointerdown', e => {
+            const t = e.target.closest('.btn-tile');
+            if (t) t.classList.add('touch-active');
+        });
+        document.addEventListener('pointerup', () => {
+            document.querySelectorAll('.btn-tile.touch-active').forEach(b => b.classList.remove('touch-active'));
+        });
+        document.addEventListener('pointercancel', () => {
+            document.querySelectorAll('.btn-tile.touch-active').forEach(b => b.classList.remove('touch-active'));
+        });
     </script>
 </body>
 
