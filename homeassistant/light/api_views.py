@@ -18,13 +18,20 @@ class DeviceToggleAPIView(View):
         ip_suffix = device_id.split('_')[-1]
         ip = f"192.168.0.{ip_suffix}"
         device = YeelightDevice(ip)
-
-        try:
-            new_state = device.toggle()
-            message = f'Лампа {ip} включена' if new_state else f'Лампа {ip} выключена'
-            return JsonResponse({'success': True, 'is_on': new_state, 'message': message})
-        except DeviceError as e:
-            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        
+        result = device.toggle()
+        
+        # Check if result is an error response
+        if isinstance(result, dict) and not result.get('success', True):
+            return JsonResponse({
+                'success': False, 
+                'message': f'Ошибка соединения с лампой {ip}: {result.get("error", "Неизвестная ошибка")}'
+            }, status=200)  # Changed from 500 to 200
+        
+        # Result is a boolean (new state)
+        new_state = result
+        message = f'Лампа {ip} включена' if new_state else f'Лампа {ip} выключена'
+        return JsonResponse({'success': True, 'is_on': new_state, 'message': message})
 
 
 @method_decorator(csrf_exempt, name='dispatch')

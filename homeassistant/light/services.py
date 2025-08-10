@@ -37,11 +37,23 @@ class YeelightDevice(DeviceInterface):
             return self.bulb.get_properties()
         except Exception as e:
             logger.error(f"Error getting properties from {self.ip}: {e}")
-            raise
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
     def toggle(self):
+        properties = self.get_properties()
+        
+        # Check if get_properties returned an error
+        if isinstance(properties, dict) and not properties.get('success', True):
+            logger.error(f"Error toggling device {self.ip}: {properties.get('error')}")
+            return {
+                "success": False,
+                "error": properties.get('error')
+            }
+        
         try:
-            properties = self.get_properties()
             current_state = properties.get('power') == 'on'
             if current_state:
                 self.bulb.turn_off()
@@ -50,7 +62,10 @@ class YeelightDevice(DeviceInterface):
             return not current_state
         except Exception as e:
             logger.error(f"Error toggling device {self.ip}: {e}")
-            raise
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
     def set_brightness(self, brightness: int):
         try:
