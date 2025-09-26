@@ -1,30 +1,34 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 WORKDIR /app
 
-# System deps
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
-    libglib2.0-0 \
-    libsm6 \
-    libxrender1 \
-    libxext6 \
+    libpq-dev \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Poetry install
+# Install Poetry
 RUN pip install --upgrade pip && pip install poetry
 
+# Copy Poetry files
 COPY pyproject.toml poetry.lock ./
-RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi
 
+# Install dependencies via Poetry
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi --no-root
+
+# Copy application code
 COPY . .
 
-# Collect static (if needed)
-# RUN poetry run python manage.py collectstatic --noinput
+# Create entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8000
 
-CMD ["poetry", "run", "python", "manage.py", "runserver", "0.0.0.0:8000"]
+ENTRYPOINT ["/entrypoint.sh"]

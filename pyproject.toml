@@ -18,6 +18,7 @@ dj-database-url = "^2.3.0"
 opencv-python = "^4.11.0.86"
 yeelight = "^0.7.16"
 opencv-python-headless = "^4.12.0.88"
+psycopg2-binary = "^2.9.9"
 
 
 [build-system]
