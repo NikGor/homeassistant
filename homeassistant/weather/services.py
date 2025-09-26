@@ -13,6 +13,7 @@ class WeatherService:
     """Service for fetching weather data from OpenWeatherMap API"""
     
     BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
+    FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
     CACHE_TIMEOUT = 600  # 10 minutes
     
     def __init__(self):
@@ -106,6 +107,90 @@ class WeatherService:
             'last_updated': weather_obj.updated_at
         }
     
+    def get_weather_forecast(self, city: str, country: str = "DE") -> Optional[Dict]:
+        """
+        Fetch 5-day weather forecast for a given city and country.
+        Returns tomorrow's forecast.
+        """
+        cache_key = f"forecast_{city.replace(' ', '_')}_{country}"
+        
+        # Check cache first
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return cached_data
+        
+        # Fetch from API
+        if self.api_key:
+            forecast_data = self._fetch_forecast_from_api(city, country)
+            if forecast_data:
+                cache.set(cache_key, forecast_data, self.CACHE_TIMEOUT)
+                return forecast_data
+        
+        return None
+    
+    def _fetch_forecast_from_api(self, city: str, country: str) -> Optional[Dict]:
+        """Fetch weather forecast from OpenWeatherMap API"""
+        try:
+            params = {
+                'q': f"{city},{country}",
+                'appid': self.api_key,
+                'units': 'metric',  # Celsius
+                'lang': 'en'
+            }
+            
+            response = requests.get(self.FORECAST_URL, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Find tomorrow's forecast (around 12:00)
+            tomorrow = datetime.now() + timedelta(days=1)
+            tomorrow_date = tomorrow.strftime('%Y-%m-%d')
+            
+            tomorrow_forecast = None
+            for forecast in data['list']:
+                forecast_date = datetime.fromtimestamp(forecast['dt']).strftime('%Y-%m-%d')
+                forecast_time = datetime.fromtimestamp(forecast['dt']).hour
+                
+                # Look for forecast around midday for tomorrow
+                if forecast_date == tomorrow_date and 11 <= forecast_time <= 13:
+                    tomorrow_forecast = forecast
+                    break
+            
+            # If no midday forecast found, take the first forecast for tomorrow
+            if not tomorrow_forecast:
+                for forecast in data['list']:
+                    forecast_date = datetime.fromtimestamp(forecast['dt']).strftime('%Y-%m-%d')
+                    if forecast_date == tomorrow_date:
+                        tomorrow_forecast = forecast
+                        break
+            
+            if tomorrow_forecast:
+                return {
+                    'city': data['city']['name'],
+                    'country': data['city']['country'],
+                    'temperature': tomorrow_forecast['main']['temp'],
+                    'description': tomorrow_forecast['weather'][0]['description'].title(),
+                    'humidity': tomorrow_forecast['main']['humidity'],
+                    'pressure': tomorrow_forecast['main']['pressure'],
+                    'wind_speed': tomorrow_forecast['wind'].get('speed', 0),
+                    'icon': tomorrow_forecast['weather'][0]['icon'],
+                    'date': tomorrow_date
+                }
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching forecast data from API: {e}")
+            return None
+        except (KeyError, ValueError) as e:
+            logger.error(f"Error parsing forecast API response: {e}")
+            return None
+        
+        return None
+    
     def get_bad_mergentheim_weather(self) -> Optional[Dict]:
-        """Get weather specifically for Bad Mergentheim, Germany"""
+        """Get current weather specifically for Bad Mergentheim, Germany"""
         return self.get_weather_data("Bad Mergentheim", "DE")
+    
+    def get_bad_mergentheim_forecast(self) -> Optional[Dict]:
+        """Get tomorrow's forecast specifically for Bad Mergentheim, Germany"""
+        return self.get_weather_forecast("Bad Mergentheim", "DE")
