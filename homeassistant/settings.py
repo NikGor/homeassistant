@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'homeassistant.api',
     'homeassistant.camera',
     'homeassistant.light',
+    'homeassistant.weather',
 ]
 
 MIDDLEWARE = [

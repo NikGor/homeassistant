@@ -23,4 +23,5 @@ urlpatterns = [
     path('api/', include('homeassistant.api.urls')),
     path('camera/', include('homeassistant.camera.urls')),
     path('light/', include('homeassistant.light.urls')),
+    path('weather/', include('homeassistant.weather.urls')),
 ]
