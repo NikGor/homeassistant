@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'homeassistant.camera',
     'homeassistant.light',
     'homeassistant.weather',
+    'homeassistant.ai_assistant',
 ]
 
 MIDDLEWARE = [
@@ -90,7 +91,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
-    BASE_DIR / 'homeassistant' / 'webapp' / 'templates' / 'static',
+    BASE_DIR / 'static',
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

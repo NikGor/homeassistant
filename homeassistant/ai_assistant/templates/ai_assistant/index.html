@@ -1,0 +1,79 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Archie - ИИ Ассистент</title>
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{% static 'ai_assistant/css/style.css' %}" rel="stylesheet">
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header">
+            <button class="back-button" onclick="window.location.href='/'">
+                <i class="bi bi-arrow-left"></i> Главная
+            </button>
+            <h1 class="header-title">Archie</h1>
+            <div></div> <!-- Spacer -->
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <button class="new-chat-button" id="newChatButton">
+                        <i class="bi bi-plus-circle"></i> Новый чат
+                    </button>
+                    <button class="new-chat-button" id="testApiButton" style="background: #e74c3c; margin-bottom: 0.5rem;">
+                        <i class="bi bi-wifi"></i> Тест API
+                    </button>
+                    <input type="text" class="search-box" placeholder="Поиск по чатам..." id="chatSearch">
+                </div>
+                
+                <div class="chat-list" id="chatList">
+                    <!-- Chat items will be populated here -->
+                </div>
+            </div>
+
+            <!-- Main Chat Area -->
+            <div class="main-chat">
+                <div class="chat-header">
+                    <h5 id="currentChatTitle">Выберите чат</h5>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <div class="empty-state">
+                        <i class="bi bi-chat-dots"></i>
+                        <p>Выберите чат или начните новый разговор</p>
+                    </div>
+                </div>
+
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <span style="margin-left: 10px;">Archie печатает...</span>
+                </div>
+                
+                <div class="input-area">
+                    <input type="text" class="message-input" id="messageInput" placeholder="Напишите сообщение..." disabled>
+                    <button class="send-button" id="sendButton" disabled>
+                        <i class="bi bi-send"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="{% static 'ai_assistant/js/chat.js' %}"></script>
+</body>
+</html>
