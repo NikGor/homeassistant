@@ -73,8 +73,10 @@ class ChatUI {
 
         // Карточки
         if (metadata.cards) {
-            metadata.cards.forEach(card => {
+            metadata.cards.forEach((card, index) => {
                 const cardElement = this.createCard(card);
+                // Задержка анимации для каждой карточки
+                cardElement.style.animationDelay = `${index * 0.1}s`;
                 metadataDiv.appendChild(cardElement);
             });
         }
@@ -113,18 +115,69 @@ class ChatUI {
 
     createOptions(options) {
         const optionsDiv = document.createElement('div');
+        optionsDiv.style.marginTop = '1rem';
         let html = '';
 
         // Кнопки
         if (options.buttons) {
             html += '<div class="ui-buttons">';
-            options.buttons.forEach(button => {
-                html += `<button class="ui-button" data-command="${button.command}">${button.text}</button>`;
+            options.buttons.forEach((button, index) => {
+                html += `<button class="ui-button" data-command="${button.command}" style="animation-delay: ${index * 0.1}s">${button.text}</button>`;
+            });
+            html += '</div>';
+        }
+
+        // Чеклисты
+        if (options.checklist) {
+            html += '<div class="ui-checklist">';
+            options.checklist.forEach((item, index) => {
+                const checked = item.checked ? 'checked' : '';
+                const checkedClass = item.checked ? 'checked' : '';
+                html += `
+                    <div class="checklist-item ${checkedClass}" data-command="${item.command}">
+                        <input type="checkbox" id="check_${index}" ${checked} data-command="${item.command}">
+                        <label for="check_${index}">${item.label}</label>
+                    </div>
+                `;
             });
             html += '</div>';
         }
 
         optionsDiv.innerHTML = html;
+        
+        // Добавляем обработчики для чеклистов
+        optionsDiv.querySelectorAll('.checklist-item').forEach(item => {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            const itemDiv = item;
+            
+            // Обработчик клика по всему элементу
+            item.addEventListener('click', (e) => {
+                if (e.target.type !== 'checkbox') {
+                    checkbox.checked = !checkbox.checked;
+                }
+                
+                // Обновляем визуальное состояние
+                if (checkbox.checked) {
+                    itemDiv.classList.add('checked');
+                } else {
+                    itemDiv.classList.remove('checked');
+                }
+                
+                // Можно добавить обработку команды
+                const command = checkbox.getAttribute('data-command');
+                console.log(`Checklist item toggled: ${command}, checked: ${checkbox.checked}`);
+            });
+            
+            // Обработчик изменения чекбокса
+            checkbox.addEventListener('change', (e) => {
+                if (checkbox.checked) {
+                    itemDiv.classList.add('checked');
+                } else {
+                    itemDiv.classList.remove('checked');
+                }
+            });
+        });
+        
         return optionsDiv;
     }
 

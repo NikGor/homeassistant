@@ -7,7 +7,8 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f5f5f5;
+    background: #121212;
+    color: #e0e0e0;
     height: 100vh;
     overflow: hidden;
 }
@@ -20,13 +21,14 @@ body {
 
 /* Заголовок */
 .header {
-    background: #2c3e50;
+    background: #1e1e1e;
     color: white;
     padding: 1rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    border-bottom: 1px solid #333;
 }
 
 .back-button {
@@ -53,15 +55,15 @@ body {
 /* Боковая панель */
 .sidebar {
     width: 300px;
-    background: white;
-    border-right: 1px solid #e0e0e0;
+    background: #1e1e1e;
+    border-right: 1px solid #333;
     display: flex;
     flex-direction: column;
 }
 
 .sidebar-header {
     padding: 1rem;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #444;
 }
 
 .new-chat-button {
@@ -83,9 +85,15 @@ body {
 .search-box {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid #ddd;
+    border: 1px solid #555;
     border-radius: 6px;
     font-size: 0.9rem;
+    background: #3a3a3a;
+    color: #e0e0e0;
+}
+
+.search-box::placeholder {
+    color: #888;
 }
 
 .chat-list {
@@ -95,17 +103,18 @@ body {
 
 .chat-item {
     padding: 1rem;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid #404040;
     cursor: pointer;
     transition: background 0.2s;
+    color: #e0e0e0;
 }
 
 .chat-item:hover {
-    background: #f8f9fa;
+    background: #3a3a3a;
 }
 
 .chat-item.active {
-    background: #e3f2fd;
+    background: #1e3a5f;
     border-right: 3px solid #2196f3;
 }
 
@@ -116,7 +125,7 @@ body {
 
 .chat-date {
     font-size: 0.8rem;
-    color: #666;
+    color: #999;
 }
 
 /* Основной чат */
@@ -124,13 +133,14 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: white;
+    background: #1e1e1e;
 }
 
 .chat-header {
     padding: 1rem;
-    border-bottom: 1px solid #e0e0e0;
-    background: #fafafa;
+    border-bottom: 1px solid #333;
+    background: #1e1e1e;
+    color: #e0e0e0;
 }
 
 .chat-messages {
@@ -166,60 +176,69 @@ body {
 }
 
 .message.assistant .message-bubble {
-    background: #f1f3f4;
-    color: #333;
+    background: #252525;
+    color: #e0e0e0;
+    border: 1px solid #2a2a2a;
 }
 
 .message-time {
     font-size: 0.7rem;
-    color: #666;
+    color: #999;
     margin-top: 0.25rem;
 }
 
 /* Карточки метаданных */
 .metadata-cards {
-    margin-top: 0.5rem;
+    margin-top: 1.5rem;
     max-width: 70%;
 }
 
 .card {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
     margin-bottom: 0.5rem;
     overflow: hidden;
+    transition: all 0.3s ease;
+    animation: cardFadeIn 0.5s ease-out;
+}
+
+.card:hover {
+    border-color: #3498db;
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.1);
 }
 
 .card-header {
     padding: 0.75rem;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
+    background: #252525;
+    border-bottom: 1px solid #2a2a2a;
 }
 
 .card-title {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
+    color: #e0e0e0;
 }
 
 .card-subtitle {
     margin: 0;
     font-size: 0.8rem;
-    color: #666;
+    color: #999;
 }
 
 .card-text {
     margin: 0;
     font-size: 0.9rem;
     line-height: 1.4;
-    color: #333;
+    color: #e0e0e0;
 }
 
 .card-text {
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
     line-height: 1.4;
-    color: #333;
+    color: #e0e0e0;
 }
 
 .card-text:last-child {
@@ -305,55 +324,125 @@ body {
     padding: 0.75rem;
 }
 
+/* Отступы для UI элементов в карточках */
+.card-body .ui-buttons {
+    margin-bottom: 0.5rem;
+}
+
+.card-body .ui-buttons:last-child {
+    margin-bottom: 0;
+}
+
 /* UI элементы */
 .ui-buttons {
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
-    margin-top: 0.5rem;
+    margin: 0.5rem 0;
 }
 
 .ui-button {
-    background: #e3f2fd;
-    border: 1px solid #2196f3;
-    color: #1976d2;
+    background: #252525;
+    border: 2px solid #3498db;
+    color: #3498db;
     padding: 0.5rem 0.75rem;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
     font-size: 0.9rem;
-    transition: all 0.2s;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .ui-button:hover {
-    background: #2196f3;
+    background: #3498db;
     color: white;
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+/* Кнопки в карточках - другой цвет */
+.card .ui-button {
+    background: #252525;
+    border: 2px solid #8e44ad;
+    color: #8e44ad;
+    animation: buttonFadeIn 0.7s ease-out;
+}
+
+.card .ui-button:hover {
+    background: #8e44ad;
+    color: white;
+    box-shadow: 0 4px 12px rgba(142, 68, 173, 0.3);
 }
 
 .ui-dropdown {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid #ddd;
+    border: 1px solid #555;
     border-radius: 6px;
     margin-top: 0.5rem;
+    background: #3a3a3a;
+    color: #e0e0e0;
 }
 
 .ui-checklist {
     margin-top: 0.5rem;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    padding: 1rem;
 }
 
 .checklist-item {
     display: flex;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background: #252525;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.checklist-item:last-child {
+    margin-bottom: 0;
+}
+
+.checklist-item:hover {
+    background: #2a2a2a;
+    border: 1px solid #3498db;
+}
+
+.checklist-item.checked {
+    background: #1e3a5f;
+    border: 1px solid #3498db;
 }
 
 .checklist-item input {
-    margin-right: 0.5rem;
+    margin-right: 0.75rem;
+    width: 18px;
+    height: 18px;
+    accent-color: #3498db;
+    cursor: pointer;
+}
+
+.checklist-item label {
+    flex: 1;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.checklist-item.checked label {
+    color: #64b5f6;
+    text-decoration: line-through;
+    opacity: 0.8;
 }
 
 /* Навигационная карточка */
 .navigation-card {
-    background: #fff3e0;
+    background: #3d2f00;
     border: 1px solid #ff9800;
     border-radius: 8px;
     padding: 1rem;
@@ -362,12 +451,12 @@ body {
 
 .navigation-title {
     font-weight: 600;
-    color: #e65100;
+    color: #ffb74d;
     margin-bottom: 0.5rem;
 }
 
 .navigation-description {
-    color: #bf360c;
+    color: #ffcc80;
     margin-bottom: 0.5rem;
 }
 
@@ -391,18 +480,18 @@ body {
 
 .message-bubble h1 {
     font-size: 1.3rem;
-    color: #1565c0;
+    color: #64b5f6;
 }
 
 .message-bubble h2 {
     font-size: 1.2rem;
-    color: #1976d2;
+    color: #42a5f5;
 }
 
 .message-bubble h3 {
     font-size: 1.1rem;
-    color: #1976d2;
-    border-bottom: 1px solid #e0e0e0;
+    color: #42a5f5;
+    border-bottom: 1px solid #555;
     padding-bottom: 0.25rem;
     margin-top: 1rem;
 }
@@ -411,7 +500,7 @@ body {
 .message-bubble h5,
 .message-bubble h6 {
     font-size: 1rem;
-    color: #333;
+    color: #e0e0e0;
 }
 
 .message-bubble ul,
@@ -475,26 +564,28 @@ body {
 }
 
 .message-bubble code {
-    background: #f5f5f5;
+    background: #444;
     padding: 0.2rem 0.4rem;
     border-radius: 3px;
     font-family: monospace;
     font-size: 0.9em;
+    color: #f8f8f2;
 }
 
 .message-bubble pre {
-    background: #f5f5f5;
+    background: #333;
     padding: 0.75rem;
     border-radius: 6px;
     overflow-x: auto;
     margin: 0.5rem 0;
+    color: #f8f8f2;
 }
 
 .message-bubble blockquote {
     border-left: 3px solid #2196f3;
     padding-left: 0.75rem;
     margin: 0.5rem 0;
-    color: #666;
+    color: #aaa;
     font-style: italic;
 }
 
@@ -506,44 +597,52 @@ body {
 .input-area {
     display: flex;
     padding: 1rem;
-    border-top: 1px solid #e0e0e0;
-    background: #fafafa;
+    border-top: 1px solid #333;
+    background: #1e1e1e;
 }
 
 .message-input {
     flex: 1;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 25px;
+    padding: 0.75rem 1rem;
+    border: 1px solid #3498db;
+    border-radius: 20px;
     margin-right: 0.5rem;
     font-size: 1rem;
     outline: none;
+    background: #252525;
+    color: #e0e0e0;
+    transition: all 0.2s ease;
+}
+
+.message-input::placeholder {
+    color: #888;
 }
 
 .message-input:focus {
-    border-color: #2196f3;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
 }
 
 .send-button {
-    background: #2196f3;
+    background: #3498db;
     color: white;
     border: none;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
+    border-radius: 16px;
+    width: 48px;
+    height: 48px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: all 0.3s ease;
 }
 
 .send-button:hover {
-    background: #1976d2;
+    background: #2980b9;
 }
 
 .send-button:disabled {
-    background: #ccc;
+    background: #555;
     cursor: not-allowed;
 }
 
@@ -563,7 +662,7 @@ body {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #666;
+    background: #999;
     animation: typing 1.4s infinite;
 }
 
@@ -591,13 +690,50 @@ body {
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #666;
+    color: #999;
 }
 
 .empty-state i {
     font-size: 4rem;
     margin-bottom: 1rem;
     opacity: 0.3;
+}
+
+/* Анимации */
+@keyframes cardFadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes buttonFadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes messageFadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Применение анимаций к сообщениям */
+.message {
+    animation: messageFadeIn 0.4s ease-out;
+}
+
+.metadata-cards {
+    animation: cardFadeIn 0.6s ease-out;
 }
 
 /* Адаптивность */
