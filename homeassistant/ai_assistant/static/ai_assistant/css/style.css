@@ -208,6 +208,99 @@ body {
     color: #666;
 }
 
+.card-text {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #333;
+}
+
+.card-text {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #333;
+}
+
+.card-text:last-child {
+    margin-bottom: 0;
+}
+
+/* HTML форматирование в card-text */
+.card-text h1,
+.card-text h2,
+.card-text h3,
+.card-text h4,
+.card-text h5,
+.card-text h6 {
+    margin: 0.5rem 0;
+    font-weight: 600;
+}
+
+.card-text ul,
+.card-text ol {
+    margin: 0.5rem 0;
+    padding-left: 1.2rem;
+}
+
+.card-text li {
+    margin: 0.2rem 0;
+}
+
+.card-text p {
+    margin: 0.3rem 0;
+}
+
+.card-text a {
+    color: #1976d2;
+    text-decoration: none;
+}
+
+.card-text a:hover {
+    text-decoration: underline;
+}
+
+.card-text:last-child {
+    margin-bottom: 0;
+}
+
+/* HTML форматирование внутри карточек */
+.card-text h1,
+.card-text h2,
+.card-text h3,
+.card-text h4,
+.card-text h5,
+.card-text h6 {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.card-text ul,
+.card-text ol {
+    margin: 0.25rem 0;
+    padding-left: 1.2rem;
+    font-size: 0.9rem;
+}
+
+.card-text li {
+    margin: 0.1rem 0;
+}
+
+.card-text p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+.card-text a {
+    color: #1976d2;
+    text-decoration: none;
+}
+
+.card-text a:hover {
+    text-decoration: underline;
+}
+
 .card-body {
     padding: 0.75rem;
 }
