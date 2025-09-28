@@ -11,6 +11,8 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - shared_network
 
   web:
     build: .
@@ -20,8 +22,17 @@ services:
       - .env
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/homeassistant
+      BACKEND_API_URL: http://archie-backend:8002
+      AI_AGENT_URL: http://archie-ai-agent:8005
     depends_on:
       - db
+    networks:
+      - shared_network
+
 
 volumes:
   postgres_data:
+
+networks:
+  shared_network:
+    external: true
