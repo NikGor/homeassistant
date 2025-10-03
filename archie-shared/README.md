@@ -14,6 +14,28 @@ This package contains common data models and utilities used across different Arc
 
 ### For external repositories (from GitHub):
 
+Add to your `pyproject.toml`:
+
+```toml
+[tool.poetry.dependencies]
+archie-shared = {git = "https://github.com/NikGor/homeassistant.git", subdirectory = "archie-shared"}
+```
+
+Or for a specific branch/tag:
+
+```toml
+[tool.poetry.dependencies]
+archie-shared = {git = "https://github.com/NikGor/homeassistant.git", rev = "main", subdirectory = "archie-shared"}
+```
+
+Then run:
+
+```bash
+poetry install
+```
+
+Alternatively, you can add it via command line:
+
 ```bash
 poetry add git+https://github.com/NikGor/homeassistant.git#subdirectory=archie-shared
 ```
