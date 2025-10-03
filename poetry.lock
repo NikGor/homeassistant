@@ -33,6 +33,22 @@ test = ["anyio[trio]", "blockbuster (>=1.5.23)", "coverage[toml] (>=7)", "except
 trio = ["trio (>=0.26.1)"]
 
 [[package]]
+name = "archie-shared"
+version = "0.1.0"
+description = "Shared Pydantic models and utilities for Archie ecosystem"
+optional = false
+python-versions = ">=3.11,<4.0"
+files = []
+develop = true
+
+[package.dependencies]
+pydantic = "^2.11.4"
+
+[package.source]
+type = "directory"
+url = "archie-shared"
+
+[[package]]
 name = "asgiref"
 version = "3.8.1"
 description = "ASGI specs, helper code, and adapters"
@@ -1176,4 +1192,4 @@ dev = ["Sphinx", "flake8", "flake8-docstrings", "flake8-import-order", "flake8-t
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4.0"
-content-hash = "17079d2c6c0670edffaf11c57983cb611c5cddcf8dc228e17f7bb91fc1ed75f0"
+content-hash = "8b06f292d15e7182690050d0a06cfb643221ff219df885ec36e6d5056d2177f1"
