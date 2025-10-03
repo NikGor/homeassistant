@@ -36,7 +36,7 @@ class LightDashboardView(TemplateView):
                 devices.append(device)
                 
             except Exception as e:
-                logger.error(f"Error connecting to {ip}: {e}")
+                logger.error(f"light_views_001: \033[31mConnection failed to \033[36m{ip}\033[31m: {str(e)}\033[0m")
                 try:
                     from .light_controller import YeelightDevice
                     device = YeelightDevice(ip, properties={
@@ -47,7 +47,7 @@ class LightDashboardView(TemplateView):
                     device._connected = False
                     devices.append(device)
                 except Exception as inner_e:
-                    logger.error(f"Error creating fallback device for {ip}: {inner_e}")
+                    logger.error(f"light_views_002: \033[31mFallback device creation failed for \033[36m{ip}\033[31m: {str(inner_e)}\033[0m")
         
         try:
             context.update({
@@ -57,7 +57,7 @@ class LightDashboardView(TemplateView):
                 'page_title': 'Управление освещением'
             })
         except Exception as e:
-            logger.error(f"Error updating context in LightDashboardView: {e}")
+            logger.error(f"light_views_003: \033[31mContext update failed in LightDashboardView: {str(e)}\033[0m")
         return context
 
 
@@ -74,7 +74,7 @@ class DeviceListView(TemplateView):
                 'page_title': 'Найденные устройства Yeelight'
             })
         except Exception as e:
-            logger.error(f"Error in DeviceListView.get_context_data: {e}")
+            logger.error(f"light_views_004: \033[31mDeviceListView context error: {str(e)}\033[0m")
             context['devices'] = []
             context['page_title'] = 'Ошибка получения устройств'
         return context
@@ -97,15 +97,17 @@ class DeviceDetailView(TemplateView):
                 'page_title': f'Устройство: {device.name}'
             })
         except Exception as e:
-            logger.error(f"Error in DeviceDetailView.get_context_data: {e}")
+            logger.error(f"light_views_005: \033[31mDeviceDetailView context error for \033[36m{device_id}\033[31m: {str(e)}\033[0m")
             context['error'] = 'Ошибка получения информации об устройстве'
         return context
 
 
 class ScanDevicesView(View):
     def get(self, request, *args, **kwargs):
+        logger.info("=== STEP 2: Device Scan Request ===")
         try:
             discovered = light_controller.discover_devices(timeout=5)
+            logger.info(f"light_views_006: Scan completed, found \033[33m{len(discovered)}\033[0m devices")
             return JsonResponse({
                 'success': True,
                 'discovered_count': len(discovered),
@@ -121,7 +123,7 @@ class ScanDevicesView(View):
                 ]
             })
         except Exception as e:
-            logger.error(f"Error in ScanDevicesView.get: {e}")
+            logger.error(f"light_views_007: \033[31mScan failed: {str(e)}\033[0m")
             return JsonResponse({
                 'success': False,
                 'message': f'Ошибка сканирования устройств: {str(e)}'
@@ -172,7 +174,7 @@ class DeviceToggleAPIViewWithMixin(LightControlMixin, View):
             })
                 
         except Exception as e:
-            logger.error(f"Ошибка в device toggle: {e}")
+            logger.error(f"light_views_008: \033[31mDevice toggle failed for \033[36m{device_id}\033[31m: {str(e)}\033[0m")
             return JsonResponse({
                 'success': False,
                 'message': f'Ошибка управления устройством {device_id}: {str(e)}'

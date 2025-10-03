@@ -1,16 +1,11 @@
+"""
+Django models for AI Assistant database storage
+"""
+
 from django.db import models
 from django.utils import timezone
 import uuid
-import sys
-import os
-from archie_shared.chat.models import (
-    ConversationModel, 
-    LllmTrace, 
-    ChatMessage, 
-    InputTokensDetails, 
-    OutputTokensDetails
-)
-from archie_shared.ui.models import Metadata
+
 
 class Conversation(models.Model):
     """Django model for storing conversations in PostgreSQL"""
@@ -44,7 +39,7 @@ class Conversation(models.Model):
     
     def to_conversation_model(self):
         """Convert Django model to Pydantic model"""
-        
+        from .pydantic_models import ConversationModel, LllmTrace
         
         messages = [msg.to_chat_message() for msg in self.messages.all()]
         
@@ -123,6 +118,8 @@ class Message(models.Model):
     
     def to_chat_message(self):
         """Convert Django model to Pydantic model"""
+        from .pydantic_models import ChatMessage, Metadata, LllmTrace, InputTokensDetails, OutputTokensDetails
+        
         metadata = None
         if self.metadata_json:
             try:

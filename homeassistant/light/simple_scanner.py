@@ -2,6 +2,7 @@
 
 import sys
 import os
+import logging
 sys.path.append('/home/niko/documents/projects/homeassistant')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'homeassistant.settings')
 
@@ -10,36 +11,49 @@ django.setup()
 
 from yeelight import discover_bulbs, Bulb
 
+# Configure logging according to LOGGING_GUIDELINES.md
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(message)s',
+    datefmt='%H:%M:%S',
+)
+logger = logging.getLogger(__name__)
+
 def scan_network():
-    print("Сканирование сети на предмет Yeelight устройств...")
+    logger.info("=== STEP 1: Network Scan ===")
+    logger.info("scanner_001: Starting Yeelight network discovery...")
     
     try:
         # Сканируем с большим таймаутом
         discovered = discover_bulbs(timeout=10)
         
-        print(f"Найдено {len(discovered)} устройств:")
+        logger.info(f"scanner_002: Discovery complete: \033[33m{len(discovered)}\033[0m devices found")
         
         for i, bulb_info in enumerate(discovered, 1):
-            print(f"\n--- Устройство {i} ---")
-            print(f"IP: {bulb_info['ip']}")
-            print(f"Порт: {bulb_info.get('port', 55443)}")
+            ip = bulb_info['ip']
+            port = bulb_info.get('port', 55443)
+            
+            logger.info(f"scanner_003: Device \033[33m{i}/{len(discovered)}\033[0m - \033[36m{ip}:{port}\033[0m")
             
             # Подключаемся и получаем свойства
             try:
-                bulb = Bulb(bulb_info['ip'])
+                bulb = Bulb(ip)
                 properties = bulb.get_properties()
                 
-                print(f"Состояние: {'Включено' if properties.get('power') == 'on' else 'Выключено'}")
-                print(f"Яркость: {properties.get('bright', 'Н/Д')}%")
-                print(f"Температура: {properties.get('ct', 'Н/Д')}K")
-                print(f"Модель: {properties.get('model', 'Неизвестно')}")
-                print(f"ID: {properties.get('id', 'Неизвестен')}")
+                power_status = 'ON' if properties.get('power') == 'on' else 'OFF'
+                power_color = '\033[32m' if power_status == 'ON' else '\033[31m'
+                
+                logger.info(f"scanner_004: Status: {power_color}{power_status}\033[0m")
+                logger.info(f"scanner_005: Brightness: \033[33m{properties.get('bright', 'N/A')}%\033[0m")
+                logger.info(f"scanner_006: Color temp: \033[33m{properties.get('ct', 'N/A')}K\033[0m")
+                logger.info(f"scanner_007: Model: \033[35m{properties.get('model', 'Unknown')}\033[0m")
+                logger.info(f"scanner_008: ID: \033[36m{properties.get('id', 'Unknown')}\033[0m")
                 
             except Exception as e:
-                print(f"Ошибка подключения к {bulb_info['ip']}: {e}")
+                logger.error(f"scanner_error_001: \033[31mConnection failed to \033[36m{ip}\033[31m: {str(e)}\033[0m")
     
     except Exception as e:
-        print(f"Ошибка сканирования: {e}")
+        logger.error(f"scanner_error_002: \033[31mNetwork scan failed: {str(e)}\033[0m")
 
 if __name__ == "__main__":
     scan_network()

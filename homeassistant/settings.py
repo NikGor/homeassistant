@@ -73,8 +73,32 @@ TEMPLATES = [
 WSGI_APPLICATION = 'homeassistant.wsgi.application'
 
 DATABASES = {
-    'default': dj_database_url.config(default=f'sqlite:///{BASE_DIR / "db.sqlite3"}')
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
+
+# PostgreSQL connection settings for read/write operations
+DATABASE_WRITE_URL = os.getenv('DATABASE_WRITE_URL')
+DATABASE_READ_URL = os.getenv('DATABASE_READ_URL')
+
+# If PostgreSQL URLs are provided, use them
+if DATABASE_WRITE_URL:
+    DATABASES['default'] = dj_database_url.parse(
+        DATABASE_WRITE_URL,
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+    
+# Optional: Setup read-only database connection
+if DATABASE_READ_URL:
+    DATABASES['read_only'] = dj_database_url.parse(
+        DATABASE_READ_URL,
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -95,3 +119,28 @@ STATICFILES_DIRS = [
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Logging configuration according to LOGGING_GUIDELINES.md
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s - %(message)s',
+            'datefmt': '%H:%M:%S',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard',
+        },
+    },
+    'loggers': {
+        '': {  # Root logger
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}

@@ -79,10 +79,10 @@ class YeelightDevice:
             self.bulb = Bulb(self.ip, port=self.port)
             self.bulb.get_properties()
             self._connected = True
-            logger.info(f"Подключено к {self.name} ({self.ip})")
+            logger.info(f"light_ctrl_001: Connected to \033[35m{self.name}\033[0m (\033[36m{self.ip}\033[0m)")
             return True
         except Exception as e:
-            logger.error(f"Ошибка подключения к {self.ip}: {e}")
+            logger.error(f"light_ctrl_error_001: \033[31mConnection failed to \033[36m{self.ip}\033[31m: {str(e)}\033[0m")
             self._connected = False
             return False
     
@@ -96,7 +96,7 @@ class YeelightDevice:
             self.last_seen = time.time()
             return True
         except Exception as e:
-            logger.error(f"Ошибка обновления свойств {self.ip}: {e}")
+            logger.error(f"light_ctrl_error_002: \033[31mProperties update failed for \033[36m{self.ip}\033[31m: {str(e)}\033[0m")
             self._connected = False
             return False
 
@@ -113,7 +113,8 @@ class LightController:
     
     def discover_devices(self, timeout: int = 5) -> List[YeelightDevice]:
         """Сканировать сеть для поиска Yeelight устройств"""
-        logger.info("Начинаем поиск Yeelight устройств...")
+        logger.info("=== STEP 1: Device Discovery ===")
+        logger.info(f"light_ctrl_002: Starting Yeelight scan with timeout \033[33m{timeout}s\033[0m")
         
         try:
             # Используем встроенную функцию yeelight для обнаружения
@@ -136,13 +137,13 @@ class LightController:
                     device_id = device.id
                     self.devices[device_id] = device
                     
-                    logger.info(f"Найдено устройство: {device.name} ({device.ip})")
+                    logger.info(f"light_ctrl_003: Found device \033[35m{device.name}\033[0m (\033[36m{device.ip}\033[0m)")
             
-            logger.info(f"Найдено {len(found_devices)} Yeelight устройств")
+            logger.info(f"light_ctrl_004: Discovery complete: \033[33m{len(found_devices)}\033[0m devices found")
             return found_devices
             
         except Exception as e:
-            logger.error(f"Ошибка при поиске устройств: {e}")
+            logger.error(f"light_ctrl_error_003: \033[31mDevice discovery failed: {str(e)}\033[0m")
             return []
     
     def get_device(self, device_id: str) -> Optional[YeelightDevice]:
@@ -173,14 +174,14 @@ class LightController:
         self.scanning = True
         self.scan_thread = threading.Thread(target=self._auto_scan_loop, daemon=True)
         self.scan_thread.start()
-        logger.info("Запущено автоматическое сканирование устройств")
+        logger.info(f"light_ctrl_005: Auto-scan started with \033[33m{self.scan_interval}s\033[0m interval")
     
     def stop_auto_scan(self):
         """Остановить автоматическое сканирование"""
         self.scanning = False
         if self.scan_thread:
             self.scan_thread.join(timeout=1)
-        logger.info("Остановлено автоматическое сканирование устройств")
+        logger.info("light_ctrl_006: Auto-scan stopped")
     
     def _auto_scan_loop(self):
         """Цикл автоматического сканирования"""
@@ -189,7 +190,7 @@ class LightController:
                 self.discover_devices()
                 time.sleep(self.scan_interval)
             except Exception as e:
-                logger.error(f"Ошибка в автосканировании: {e}")
+                logger.error(f"light_ctrl_error_004: \033[31mAuto-scan error: {str(e)}\033[0m")
                 time.sleep(5)
     
     # Методы управления устройствами
@@ -205,11 +206,11 @@ class LightController:
                 device.bulb.set_brightness(brightness)
             
             device.update_properties()
-            logger.info(f"Включено устройство {device.name}")
+            logger.info(f"light_ctrl_007: Device \033[35m{device.name}\033[0m turned \033[32mON\033[0m")
             return True
             
         except BulbException as e:
-            logger.error(f"Ошибка включения {device.name}: {e}")
+            logger.error(f"light_ctrl_error_005: \033[31mTurn ON failed for \033[35m{device.name}\033[31m: {str(e)}\033[0m")
             return False
     
     def turn_off(self, device_id: str) -> bool:
@@ -221,11 +222,11 @@ class LightController:
         try:
             device.bulb.turn_off()
             device.update_properties()
-            logger.info(f"Выключено устройство {device.name}")
+            logger.info(f"light_ctrl_008: Device \033[35m{device.name}\033[0m turned \033[31mOFF\033[0m")
             return True
             
         except BulbException as e:
-            logger.error(f"Ошибка выключения {device.name}: {e}")
+            logger.error(f"light_ctrl_error_006: \033[31mTurn OFF failed for \033[35m{device.name}\033[31m: {str(e)}\033[0m")
             return False
     
     def toggle(self, device_id: str) -> bool:
@@ -237,17 +238,17 @@ class LightController:
         try:
             device.bulb.toggle()
             device.update_properties()
-            logger.info(f"Переключено устройство {device.name}")
+            logger.info(f"light_ctrl_009: Device \033[35m{device.name}\033[0m \033[33mtoggled\033[0m")
             return True
             
         except BulbException as e:
-            logger.error(f"Ошибка переключения {device.name}: {e}")
+            logger.error(f"light_ctrl_error_007: \033[31mToggle failed for \033[35m{device.name}\033[31m: {str(e)}\033[0m")
             return False
     
     def set_brightness(self, device_id: str, brightness: int) -> bool:
         """Установить яркость устройства"""
         if not 1 <= brightness <= 100:
-            logger.error(f"Недопустимая яркость: {brightness}")
+            logger.error(f"light_ctrl_error_008: \033[31mInvalid brightness: \033[33m{brightness}\033[31m (must be 1-100)\033[0m")
             return False
         
         device = self.get_device(device_id)
@@ -257,17 +258,17 @@ class LightController:
         try:
             device.bulb.set_brightness(brightness)
             device.update_properties()
-            logger.info(f"Установлена яркость {brightness}% для {device.name}")
+            logger.info(f"light_ctrl_010: Brightness set to \033[33m{brightness}%\033[0m for \033[35m{device.name}\033[0m")
             return True
             
         except BulbException as e:
-            logger.error(f"Ошибка установки яркости {device.name}: {e}")
+            logger.error(f"light_ctrl_error_009: \033[31mBrightness set failed for \033[35m{device.name}\033[31m: {str(e)}\033[0m")
             return False
     
     def set_color_temp(self, device_id: str, temp: int) -> bool:
         """Установить цветовую температуру"""
         if not 1700 <= temp <= 6500:
-            logger.error(f"Недопустимая цветовая температура: {temp}")
+            logger.error(f"light_ctrl_error_010: \033[31mInvalid color temp: \033[33m{temp}K\033[31m (must be 1700-6500K)\033[0m")
             return False
         
         device = self.get_device(device_id)
@@ -277,17 +278,17 @@ class LightController:
         try:
             device.bulb.set_color_temp(temp)
             device.update_properties()
-            logger.info(f"Установлена температура {temp}K для {device.name}")
+            logger.info(f"light_ctrl_011: Color temp set to \033[33m{temp}K\033[0m for \033[35m{device.name}\033[0m")
             return True
             
         except BulbException as e:
-            logger.error(f"Ошибка установки температуры {device.name}: {e}")
+            logger.error(f"light_ctrl_error_011: \033[31mColor temp set failed for \033[35m{device.name}\033[31m: {str(e)}\033[0m")
             return False
     
     def set_rgb(self, device_id: str, red: int, green: int, blue: int) -> bool:
         """Установить RGB цвет"""
         if not all(0 <= c <= 255 for c in [red, green, blue]):
-            logger.error(f"Недопустимые RGB значения: {red}, {green}, {blue}")
+            logger.error(f"light_ctrl_error_012: \033[31mInvalid RGB values: \033[33m({red},{green},{blue})\033[31m (must be 0-255)\033[0m")
             return False
         
         device = self.get_device(device_id)
@@ -297,11 +298,11 @@ class LightController:
         try:
             device.bulb.set_rgb(red, green, blue)
             device.update_properties()
-            logger.info(f"Установлен RGB цвет для {device.name}")
+            logger.info(f"light_ctrl_012: RGB color set to \033[33m({red},{green},{blue})\033[0m for \033[35m{device.name}\033[0m")
             return True
             
         except BulbException as e:
-            logger.error(f"Ошибка установки RGB {device.name}: {e}")
+            logger.error(f"light_ctrl_error_013: \033[31mRGB set failed for \033[35m{device.name}\033[31m: {str(e)}\033[0m")
             return False
 
 
@@ -312,5 +313,5 @@ light_controller = LightController()
 try:
     light_controller.start_auto_scan()
 except Exception as e:
-    logger.error(f"Ошибка запуска автосканирования: {e}")
+    logger.error(f"light_ctrl_error_014: \033[31mAuto-scan startup failed: {str(e)}\033[0m")
 
