@@ -63,13 +63,26 @@ class ToolCard(BaseModel):
     name: str = Field(description="Name of the tool or function")
     description: Optional[str] = Field(default=None, description="Description of what the tool does")
 
+class TableCell(BaseModel):
+    """Single cell in a table"""
+    content: str = Field(description="Content of the table cell")
+
+class Table(BaseModel):
+    """Table with structured data"""
+    headers: list[str] = Field(description="List of column headers")
+    rows: list[list[TableCell]] = Field(description="List of table rows, each row is a list of cell values")
+
+class ElementsItem(BaseModel):
+    """Single item in Elements list"""
+    title: str = Field(description="Title of the element")
+    value: str = Field(description="Value of the element")
 
 class Metadata(BaseModel):
     """Rich metadata for chat messages with UI components"""
     cards: Optional[List[Card]] = Field(default=None, description="List of generic cards to display")
     options: Optional[UIElements] = Field(default=None, description="Interactive UI elements")
     tool_cards: Optional[List[ToolCard]] = Field(default=None, description="List of available tools/functions")
-    navigation_card: Optional[NavigationCard] = Field(default=None, description="Navigation card for routing")
-    contact_card: Optional[ContactCard] = Field(default=None, description="Contact information card")
-    table: Optional[dict] = Field(default=None, description="Table data structure")
-    elements: Optional[dict] = Field(default=None, description="Additional UI elements")
+    navigation_card: List[NavigationCard] = Field(default_factory=list, description="List of navigation cards")
+    contact_card: List[ContactCard] = Field(default_factory=list, description="List of contact information cards")
+    table: Optional[Table] = Field(default=None, description="Table data structure")
+    elements: List[ElementsItem] = Field(default_factory=list, description="List of key-value pairs for additional info")
