@@ -15,8 +15,9 @@ RUN apt-get update && apt-get install -y \
 # Install Poetry
 RUN pip install --upgrade pip && pip install poetry
 
-# Copy Poetry files
+# Copy Poetry files and archie-shared dependency
 COPY pyproject.toml poetry.lock ./
+COPY archie-shared/ ./archie-shared/
 
 # Install dependencies via Poetry
 RUN poetry config virtualenvs.create false && \
@@ -25,10 +26,6 @@ RUN poetry config virtualenvs.create false && \
 # Copy application code
 COPY . .
 
-# Create entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 EXPOSE 8000
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["python", "manage.py"]
