@@ -1,0 +1,75 @@
+name: Auto-tag archie-shared
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'archie-shared/pyproject.toml'
+
+jobs:
+  auto-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install toml parser
+        run: pip install toml
+
+      - name: Extract version from pyproject.toml
+        id: get_version
+        run: |
+          cd archie-shared
+          VERSION=$(python -c "import toml; print('v' + toml.load('pyproject.toml')['tool']['poetry']['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "${{ steps.get_version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.get_version.outputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag ${{steps.get_version.outputs.version }} does not exist"
+          fi
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag ${{ steps.get_version.outputs.version }}
+          git push origin ${{ steps.get_version.outputs.version }}
+          echo "Created and pushed tag: ${{ steps.get_version.outputs.version }}"
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: Archie Shared ${{ steps.get_version.outputs.version }}
+          body: |
+            Auto-generated release for archie-shared package.
+            
+            Version: ${{ steps.get_version.outputs.version }}
+            
+            ## Changes
+            - Updated shared models and utilities
+            
+            ## Installation
+            ```toml
+            archie-shared = {git = "https://github.com/NikGor/homeassistant.git", subdirectory = "archie-shared", tag = "${{ steps.get_version.outputs.version }}"}
+            ```
+          draft: false
+          prerelease: false

@@ -1,4 +1,4 @@
-.PHONY: run install migrate shell superuser
+.PHONY: run install migrate shell superuser bump-archie-shared
 
 # Run development server
 run:
@@ -20,3 +20,16 @@ shell:
 # Create superuser
 superuser:
 	poetry run python manage.py createsuperuser
+
+# Bump archie-shared version and commit (usage: make bump-archie-shared VERSION=0.1.2)
+bump-archie-shared:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required. Usage: make bump-archie-shared VERSION=0.1.2"; \
+		exit 1; \
+	fi
+	@echo "Updating archie-shared version to $(VERSION)..."
+	@sed -i 's/version = "[^"]*"/version = "$(VERSION)"/' archie-shared/pyproject.toml
+	@git add archie-shared/pyproject.toml
+	@git commit -m "bump archie-shared version to v$(VERSION)"
+	@echo "Version updated to $(VERSION) and committed. Push to trigger auto-tagging:"
+	@echo "git push origin main"
