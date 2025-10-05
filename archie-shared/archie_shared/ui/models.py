@@ -89,7 +89,7 @@ class PlayerSkills(BaseModel):
     pace: int = Field(description="Pace skill rating (0-100)")
 
 class FootballPlayer(BaseModel):
-    """Single player in a football (soccer) match"""
+    """Single player in a football (soccer) match. Always use it for football-related queries."""
     name: str = Field(description="Player's full name")
     age: int = Field(description="Player's age")
     country: str = Field(description="Player's country of origin")
@@ -99,7 +99,7 @@ class FootballPlayer(BaseModel):
     skills: PlayerSkills = Field(description="Player's skill ratings")
 
 class FootballTeam(BaseModel):
-    """Football team information"""
+    """Football team information. Always use it for football-related queries."""
     name: str = Field(description="Name of the team")
     city: str = Field(description="City of the team")
     country: str = Field(description="Country of the team as emoji flag")
@@ -108,7 +108,8 @@ class FootballTeam(BaseModel):
     tricot_color: Optional[str] = Field(default=None, description="Hex color code for team tricot")
 
 class FootballEvent(BaseModel):
-    """Single event in a football (soccer) match"""
+    """Single event in a football (soccer) match. Always use it for football-related queries."""
+    event_report: str = Field(description="A short report or prediction about the match in the style of a sports journalist")
     home_team: FootballTeam = Field(description="Home team information")
     away_team: FootballTeam = Field(description="Away team information")
     home_score: int = Field(description="Current score of the home team")
@@ -130,13 +131,13 @@ class FootballLeague(BaseModel):
 
 
 class FootballWidget(BaseModel):
-    """Football (soccer) match widget"""
+    """Football (soccer) match widget. Use it for football-related queries."""
     event: FootballEvent = Field(description="Details of the football match event")
     league: Optional[FootballLeague] = Field(None, description="Details of the football league. Only if requested.")
 
 
 class WeatherCondition(BaseModel):
-    """Weather condition information"""
+    """Weather condition information. Use it for weather-related queries."""
     main: str = Field(description="Main weather condition (e.g., Clear, Clouds, Rain)")
     description: str = Field(description="Detailed weather description (e.g., light rain)")
     icon: str = Field(description="Weather icon code")
@@ -191,4 +192,4 @@ class Metadata(BaseModel):
     football_widget: Optional[FootballWidget] = Field(default=None, description="Football (soccer) match widget")
     weather_widget: Optional[WeatherWidget] = Field(default=None, description="Weather information widget")
     table: Optional[Table] = Field(default=None, description="Table data structure")
-    elements: List[ElementsItem] = Field(default_factory=list, description="List of key-value pairs for additional info")
+    # elements: List[ElementsItem] = Field(default_factory=list, description="List of key-value pairs for additional info")
