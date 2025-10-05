@@ -10,6 +10,7 @@ class ButtonOption(BaseModel):
     """Interactive button in chat interface"""
     text: str = Field(description="Display text shown on the button")
     command: Optional[str] = Field(default=None, description="Command to execute when button is clicked")
+    assistant_response: Optional[str] = Field(default=None, description="Response back to assistant when button is clicked")
 
 
 class DropdownOption(BaseModel):
@@ -46,8 +47,9 @@ class NavigationCard(BaseModel):
     """Card for navigation and routing"""
     title: str = Field(description="Title of the navigation card")
     description: Optional[str] = Field(default=None, description="Optional description of the navigation destination")
-    url: Optional[str] = Field(default=None, description="URL to navigate to when card is clicked")
-    buttons: Optional[List[ButtonOption]] = Field(default=None, description="Action buttons within the navigation card")
+    open_map_url: Optional[str] = Field(default=None, description="Google-format URL to open map location")
+    navigate_to_url: Optional[str] = Field(default=None, description="Google-format URL to start navigation")
+    buttons: Optional[List[ButtonOption]] = Field(default=None, description="Buttons for open_map_url and navigate_to_url")
 
 
 class ContactCard(BaseModel):
