@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 class ButtonOption(BaseModel):
     """Interactive button in chat interface"""
     text: str = Field(description="Display text shown on the button")
-    command: Optional[str] = Field(default=None, description="Command to execute when button is clicked")
-    assistant_response: Optional[str] = Field(default=None, description="Response back to assistant when button is clicked")
+    command: str = Field(description="Command to execute when button is clicked")
+    assistant_response: str = Field(description="Response back to assistant when button is clicked")
 
 
 class DropdownOption(BaseModel):
