@@ -1,0 +1,91 @@
+/* Button Components */
+
+.back-button {
+    background: none;
+    border: 1px solid var(--accent-blue);
+    color: var(--accent-blue);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-base);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.back-button:hover {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.settings-button {
+    width: 100%;
+    background-color: var(--bg-modal);
+    border: 1px solid var(--border-tertiary);
+    color: var(--text-primary);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-base);
+    cursor: pointer;
+    margin-bottom: var(--spacing-md);
+    transition: var(--transition-fast);
+}
+
+.settings-button:hover {
+    background-color: var(--border-tertiary);
+}
+
+.send-button {
+    background-color: var(--accent-blue);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-round);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.send-button:hover {
+    background-color: #2980b9;
+}
+
+.send-button:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+.message-btn {
+    background-color: transparent;
+    border: 1px solid var(--accent-blue);
+    color: var(--accent-blue);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: 16px;
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    white-space: nowrap;
+}
+
+.message-btn:hover {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+/* Bootstrap Button Overrides */
+.btn-primary {
+    background-color: var(--accent-blue);
+    border-color: var(--accent-blue);
+}
+
+.btn-secondary {
+    background-color: var(--accent-gray);
+    border-color: var(--accent-gray);
+}
+
+.btn-info {
+    background-color: var(--accent-info);
+    border-color: var(--accent-info);
+    color: white;
+}

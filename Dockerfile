@@ -28,4 +28,8 @@ COPY . .
 
 EXPOSE 8000
 
-ENTRYPOINT ["python", "manage.py"]
+# Create a startup script to run migrations and start server
+RUN echo '#!/bin/bash\nset -e\necho "Running migrations..."\npython manage.py migrate\necho "Starting Django server..."\npython manage.py runserver 0.0.0.0:8000' > /app/start.sh && \
+    chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]

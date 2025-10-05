@@ -33,3 +33,11 @@ bump-archie-shared:
 	@git commit -m "bump archie-shared version to v$(VERSION)"
 	@echo "Version updated to $(VERSION) and committed. Push to trigger auto-tagging:"
 	@echo "git push origin main"
+
+# Create and push git tag from current archie-shared version
+bump:
+	@VERSION=$$(grep '^version = ' archie-shared/pyproject.toml | sed 's/version = "\(.*\)"/\1/'); \
+	echo "Creating tag v$$VERSION from archie-shared version..."; \
+	git tag "v$$VERSION" || (echo "Tag v$$VERSION already exists" && exit 1); \
+	git push origin "v$$VERSION"; \
+	echo "Tag v$$VERSION created and pushed successfully!"

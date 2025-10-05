@@ -80,26 +80,6 @@ DATABASES = {
     )
 }
 
-# PostgreSQL connection settings for read/write operations
-DATABASE_WRITE_URL = os.getenv('DATABASE_WRITE_URL')
-DATABASE_READ_URL = os.getenv('DATABASE_READ_URL')
-
-# If PostgreSQL URLs are provided, use them
-if DATABASE_WRITE_URL:
-    DATABASES['default'] = dj_database_url.parse(
-        DATABASE_WRITE_URL,
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-    
-# Optional: Setup read-only database connection
-if DATABASE_READ_URL:
-    DATABASES['read_only'] = dj_database_url.parse(
-        DATABASE_READ_URL,
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},

@@ -5,13 +5,15 @@ UI component models for rich chat interfaces
 from typing import Optional, List
 from typing_extensions import Literal
 from pydantic import BaseModel, Field
+from datetime import datetime
+from enum import Enum
 
 
 class ButtonOption(BaseModel):
     """Interactive button in chat interface"""
     text: str = Field(description="Display text shown on the button")
     command: str = Field(description="Command to execute when button is clicked")
-    assistant_request: str = Field(description="Request which will be sent back to assistant when button is clicked")
+    assistant_request: Optional[str] = Field(default=None, description="Request which will be sent back to assistant when button is clicked")
 
 
 class DropdownOption(BaseModel):
@@ -78,6 +80,11 @@ class ElementsItem(BaseModel):
     """Single item in Elements list"""
     title: str = Field(description="Title of the element")
     value: str = Field(description="Value of the element")
+
+
+class Elements(BaseModel):
+    """Collection of key-value elements"""
+    items: List[ElementsItem] = Field(description="List of key-value pairs")
  
 class PlayerSkills(BaseModel):
     """Player skills in a football (soccer) match"""
@@ -136,50 +143,96 @@ class FootballWidget(BaseModel):
     league: Optional[FootballLeague] = Field(None, description="Details of the football league. Only if requested.")
 
 
+from typing_extensions import Literal
+
+WeatherMain = Literal[
+    "Clear", "Clouds", "Rain", "Snow", "Drizzle", "Thunderstorm",
+    "Mist", "Fog", "Haze", "Dust", "Sand", "Smoke", "Squall", "Tornado"
+]
+
+
 class WeatherCondition(BaseModel):
     """Weather condition information. Use it for weather-related queries."""
-    main: str = Field(description="Main weather condition (e.g., Clear, Clouds, Rain)")
+    main: WeatherMain = Field(description="Main weather condition")
     description: str = Field(description="Detailed weather description (e.g., light rain)")
-    icon: str = Field(description="Weather icon code")
+    icon: Literal[
+        "01d", "01n", "02d", "02n", "03d", "03n",
+        "04d", "04n", "09d", "09n", "10d", "10n",
+        "11d", "11n", "13d", "13n", "50d", "50n"
+    ] = Field(description="Weather icon code")
 
 
 class WeatherData(BaseModel):
     """Current weather data"""
-    temperature: float = Field(description="Current temperature in Celsius")
-    feels_like: float = Field(description="Feels like temperature in Celsius")
-    humidity: int = Field(description="Humidity percentage")
-    pressure: int = Field(description="Atmospheric pressure in hPa")
-    wind_speed: float = Field(description="Wind speed in m/s")
-    wind_direction: Optional[int] = Field(default=None, description="Wind direction in degrees")
+    temperature: float = Field(ge=-100, le=100, description="Current temperature in Celsius")
+    feels_like: float = Field(ge=-100, le=100, description="Feels like temperature in Celsius")
+    humidity: int = Field(ge=0, le=100, description="Humidity percentage")
+    pressure: int = Field(ge=800, le=1200, description="Atmospheric pressure in hPa")
+    pressure_trend: Optional[Literal["rising", "steady", "falling"]] = Field(
+        default=None, description="Pressure tendency to draw arrows/indicators"
+    )
+    wind_speed: float = Field(ge=0, le=150, description="Wind speed in m/s")
+    wind_gust: Optional[float] = Field(default=None, ge=0, le=150, description="Wind gust in m/s")
+    wind_direction: Optional[int] = Field(default=None, ge=0, le=360, description="Wind direction in degrees")
+    wind_direction_cardinal: Optional[
+        Literal["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+                "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+    ] = Field(default=None, description="Cardinal wind direction for UI badges")
     visibility: Optional[int] = Field(default=None, description="Visibility in meters")
-    uv_index: Optional[float] = Field(default=None, description="UV index")
+    cloud_cover: Optional[int] = Field(default=None, ge=0, le=100, description="Total cloud cover in %")
+    uv_index: Optional[float] = Field(default=None, ge=0, le=20, description="UV index")
+    uv_category: Optional[
+        Literal["low", "moderate", "high", "very_high", "extreme"]
+    ] = Field(default=None, description="Categorized UV for color-coding")
+    dew_point: Optional[float] = Field(default=None, description="Dew point in Celsius")
+    precipitation_type: Optional[Literal["rain", "snow", "sleet", "hail", "mixed", "none"]] = Field(
+        default=None, description="Dominant precipitation type"
+    )
+    precipitation_intensity_mmph: Optional[float] = Field(
+        default=None, ge=0, description="Instant precip intensity in mm/h"
+    )
     condition: WeatherCondition = Field(description="Weather condition details")
+    is_day: Optional[bool] = Field(
+        default=None, description="True if sun is above horizon - useful for theming"
+    )
 
 
 class WeatherForecast(BaseModel):
     """Weather forecast for a specific time"""
     date: str = Field(description="Forecast date (YYYY-MM-DD)")
     time: str = Field(description="Forecast time (HH:MM)")
-    temperature: float = Field(description="Temperature in Celsius")
-    temperature_min: float = Field(description="Minimum temperature in Celsius")
-    temperature_max: float = Field(description="Maximum temperature in Celsius")
+    temperature: float = Field(ge=-100, le=100, description="Temperature in Celsius")
+    temperature_min: float = Field(ge=-100, le=100, description="Minimum temperature in Celsius")
+    temperature_max: float = Field(ge=-100, le=100, description="Maximum temperature in Celsius")
+    feels_like: Optional[float] = Field(default=None, ge=-100, le=100, description="Feels like in Celsius")
+    precipitation_chance: Optional[int] = Field(default=None, ge=0, le=100, description="Chance of precipitation in %")
+    precipitation_amount_mm: Optional[float] = Field(default=None, ge=0, description="Expected precipitation in mm")
+    wind_speed: Optional[float] = Field(default=None, ge=0, le=150, description="Wind speed in m/s")
+    wind_gust: Optional[float] = Field(default=None, ge=0, le=150, description="Wind gust in m/s")
+    wind_direction: Optional[int] = Field(default=None, ge=0, le=360, description="Wind direction in degrees")
+    cloud_cover: Optional[int] = Field(default=None, ge=0, le=100, description="Cloud cover in %")
     condition: WeatherCondition = Field(description="Weather condition details")
-    precipitation_chance: Optional[int] = Field(default=None, description="Chance of precipitation in percentage")
+    is_day: Optional[bool] = Field(default=None, description="Daylight flag for slot")
 
 
-class WeatherLocation(BaseModel):
-    """Weather location information"""
-    city: str = Field(description="City name")
-    country: str = Field(description="Country name or code")
-    coordinates: Optional[str] = Field(default=None, description="Coordinates (lat, lon)")
-
+class WeatherToday(BaseModel):
+    """Aggregated daily info for 'Today' card"""
+    sunrise: Optional[str] = Field(default=None, description="Local time HH:MM")
+    sunset: Optional[str] = Field(default=None, description="Local time HH:MM")
+    temperature_min: Optional[float] = Field(default=None, description="Today's min temperature")
+    temperature_max: Optional[float] = Field(default=None, description="Today's max temperature")
+    precipitation_total_mm: Optional[float] = Field(default=None, ge=0, description="Total precip expected today")
+    alerts: Optional[List[str]] = Field(default=None, description="Short titles of active weather alerts")
 
 class WeatherWidget(BaseModel):
     """Weather information widget"""
-    location: WeatherLocation = Field(description="Location information")
+    location: str = Field(description="Location information")  # kept for compatibility
     current_weather: WeatherData = Field(description="Current weather conditions")
+    today: Optional[WeatherToday] = Field(default=None, description="Aggregated 'today' metrics")
     forecast: Optional[List[WeatherForecast]] = Field(default=None, description="Weather forecast list")
-    last_updated: str = Field(description="Last update timestamp")
+    last_updated: datetime = Field(description="Last update timestamp (ISO with timezone)")
+    data_source: Optional[str] = Field(default=None, description="Attribution, e.g., OpenWeather/Met.no")
+    update_interval_sec: Optional[int] = Field(default=None, description="Recommended refresh interval for UI")
 
 
 class Metadata(BaseModel):
@@ -192,4 +245,4 @@ class Metadata(BaseModel):
     football_widget: Optional[FootballWidget] = Field(default=None, description="Football (soccer) match widget")
     weather_widget: Optional[WeatherWidget] = Field(default=None, description="Weather information widget")
     table: Optional[Table] = Field(default=None, description="Table data structure")
-    # elements: List[ElementsItem] = Field(default_factory=list, description="List of key-value pairs for additional info")
+    elements: Optional[List[ElementsItem]] = Field(default=None, description="List of key-value pairs for additional info")

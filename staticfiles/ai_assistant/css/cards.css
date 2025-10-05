@@ -1,0 +1,87 @@
+/* Card Components */
+
+.message-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--border-radius-md);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.message-card .card-header {
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-secondary);
+    color: var(--text-primary);
+    font-weight: 600;
+    padding: var(--spacing-md);
+}
+
+.message-card .card-body {
+    padding: var(--spacing-md);
+}
+
+.message-card .card-footer {
+    background-color: var(--bg-tertiary);
+    border-top: 1px solid var(--border-secondary);
+    padding: var(--spacing-md);
+}
+
+/* Chat Cards */
+.chat-card {
+    border: 1px solid var(--border-secondary);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-radius: var(--border-radius-md);
+    margin-bottom: var(--spacing-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.chat-card .card-header {
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-secondary);
+    font-weight: 600;
+    padding: var(--spacing-md);
+}
+
+.chat-card .card-body {
+    padding: var(--spacing-md);
+}
+
+.chat-card .card-title {
+    color: var(--text-primary);
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-sm);
+}
+
+.chat-card .card-text {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+}
+
+/* Status Cards */
+.status-card {
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+    box-shadow: var(--shadow-md);
+}
+
+.status-card h5 {
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.status-card p {
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Hover Effects */
+.message-card:hover,
+.chat-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+    transition: var(--transition-slow);
+}

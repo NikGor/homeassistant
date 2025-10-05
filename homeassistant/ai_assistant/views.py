@@ -64,19 +64,32 @@ def proxy_conversation_detail(request, conversation_id):
 
 @csrf_exempt
 @require_http_methods(["GET", "OPTIONS"])
-def proxy_messages(request):
-    """Proxy for getting messages from API."""
+def proxy_conversation_messages(request, conversation_id):
+    """Proxy for getting messages for a specific conversation from API."""
     if request.method == 'OPTIONS':
         response = HttpResponse()
         return add_cors_headers(response)
         
     try:
-        conversation_id = request.GET.get('conversation_id')
-        if not conversation_id:
-            error_response = JsonResponse({'error': 'conversation_id parameter is required'}, status=400)
-            return add_cors_headers(error_response)
-        
         response = requests.get(f'{BACKEND_API_URL}/messages?conversation_id={conversation_id}')
+        json_response = JsonResponse(response.json(), safe=False)
+        return add_cors_headers(json_response)
+    except Exception as e:
+        error_response = JsonResponse({'error': str(e)}, status=500)
+        return add_cors_headers(error_response)
+
+
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def proxy_send_message(request):
+    """Proxy for sending messages via AI Agent API."""
+    if request.method == 'OPTIONS':
+        response = HttpResponse()
+        return add_cors_headers(response)
+        
+    try:
+        data = json.loads(request.body)
+        response = requests.post(f'{AI_AGENT_URL}/chat', json=data)
         json_response = JsonResponse(response.json(), safe=False)
         return add_cors_headers(json_response)
     except Exception as e:
