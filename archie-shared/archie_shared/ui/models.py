@@ -132,7 +132,7 @@ class FootballLeague(BaseModel):
 class FootballWidget(BaseModel):
     """Football (soccer) match widget"""
     event: FootballEvent = Field(description="Details of the football match event")
-    league: FootballLeague = Field(description="Details of the football league")
+    league: Optional[FootballLeague] = Field(None, description="Details of the football league. Only if requested.")
 
 
 class WeatherCondition(BaseModel):
