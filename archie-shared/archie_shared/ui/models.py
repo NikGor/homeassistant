@@ -13,7 +13,7 @@ class ButtonOption(BaseModel):
     """Interactive button in chat interface"""
     text: str = Field(description="Display text shown on the button")
     command: str = Field(description="Command to execute when button is clicked")
-    assistant_request: Optional[str] = Field(default=None, description="Request which will be sent back to assistant when button is clicked")
+    assistant_request: str = Field(description="Request which will be sent back to assistant when button is clicked")
 
 
 class DropdownOption(BaseModel):
@@ -138,7 +138,7 @@ class FootballLeague(BaseModel):
 
 
 class FootballWidget(BaseModel):
-    """Football (soccer) match widget. Use it for football-related queries."""
+    """Football (soccer) match widget. Use it for **all** football-related queries instead of Cards."""
     event: FootballEvent = Field(description="Details of the football match event")
     league: Optional[FootballLeague] = Field(None, description="Details of the football league. Only if requested.")
 
@@ -152,7 +152,7 @@ WeatherMain = Literal[
 
 
 class WeatherCondition(BaseModel):
-    """Weather condition information. Use it for weather-related queries."""
+    """Weather condition information. Use it for **all** weather-related queries instead of Cards."""
     main: WeatherMain = Field(description="Main weather condition")
     description: str = Field(description="Detailed weather description (e.g., light rain)")
     icon: Literal[
@@ -240,8 +240,8 @@ class Metadata(BaseModel):
     cards: Optional[List[Card]] = Field(default=None, description="List of generic cards to display")
     options: Optional[UIElements] = Field(default=None, description="Interactive UI elements")
     tool_cards: Optional[List[ToolCard]] = Field(default=None, description="List of available tools/functions")
-    navigation_card: List[NavigationCard] = Field(default_factory=list, description="List of navigation cards")
-    contact_card: List[ContactCard] = Field(default_factory=list, description="List of contact information cards")
+    navigation_card: Optional[List[NavigationCard]] = Field(default=None, description="List of navigation cards")
+    contact_card: Optional[List[ContactCard]] = Field(default=None, description="List of contact information cards")
     football_widget: Optional[FootballWidget] = Field(default=None, description="Football (soccer) match widget")
     weather_widget: Optional[WeatherWidget] = Field(default=None, description="Weather information widget")
     table: Optional[Table] = Field(default=None, description="Table data structure")
