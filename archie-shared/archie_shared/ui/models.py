@@ -265,8 +265,8 @@ class WeatherWidget(BaseModel):
 
 class Metadata(BaseModel):
     """Rich metadata for chat messages with UI components"""
-    options: UIElements = Field(description="Interactive UI elements")
     cards: Optional[List[Card]] = Field(default=None, description="List of generic cards to display")
+    options: Optional[List[UIElements]] = Field(default=None, description="Interactive UI elements")
     tool_cards: Optional[List[ToolCard]] = Field(default=None, description="List of available tools/functions")
     navigation_card: Optional[List[NavigationCard]] = Field(default=None, description="List of navigation cards")
     contact_card: Optional[List[ContactCard]] = Field(default=None, description="List of contact information cards")
