@@ -52,6 +52,22 @@ class ConversationModel(BaseModel):
     messages: Optional[List[ChatMessage]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(dt_timezone.utc))
     llm_trace: Optional[LllmTrace] = None
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(dt_timezone.utc),
+        description="Timestamp when the conversation was last updated"
+    )
+    total_input_tokens: int = Field(
+        0, description="Total input tokens used in this conversation"
+    )
+    total_output_tokens: int = Field(
+        0, description="Total output tokens generated in this conversation" 
+    )
+    total_tokens: int = Field(
+        0, description="Total tokens used in this conversation"
+    )
+    total_cost: float = Field(  # float вместо Decimal для универсальности
+        0.0, description="Total cost of this conversation"
+    )
     
     def __init__(self, **data):
         super().__init__(**data)
