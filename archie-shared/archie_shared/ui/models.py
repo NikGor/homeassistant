@@ -4,7 +4,7 @@ UI component models for rich chat interfaces
 
 from typing import Optional, List
 from typing_extensions import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from enum import Enum
 
@@ -14,6 +14,20 @@ class ButtonOption(BaseModel):
     text: str = Field(description="Display text shown on the button")
     command: str = Field(description="Command to execute when button is clicked")
     assistant_request: str = Field(description="Request which will be sent back to assistant when button is clicked")
+    
+    @field_validator('command')
+    @classmethod
+    def validate_command_not_empty(cls, v: str) -> str:
+        if not v or v.strip() == "":
+            raise ValueError("command field cannot be empty")
+        return v.strip()
+    
+    @field_validator('assistant_request')
+    @classmethod
+    def validate_assistant_request_not_empty(cls, v: str) -> str:
+        if not v or v.strip() == "":
+            raise ValueError("assistant_request field cannot be empty")
+        return v.strip()
 
 
 class DropdownOption(BaseModel):
@@ -21,6 +35,13 @@ class DropdownOption(BaseModel):
     label: str = Field(description="Human-readable label displayed in the dropdown")
     value: str = Field(description="Value associated with this option")
     command: Optional[str] = Field(default=None, description="Command to execute when option is selected")
+    
+    @field_validator('command')
+    @classmethod
+    def validate_command_not_empty_if_present(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.strip() == "":
+            raise ValueError("command field cannot be empty string if provided")
+        return v.strip() if v else None
 
 
 class ChecklistOption(BaseModel):
@@ -29,6 +50,13 @@ class ChecklistOption(BaseModel):
     value: str = Field(description="Value associated with this checklist item")
     checked: bool = Field(default=False, description="Whether the checkbox is initially checked")
     command: Optional[str] = Field(default=None, description="Command to execute when checkbox state changes")
+    
+    @field_validator('command')
+    @classmethod
+    def validate_command_not_empty_if_present(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.strip() == "":
+            raise ValueError("command field cannot be empty string if provided")
+        return v.strip() if v else None
 
 
 class UIElements(BaseModel):
@@ -237,8 +265,8 @@ class WeatherWidget(BaseModel):
 
 class Metadata(BaseModel):
     """Rich metadata for chat messages with UI components"""
+    options: UIElements = Field(description="Interactive UI elements")
     cards: Optional[List[Card]] = Field(default=None, description="List of generic cards to display")
-    options: Optional[UIElements] = Field(default=None, description="Interactive UI elements")
     tool_cards: Optional[List[ToolCard]] = Field(default=None, description="List of available tools/functions")
     navigation_card: Optional[List[NavigationCard]] = Field(default=None, description="List of navigation cards")
     contact_card: Optional[List[ContactCard]] = Field(default=None, description="List of contact information cards")
