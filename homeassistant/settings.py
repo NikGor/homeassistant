@@ -94,9 +94,12 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
+
+# STATICFILES_DIRS убираем, так как используем только static папки приложений
+# Если понадобится глобальная static папка, раскомментируйте:
+# STATICFILES_DIRS = [
+#     BASE_DIR / 'static',
+# ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

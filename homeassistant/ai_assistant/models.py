@@ -15,21 +15,22 @@ from archie_shared.ui.models import Metadata
 class Conversation(models.Model):
     """Django model for storing conversations in PostgreSQL"""
     
-    conversation_id = models.UUIDField(
+    conversation_id = models.CharField(
+        max_length=255,
         primary_key=True, 
-        default=uuid.uuid4, 
-        editable=False,
         db_index=True
     )
-    title = models.CharField(max_length=255, default="New Conversation")
+    title = models.TextField(default="New Conversation")
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    # LLM Trace fields
+    # LLM Trace fields - expanded set
     total_input_tokens = models.IntegerField(default=0)
+    total_input_cached_tokens = models.IntegerField(default=0)
     total_output_tokens = models.IntegerField(default=0)
+    total_output_reasoning_tokens = models.IntegerField(default=0)
     total_tokens = models.IntegerField(default=0)
-    total_cost = models.DecimalField(max_digits=10, decimal_places=6, default=0.0)
+    total_cost = models.FloatField(default=0.0)
     
     class Meta:
         db_table = 'ai_assistant_conversation'
@@ -79,34 +80,31 @@ class Message(models.Model):
         ('voice', 'Voice'),
     ]
     
-    message_id = models.UUIDField(
-        primary_key=True, 
-        default=uuid.uuid4, 
-        editable=False,
-        db_index=True
-    )
+    message_id = models.CharField(max_length=255, primary_key=True, db_index=True)
     conversation = models.ForeignKey(
         Conversation, 
         on_delete=models.CASCADE, 
         related_name='messages',
-        db_index=True
+        db_index=True,
+        to_field='conversation_id'
     )
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
-    text_format = models.CharField(max_length=10, choices=TEXT_FORMAT_CHOICES, default='plain')
+    role = models.TextField()
+    text_format = models.TextField(default='plain')
     text = models.TextField()
     metadata_json = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
-    previous_message_id = models.UUIDField(null=True, blank=True, db_index=True)
-    model = models.CharField(max_length=100, null=True, blank=True)
+    previous_message_id = models.CharField(max_length=255, null=True, blank=True)
+    model = models.TextField(null=True, blank=True)
     
-    # LLM Trace fields
-    llm_model = models.CharField(max_length=100, null=True, blank=True)
+    # LLM Trace fields - expanded set
+    llm_model = models.TextField(null=True, blank=True)
+    llm_trace = models.JSONField(null=True, blank=True)
     input_tokens = models.IntegerField(null=True, blank=True)
     input_cached_tokens = models.IntegerField(default=0)
     output_tokens = models.IntegerField(null=True, blank=True)
     output_reasoning_tokens = models.IntegerField(default=0)
     total_tokens = models.IntegerField(null=True, blank=True)
-    total_cost = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
+    total_cost = models.FloatField(null=True, blank=True)
     
     class Meta:
         db_table = 'ai_assistant_message'
