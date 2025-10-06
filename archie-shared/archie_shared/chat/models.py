@@ -73,6 +73,55 @@ class ChatRequest(BaseModel):
     model: Optional[str] = None
 
 
+class ConversationRequest(BaseModel):
+    """Request model for creating a new conversation"""
+    
+    conversation_id: Optional[str] = Field(
+        None,
+        description="Optional custom conversation ID. If not provided, will be auto-generated",
+    )
+    title: Optional[str] = Field(
+        "New Conversation", description="Title of the conversation"
+    )
+
+class ConversationResponse(BaseModel):
+    """Response model for conversation creation"""
+    
+    conversation_id: str = Field(description="ID of the created conversation")
+    title: str = Field(description="Title of the conversation")
+    created_at: datetime = Field(
+        description="Timestamp when the conversation was created"
+    )
+    message: str = Field(
+        "Conversation created successfully", description="Success message"
+    )
+
+class MessageResponse(BaseModel):
+    """Response model for message creation"""
+    
+    message_id: str = Field(description="ID of the created message")
+    conversation_id: str = Field(description="ID of the conversation")
+    created_at: datetime = Field(description="Timestamp when the message was created")
+    message: str = Field("Message created successfully", description="Success message")
+
+class ChatHistoryMessage(BaseModel):
+    """Simplified message model for chat history"""
+    
+    role: Literal["user", "assistant", "system"] = Field(
+        description="Role of the message sender"
+    )
+    text: str = Field(description="Content of the message (cleaned to plain text)")
+    metadata: Optional[dict] = Field(  # Изменил с metadata_json на metadata
+        None, description="Additional metadata for the message"
+    )
+
+class ChatHistoryResponse(BaseModel):
+    """Response model for chat history endpoint"""
+    
+    messages: List[ChatHistoryMessage] = Field(
+        description="List of messages in the conversation"
+    )
+
 # Forward references
 from ..ui.models import Metadata
 
