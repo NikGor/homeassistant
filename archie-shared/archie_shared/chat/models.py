@@ -67,6 +67,7 @@ class ChatRequest(BaseModel):
     role: Literal["user", "assistant", "system"]
     text: str
     text_format: Literal["plain", "markdown", "html", "voice"] = "plain"
+    message_id: Optional[str] = None
     conversation_id: Optional[str] = None
     previous_message_id: Optional[str] = None
     model: Optional[str] = None
