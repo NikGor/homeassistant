@@ -153,6 +153,17 @@ export const ChatAssistant = () => {
 
     const executeCommand = async (command, assistantRequest) => {
         if (!currentConversation) return;
+        
+        // Специальная обработка для команд навигации
+        if (command === 'show_on_map' || command === 'route') {
+            if (assistantRequest && assistantRequest.startsWith('http')) {
+                // Открываем URL в новой вкладке
+                window.open(assistantRequest, '_blank');
+                return;
+            }
+        }
+        
+        // Для остальных команд отправляем как сообщение
         await sendMessage(assistantRequest || command);
     };
 
@@ -288,7 +299,7 @@ const AppHeader = ({ isSidebarOpen, selectedModel, onToggleSidebar, onModelChang
                 key: 'home',
                 onClick: () => window.location.href = '/',
                 className: 'px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white transition-all duration-300 hover:scale-105 flex items-center gap-2 shadow-lg hover:shadow-white/30'
-            }, [React.createElement(ArrowLeftIcon), 'Главная'])
+            }, [React.createElement(ArrowLeftIcon, { key: 'icon' }), 'Главная'])
         ])
     ]);
 };
@@ -307,7 +318,7 @@ const AppSidebar = ({ className, conversations, currentConversation, searchQuery
                 key: 'new-chat',
                 onClick: onCreateNewChat,
                 className: 'w-full mb-4 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 rounded-full font-semibold text-white transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2 shadow-lg hover:shadow-emerald-500/50'
-            }, [React.createElement(PlusIcon), 'Новый чат']),
+            }, [React.createElement(PlusIcon, { key: 'icon' }), 'Новый чат']),
             React.createElement('div', {
                 key: 'search',
                 className: 'relative'
@@ -366,11 +377,11 @@ const ChatArea = ({ className, currentConversation, messages, isLoading, message
             }) : React.createElement('div', {
                 key: 'messages'
             }, [
-                ...messages.map(message => MessageComponent(message, executeCommand)),
+                ...messages.map((message, index) => React.cloneElement(MessageComponent(message, executeCommand), { key: `message-${message.message_id || index}` })),
                 isLoading ? React.createElement(TypingIndicator, { key: 'typing' }) : null,
                 React.createElement('div', { key: 'end', ref: messagesEndRef })
-            ])
-        ] : React.createElement(WelcomeScreen, {
+            ].filter(Boolean))
+        ].filter(Boolean) : React.createElement(WelcomeScreen, {
             key: 'welcome',
             onCreateNewChat
         })
@@ -406,7 +417,7 @@ const EmptyState = () => {
     }, React.createElement('div', {
         className: 'text-center text-white/60'
     }, [
-        React.createElement(MessageCircleIcon),
+        React.createElement(MessageCircleIcon, { key: 'icon' }),
         React.createElement('p', {
             key: 'text',
             className: 'text-lg mt-4'
@@ -420,7 +431,7 @@ const WelcomeScreen = ({ onCreateNewChat }) => {
     }, React.createElement('div', {
         className: 'text-center text-white/60'
     }, [
-        React.createElement(MessageCircleIcon),
+        React.createElement(MessageCircleIcon, { key: 'icon' }),
         React.createElement('h2', {
             key: 'title',
             className: 'text-2xl font-bold mb-2 mt-6'
@@ -433,7 +444,7 @@ const WelcomeScreen = ({ onCreateNewChat }) => {
             key: 'create',
             onClick: onCreateNewChat,
             className: 'px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 rounded-full font-semibold text-white transition-all duration-300 hover:scale-105 flex items-center gap-2 mx-auto shadow-lg hover:shadow-slate-500/50'
-        }, [React.createElement(PlusIcon), 'Создать новый чат'])
+        }, [React.createElement(PlusIcon, { key: 'icon' }), 'Создать новый чат'])
     ]));
 };
 

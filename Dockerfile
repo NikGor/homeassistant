@@ -19,9 +19,9 @@ RUN pip install --upgrade pip && pip install poetry
 COPY pyproject.toml poetry.lock ./
 COPY archie-shared/ ./archie-shared/
 
-# Install dependencies via Poetry
+# Install dependencies via Poetry (excluding voice group for Docker)
 RUN poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi --no-root
+    poetry install --no-interaction --no-ansi --no-root --without voice
 
 # Copy application code
 COPY . .

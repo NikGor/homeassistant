@@ -20,6 +20,16 @@ opencv-python = "^4.11.0.86"
 yeelight = "^0.7.16"
 opencv-python-headless = "^4.12.0.88"
 psycopg2-binary = "^2.9.9"
+numpy = "^2.0.0"
+
+[tool.poetry.group.voice]
+optional = true
+
+[tool.poetry.group.voice.dependencies]
+pvporcupine = "^3.0.2"
+pyaudio = "^0.2.14"
+sounddevice = "^0.4.7"
+simpleaudio = "^1.0.4"
 
 
 [build-system]

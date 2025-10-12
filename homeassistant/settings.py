@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'homeassistant.light',
     'homeassistant.weather',
     'homeassistant.ai_assistant',
+    'homeassistant.voice_assistant',
 ]
 
 MIDDLEWARE = [

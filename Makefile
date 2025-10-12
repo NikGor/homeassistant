@@ -1,4 +1,4 @@
-.PHONY: run install migrate shell superuser bump-archie-shared
+.PHONY: run install install-voice migrate shell superuser voice bump-archie-shared
 
 # Run development server
 run:
@@ -7,6 +7,10 @@ run:
 # Install dependencies
 install:
 	poetry install
+
+# Install voice dependencies (for local voice assistant)
+install-voice:
+	poetry install --with voice
 
 # Run database migrations
 migrate:
@@ -20,6 +24,10 @@ shell:
 # Create superuser
 superuser:
 	poetry run python manage.py createsuperuser
+
+# Start voice assistant (wake word detection)
+voice:
+	poetry run python manage.py start_voice_assistant
 
 # Bump archie-shared version and commit (usage: make bump-archie-shared VERSION=0.1.2)
 bump-archie-shared:
