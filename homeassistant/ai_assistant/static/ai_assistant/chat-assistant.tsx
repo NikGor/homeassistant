@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageCircle, Plus, Search, Menu, X, Copy, Quote, Wifi, ArrowLeft, User, Bot } from 'lucide-react';
+import { Send, MessageCircle, Plus, Search, Menu, X, Copy, Quote, Wifi, ArrowLeft, User, Bot, MoreVertical, Trash2 } from 'lucide-react';
 
 interface Message {
   message_id: string;
@@ -69,6 +69,13 @@ class ChatAPI {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
   }
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/conversations/${conversationId}/`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  }
 }
 
 const ChatAssistant: React.FC = () => {
@@ -80,6 +87,8 @@ const ChatAssistant: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const api = useRef(new ChatAPI());
@@ -91,6 +100,17 @@ const ChatAssistant: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openMenuId) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openMenuId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -197,6 +217,24 @@ const ChatAssistant: React.FC = () => {
       setError(`Ошибка выполнения команды: ${err.message}`);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      await api.current.deleteConversation(conversationId);
+      setConversations(prev => prev.filter(conv => conv.conversation_id !== conversationId));
+      
+      // Если удаляем текущий чат, сбрасываем выбор
+      if (currentConversation === conversationId) {
+        setCurrentConversation(null);
+        setMessages([]);
+      }
+      
+      setDeleteConfirmId(null);
+      setOpenMenuId(null);
+    } catch (err: any) {
+      setError(`Не удалось удалить чат: ${err.message}`);
     }
   };
 
@@ -409,20 +447,53 @@ const ChatAssistant: React.FC = () => {
               
               <div className="flex-1 overflow-y-auto p-2">
                 {filteredConversations.map((conversation) => (
-                  <button
+                  <div
                     key={conversation.conversation_id}
-                    onClick={() => selectConversation(conversation.conversation_id)}
-                    className={`w-full p-4 mb-2 rounded-2xl text-left transition-all duration-300 hover:scale-105 ${
+                    className={`relative w-full mb-2 rounded-2xl transition-all duration-300 hover:scale-105 ${
                       currentConversation === conversation.conversation_id
                         ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-lg'
                         : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white'
                     }`}
                   >
-                    <div className="font-medium truncate">{conversation.title}</div>
-                    <div className="text-sm opacity-60 mt-1">
-                      {new Date(conversation.created_at).toLocaleDateString('ru-RU')}
+                    <button
+                      onClick={() => selectConversation(conversation.conversation_id)}
+                      className="w-full p-4 text-left rounded-2xl"
+                    >
+                      <div className="font-medium truncate pr-10">{conversation.title}</div>
+                      <div className="text-sm opacity-60 mt-1">
+                        {new Date(conversation.created_at).toLocaleDateString('ru-RU')}
+                      </div>
+                    </button>
+                    
+                    {/* Меню из трех точек */}
+                    <div className="absolute top-3 right-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === conversation.conversation_id ? null : conversation.conversation_id);
+                        }}
+                        className="p-1 rounded-full hover:bg-white/20 transition-all"
+                      >
+                        <MoreVertical className="text-white/60 hover:text-white" size={16} />
+                      </button>
+                      
+                      {/* Dropdown меню */}
+                      {openMenuId === conversation.conversation_id && (
+                        <div className="absolute right-0 top-8 z-50 backdrop-blur-lg bg-white/10 border border-white/20 rounded-lg shadow-xl min-w-[120px]">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirmId(conversation.conversation_id);
+                            }}
+                            className="w-full px-4 py-2 text-left text-red-300 hover:bg-red-600/20 rounded-lg transition-all flex items-center gap-2"
+                          >
+                            <Trash2 size={14} />
+                            Удалить
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -520,6 +591,40 @@ const ChatAssistant: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Модальное окно подтверждения удаления */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50">
+          <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl max-w-md mx-4">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="text-red-400" size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Удалить чат?</h3>
+              <p className="text-white/70 mb-6">
+                Вы уверены, что хотите удалить этот чат? Это действие нельзя отменить.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setDeleteConfirmId(null);
+                    setOpenMenuId(null);
+                  }}
+                  className="flex-1 py-3 px-6 backdrop-blur-md bg-white/10 border border-white/20 text-white rounded-full font-semibold hover:bg-white/20 transition-all duration-300 hover:scale-105 active:scale-95"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={() => deleteConversation(deleteConfirmId)}
+                  className="flex-1 py-3 px-6 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-full font-semibold hover:from-red-500 hover:to-red-600 transition-all duration-300 hover:scale-105 active:scale-95"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Toast */}
       {error && (

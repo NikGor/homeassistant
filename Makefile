@@ -29,6 +29,12 @@ superuser:
 voice:
 	poetry run python manage.py start_voice_assistant
 
+docker-clean:
+	@echo "🧹 Cleaning Docker system..."
+	docker container prune -f
+	docker image prune -f
+	docker system prune -a --volumes -f
+
 # Bump archie-shared version and commit (usage: make bump-archie-shared VERSION=0.1.2)
 bump-archie-shared:
 	@if [ -z "$(VERSION)" ]; then \

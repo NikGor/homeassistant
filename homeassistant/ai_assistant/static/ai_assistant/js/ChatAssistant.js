@@ -28,6 +28,8 @@ export const ChatAssistant = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [error, setError] = useState(null);
+    const [openMenuId, setOpenMenuId] = useState(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     
     // Refs
     const messagesEndRef = useRef(null);
@@ -41,6 +43,17 @@ export const ChatAssistant = () => {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (openMenuId) {
+                setOpenMenuId(null);
+            }
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [openMenuId]);
 
     // Функции
     const scrollToBottom = () => {
@@ -151,6 +164,24 @@ export const ChatAssistant = () => {
         }
     };
 
+    const deleteConversation = async (conversationId) => {
+        try {
+            await api.current.deleteConversation(conversationId);
+            setConversations(prev => prev.filter(conv => conv.conversation_id !== conversationId));
+            
+            // Если удаляем текущий чат, сбрасываем выбор
+            if (currentConversation === conversationId) {
+                setCurrentConversation(null);
+                setMessages([]);
+            }
+            
+            setDeleteConfirmId(null);
+            setOpenMenuId(null);
+        } catch (err) {
+            setError(`Не удалось удалить чат: ${err.message}`);
+        }
+    };
+
     const executeCommand = async (command, assistantRequest) => {
         if (!currentConversation) return;
         
@@ -202,9 +233,18 @@ export const ChatAssistant = () => {
             conversations: filteredConversations,
             currentConversation,
             searchQuery,
+            openMenuId,
+            deleteConfirmId,
             onSearchChange: setSearchQuery,
             onSelectConversation: selectConversation,
-            onCreateNewChat: createNewChat
+            onCreateNewChat: createNewChat,
+            onDeleteConversation: deleteConversation,
+            onToggleMenu: (id) => setOpenMenuId(openMenuId === id ? null : id),
+            onConfirmDelete: setDeleteConfirmId,
+            onCancelDelete: () => {
+                setDeleteConfirmId(null);
+                setOpenMenuId(null);
+            }
         }),
 
         // Chat Area
@@ -304,7 +344,7 @@ const AppHeader = ({ isSidebarOpen, selectedModel, onToggleSidebar, onModelChang
     ]);
 };
 
-const AppSidebar = ({ className, conversations, currentConversation, searchQuery, onSearchChange, onSelectConversation, onCreateNewChat }) => {
+const AppSidebar = ({ className, conversations, currentConversation, searchQuery, onSearchChange, onSelectConversation, onCreateNewChat, onDeleteConversation, openMenuId, onToggleMenu, deleteConfirmId, onConfirmDelete, onCancelDelete }) => {
     return React.createElement('div', { className }, [
         React.createElement('div', {
             key: 'header',
@@ -341,31 +381,106 @@ const AppSidebar = ({ className, conversations, currentConversation, searchQuery
             key: 'list',
             className: 'flex-1 overflow-y-auto p-2'
         }, conversations.map((conversation) =>
-            React.createElement('button', {
+            React.createElement('div', {
                 key: conversation.conversation_id,
-                onClick: () => onSelectConversation(conversation.conversation_id),
-                className: `w-full p-4 mb-2 rounded-2xl text-left transition-all duration-300 hover:scale-105 ${
+                className: `relative w-full mb-2 rounded-2xl transition-all duration-300 hover:scale-105 ${
                     currentConversation === conversation.conversation_id
                         ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-lg'
                         : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white'
                 } ${conversation.is_temp ? 'border-2 border-dashed border-amber-500/50' : ''}`
             }, [
-                React.createElement('div', {
-                    key: 'title',
-                    className: 'font-medium truncate flex items-center gap-2'
+                React.createElement('button', {
+                    key: 'main-button',
+                    onClick: () => onSelectConversation(conversation.conversation_id),
+                    className: 'w-full p-4 text-left rounded-2xl'
                 }, [
-                    conversation.title,
-                    conversation.is_temp ? React.createElement('span', {
-                        key: 'temp',
-                        className: 'text-xs bg-amber-500/20 text-amber-300 px-2 py-1 rounded-full'
-                    }, 'не сохранен') : null
+                    React.createElement('div', {
+                        key: 'title',
+                        className: 'font-medium truncate flex items-center gap-2 pr-10'
+                    }, [
+                        conversation.title,
+                        conversation.is_temp ? React.createElement('span', {
+                            key: 'temp',
+                            className: 'text-xs bg-amber-500/20 text-amber-300 px-2 py-1 rounded-full'
+                        }, 'не сохранен') : null
+                    ]),
+                    React.createElement('div', {
+                        key: 'date',
+                        className: 'text-sm opacity-60 mt-1'
+                    }, conversation.is_temp ? 'Новый чат' : formatDate(conversation.created_at))
                 ]),
-                React.createElement('div', {
-                    key: 'date',
-                    className: 'text-sm opacity-60 mt-1'
-                }, conversation.is_temp ? 'Новый чат' : formatDate(conversation.created_at))
+                
+                // Меню с тремя точками (только для несохраненных чатов)
+                !conversation.is_temp ? React.createElement('div', {
+                    key: 'menu-container',
+                    className: 'absolute top-3 right-3'
+                }, [
+                    React.createElement('button', {
+                        key: 'menu-button',
+                        onClick: (e) => {
+                            e.stopPropagation();
+                            onToggleMenu(conversation.conversation_id);
+                        },
+                        className: 'p-1 rounded-full hover:bg-white/20 transition-all'
+                    }, '⋮'),
+                    
+                    // Dropdown меню
+                    openMenuId === conversation.conversation_id ? React.createElement('div', {
+                        key: 'dropdown',
+                        className: 'absolute right-0 top-8 z-50 backdrop-blur-lg bg-white/10 border border-white/20 rounded-lg shadow-xl min-w-[120px]'
+                    }, React.createElement('button', {
+                        onClick: (e) => {
+                            e.stopPropagation();
+                            onConfirmDelete(conversation.conversation_id);
+                        },
+                        className: 'w-full px-4 py-2 text-left text-red-300 hover:bg-red-600/20 rounded-lg transition-all flex items-center gap-2'
+                    }, ['🗑️', 'Удалить'])) : null
+                ]) : null
             ])
-        ))
+        )),
+        
+        // Модальное окно подтверждения удаления
+        deleteConfirmId ? React.createElement('div', {
+            key: 'delete-modal',
+            className: 'fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50',
+            onClick: onCancelDelete
+        }, React.createElement('div', {
+            className: 'backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl max-w-md mx-4',
+            onClick: (e) => e.stopPropagation()
+        }, [
+            React.createElement('div', {
+                key: 'content',
+                className: 'text-center'
+            }, [
+                React.createElement('div', {
+                    key: 'icon',
+                    className: 'w-16 h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-4'
+                }, '🗑️'),
+                React.createElement('h3', {
+                    key: 'title',
+                    className: 'text-xl font-bold text-white mb-2'
+                }, 'Удалить чат?'),
+                React.createElement('p', {
+                    key: 'description',
+                    className: 'text-white/70 mb-6'
+                }, 'Вы уверены, что хотите удалить этот чат? Это действие нельзя отменить.'),
+                React.createElement('div', {
+                    key: 'buttons',
+                    className: 'flex gap-3'
+                }, [
+                    React.createElement('button', {
+                        key: 'cancel',
+                        onClick: onCancelDelete,
+                        className: 'flex-1 py-3 px-6 backdrop-blur-md bg-white/10 border border-white/20 text-white rounded-full font-semibold hover:bg-white/20 transition-all duration-300 hover:scale-105 active:scale-95'
+                    }, 'Отмена'),
+                    React.createElement('button', {
+                        key: 'delete',
+                        onClick: () => onDeleteConversation(deleteConfirmId),
+                        className: 'flex-1 py-3 px-6 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-full font-semibold hover:from-red-500 hover:to-red-600 transition-all duration-300 hover:scale-105 active:scale-95'
+                    }, 'Удалить')
+                ])
+            ])
+        ])) : null
     ]);
 };
 

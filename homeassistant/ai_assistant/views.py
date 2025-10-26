@@ -15,7 +15,7 @@ AI_AGENT_URL = os.getenv('AI_AGENT_URL', 'http://archie-ai-agent:8005')
 def add_cors_headers(response):
     """Add CORS headers to response."""
     response['Access-Control-Allow-Origin'] = '*'
-    response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS'
     response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
 
@@ -46,16 +46,20 @@ def proxy_conversations(request):
 
 
 @csrf_exempt 
-@require_http_methods(["GET", "OPTIONS"])
+@require_http_methods(["GET", "DELETE", "OPTIONS"])
 def proxy_conversation_detail(request, conversation_id):
-    """Proxy for getting conversation details from API."""
+    """Proxy for getting or deleting conversation details from API."""
     if request.method == 'OPTIONS':
         response = HttpResponse()
         return add_cors_headers(response)
         
     try:
-        response = requests.get(f'{BACKEND_API_URL}/conversations/{conversation_id}')
-        json_response = JsonResponse(response.json(), safe=False)
+        if request.method == 'GET':
+            response = requests.get(f'{BACKEND_API_URL}/conversations/{conversation_id}')
+            json_response = JsonResponse(response.json(), safe=False)
+        else:  # DELETE
+            response = requests.delete(f'{BACKEND_API_URL}/conversations/{conversation_id}')
+            json_response = JsonResponse({'success': True}, status=200)
         return add_cors_headers(json_response)
     except Exception as e:
         error_response = JsonResponse({'error': str(e)}, status=500)

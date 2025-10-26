@@ -67,6 +67,20 @@ export class ChatAPI {
     }
 
     /**
+     * Удалить беседу
+     * @param {string} conversationId - ID беседы для удаления
+     * @returns {Promise<void>}
+     */
+    async deleteConversation(conversationId) {
+        const response = await fetch(`${this.baseUrl}/conversations/${conversationId}/`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+    }
+
+    /**
      * Проверить работоспособность API
      * @returns {Promise<boolean>} true если API работает
      */
