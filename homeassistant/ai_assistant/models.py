@@ -94,7 +94,7 @@ class Message(models.Model):
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     text_format = models.CharField(max_length=20, choices=TEXT_FORMAT_CHOICES, default='plain')
-    content = models.JSONField()
+    content = models.JSONField(default=dict)
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     previous_message_id = models.CharField(max_length=255, null=True, blank=True)
     model = models.TextField(null=True, blank=True)
