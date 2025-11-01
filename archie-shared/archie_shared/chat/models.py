@@ -80,7 +80,7 @@ class ChatRequest(BaseModel):
     """Request to send a chat message"""
     
     role: Literal["user", "assistant", "system"] = Field(description="Role of the message sender")
-    content: Content = Field(description="Structured content of the message")
+    text: str = Field(description="Text content of the request")
     message_id: Optional[str] = Field(default=None, description="Optional custom message ID")
     conversation_id: Optional[str] = Field(default=None, description="ID of the conversation")
     previous_message_id: Optional[str] = Field(default=None, description="ID of the previous message for threading")
