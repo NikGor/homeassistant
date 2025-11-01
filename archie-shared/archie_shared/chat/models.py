@@ -5,68 +5,67 @@ Chat models for AI Assistant conversations
 from typing import Optional, List, Literal
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone as dt_timezone
-
+from ..ui.models import Content
 
 class InputTokensDetails(BaseModel):
     """Details about input token usage"""
-    cached_tokens: int = 0
+    cached_tokens: int = Field(default=0, description="Number of cached tokens used")
 
 
 class OutputTokensDetails(BaseModel):
     """Details about output token usage"""
-    reasoning_tokens: int = 0
+    reasoning_tokens: int = Field(default=0, description="Number of reasoning tokens generated")
 
 
 class LllmTrace(BaseModel):
     """Complete LLM usage trace for cost tracking and analytics"""
     
-    model: str
-    input_tokens: int
-    input_tokens_details: InputTokensDetails = InputTokensDetails()
-    output_tokens: int
-    output_tokens_details: OutputTokensDetails = OutputTokensDetails()
-    total_tokens: int
-    total_cost: float = 0.0
+    model: str = Field(description="Name of the LLM model used")
+    input_tokens: int = Field(description="Number of input tokens processed")
+    input_tokens_details: InputTokensDetails = Field(default_factory=InputTokensDetails, description="Details about input token usage")
+    output_tokens: int = Field(description="Number of output tokens generated")
+    output_tokens_details: OutputTokensDetails = Field(default_factory=OutputTokensDetails, description="Details about output token usage")
+    total_tokens: int = Field(description="Total number of tokens used")
+    total_cost: float = Field(default=0.0, description="Total cost of the API call")
 
 
 class ChatMessage(BaseModel):
     """Individual chat message in a conversation"""
     
-    message_id: Optional[str] = None
-    role: Literal["user", "assistant", "system"]
-    text_format: Literal["plain", "markdown", "html", "voice"] = "plain"
-    text: str
-    metadata: Optional["Metadata"] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(dt_timezone.utc))
-    conversation_id: Optional[str] = None
-    previous_message_id: Optional[str] = None
-    model: Optional[str] = None
-    llm_trace: Optional[LllmTrace] = None
+    message_id: Optional[str] = Field(default=None, description="Unique identifier for the message")
+    role: Literal["user", "assistant", "system"] = Field(description="Role of the message sender")
+    text_format: Literal["plain", "markdown", "html", "voice"] = Field(default="plain", description="Format of the message content")
+    content: Content = Field(description="Structured content of the message")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(dt_timezone.utc), description="Timestamp when the message was created")
+    conversation_id: Optional[str] = Field(default=None, description="ID of the conversation this message belongs to")
+    previous_message_id: Optional[str] = Field(default=None, description="ID of the previous message for threading")
+    model: Optional[str] = Field(default=None, description="LLM model used to generate this message")
+    llm_trace: Optional[LllmTrace] = Field(default=None, description="LLM usage trace for this message")
 
 
-class ConversationModel(BaseModel):
+class Conversation(BaseModel):
     """Complete conversation with messages and metadata"""
     
-    conversation_id: str
-    title: str = "New Conversation"
-    messages: Optional[List[ChatMessage]] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(dt_timezone.utc))
-    llm_trace: Optional[LllmTrace] = None
+    conversation_id: str = Field(description="Unique identifier for the conversation")
+    title: str = Field(default="New Conversation", description="Title of the conversation")
+    messages: Optional[List[ChatMessage]] = Field(default=None, description="List of messages in the conversation")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(dt_timezone.utc), description="Timestamp when the conversation was created")
+    llm_trace: Optional[LllmTrace] = Field(default=None, description="Aggregated LLM usage trace for the conversation")
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(dt_timezone.utc),
         description="Timestamp when the conversation was last updated"
     )
     total_input_tokens: int = Field(
-        0, description="Total input tokens used in this conversation"
+        default=0, description="Total input tokens used in this conversation"
     )
     total_output_tokens: int = Field(
-        0, description="Total output tokens generated in this conversation" 
+        default=0, description="Total output tokens generated in this conversation" 
     )
     total_tokens: int = Field(
-        0, description="Total tokens used in this conversation"
+        default=0, description="Total tokens used in this conversation"
     )
-    total_cost: float = Field(  # float вместо Decimal для универсальности
-        0.0, description="Total cost of this conversation"
+    total_cost: float = Field(
+        default=0.0, description="Total cost of this conversation"
     )
     
     def __init__(self, **data):
@@ -80,13 +79,12 @@ class ConversationModel(BaseModel):
 class ChatRequest(BaseModel):
     """Request to send a chat message"""
     
-    role: Literal["user", "assistant", "system"]
-    text: str
-    text_format: Literal["plain", "markdown", "html", "voice"] = "plain"
-    message_id: Optional[str] = None
-    conversation_id: Optional[str] = None
-    previous_message_id: Optional[str] = None
-    model: Optional[str] = None
+    role: Literal["user", "assistant", "system"] = Field(description="Role of the message sender")
+    content: Content = Field(description="Structured content of the message")
+    message_id: Optional[str] = Field(default=None, description="Optional custom message ID")
+    conversation_id: Optional[str] = Field(default=None, description="ID of the conversation")
+    previous_message_id: Optional[str] = Field(default=None, description="ID of the previous message for threading")
+    model: Optional[str] = Field(default=None, description="LLM model to use for the request")
 
 
 class ConversationRequest(BaseModel):
@@ -126,10 +124,7 @@ class ChatHistoryMessage(BaseModel):
     role: Literal["user", "assistant", "system"] = Field(
         description="Role of the message sender"
     )
-    text: str = Field(description="Content of the message (cleaned to plain text)")
-    metadata: Optional[dict] = Field(  # Изменил с metadata_json на metadata
-        None, description="Additional metadata for the message"
-    )
+    content: Content = Field(description="Structured content of the message")
 
 class ChatHistoryResponse(BaseModel):
     """Response model for chat history endpoint"""
@@ -138,9 +133,8 @@ class ChatHistoryResponse(BaseModel):
         description="List of messages in the conversation"
     )
 
-# Forward references
-from ..ui.models import Metadata
+
 
 # Update forward references
 ChatMessage.model_rebuild()
-ConversationModel.model_rebuild()
+Conversation.model_rebuild()

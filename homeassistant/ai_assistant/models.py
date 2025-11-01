@@ -1,16 +1,13 @@
 from django.db import models
 from django.utils import timezone
-import uuid
-import sys
-import os
 from archie_shared.chat.models import (
-    ConversationModel, 
+    Conversation as ConversationModel, 
     LllmTrace, 
     ChatMessage, 
     InputTokensDetails, 
     OutputTokensDetails
 )
-from archie_shared.ui.models import Metadata
+from archie_shared.ui.models import Content
 
 class Conversation(models.Model):
     """Django model for storing conversations in PostgreSQL"""
@@ -54,10 +51,17 @@ class Conversation(models.Model):
             title=self.title,
             messages=messages,
             created_at=self.created_at,
+            updated_at=self.updated_at,
+            total_input_tokens=self.total_input_tokens,
+            total_output_tokens=self.total_output_tokens,
+            total_tokens=self.total_tokens,
+            total_cost=float(self.total_cost),
             llm_trace=LllmTrace(
                 model="aggregate",
                 input_tokens=self.total_input_tokens,
+                input_tokens_details=InputTokensDetails(cached_tokens=self.total_input_cached_tokens),
                 output_tokens=self.total_output_tokens,
+                output_tokens_details=OutputTokensDetails(reasoning_tokens=self.total_output_reasoning_tokens),
                 total_tokens=self.total_tokens,
                 total_cost=float(self.total_cost)
             ) if self.total_tokens > 0 else None
@@ -88,10 +92,9 @@ class Message(models.Model):
         db_index=True,
         to_field='conversation_id'
     )
-    role = models.TextField()
-    text_format = models.TextField(default='plain')
-    text = models.TextField()
-    metadata_json = models.JSONField(null=True, blank=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    text_format = models.CharField(max_length=20, choices=TEXT_FORMAT_CHOICES, default='plain')
+    content = models.JSONField()
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     previous_message_id = models.CharField(max_length=255, null=True, blank=True)
     model = models.TextField(null=True, blank=True)
@@ -117,17 +120,11 @@ class Message(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.role}: {self.text[:50]}..." if len(self.text) > 50 else f"{self.role}: {self.text}"
+        content_str = str(self.content) if self.content else ""
+        return f"{self.role}: {content_str[:50]}..." if len(content_str) > 50 else f"{self.role}: {content_str}"
     
     def to_chat_message(self):
         """Convert Django model to Pydantic model"""
-        metadata = None
-        if self.metadata_json:
-            try:
-                metadata = Metadata(**self.metadata_json)
-            except Exception:
-                metadata = None
-        
         llm_trace = None
         if self.input_tokens is not None and self.output_tokens is not None:
             llm_trace = LllmTrace(
@@ -144,8 +141,7 @@ class Message(models.Model):
             message_id=str(self.message_id),
             role=self.role,
             text_format=self.text_format,
-            text=self.text,
-            metadata=metadata,
+            content=Content(**self.content) if isinstance(self.content, dict) else self.content,
             created_at=self.created_at,
             conversation_id=str(self.conversation.conversation_id),
             previous_message_id=str(self.previous_message_id) if self.previous_message_id else None,
