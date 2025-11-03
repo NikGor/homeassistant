@@ -544,12 +544,12 @@ class UIAnswer(BaseModel):
 
 class Content(BaseModel):
     """Content of a chat message, can be text or structured data"""
-    type: Literal["plain_text_answer", "formatted_text_answer", "ui_answer"] = Field(
-        description="Type of content"
-    )
-    formatted_text_type: Optional[Literal["plain", "markdown", "html", "python", "ssml"]] = Field(
-        description="Type of formatted text content. Used only if type is 'formatted_text_answer'"
-    )
-    plain_text_answer: Optional[str] = Field(default=None, description="Plain text answer content. If type is 'plain_text_answer', use this field to provide the content.")
-    formatted_text_answer: Optional[str] = Field(default=None, description="Formatted text answer content. If type is 'formatted_text_answer', use this field to provide the content exactly as specified in 'formatted_text_type'.")
-    ui_answer: Optional[UIAnswer] = Field(default=None, description="Generative UI answer content. If type is 'ui_answer', use this field to provide the content.")
+    content_format: Literal[
+        "plain", "markdown", "html", "ssml", 
+        "json", "csv", "xml", "yaml", "prompt",
+        "python", "bash", "sql", "regex", 
+        "dockerfile", "makefile", "ui_answer"
+    ] = Field(default="plain", description="Format of the content")
+    
+    text: Optional[str] = Field(default=None, description="Text content")
+    ui_answer: Optional[UIAnswer] = Field(default=None, description="UI elements content")

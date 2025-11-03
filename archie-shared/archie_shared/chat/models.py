@@ -14,8 +14,7 @@ class OutputTokensDetails(BaseModel):
 
 
 class LllmTrace(BaseModel):
-    """Complete LLM usage trace for cost tracking and analytics"""
-    
+    """Complete LLM usage trace for cost tracking and analytics"""  
     model: str = Field(description="Name of the LLM model used")
     input_tokens: int = Field(description="Number of input tokens processed")
     input_tokens_details: InputTokensDetails = Field(default_factory=InputTokensDetails, description="Details about input token usage")
@@ -27,10 +26,8 @@ class LllmTrace(BaseModel):
 
 class ChatMessage(BaseModel):
     """Individual chat message in a conversation"""
-    
     message_id: Optional[str] = Field(default=None, description="Unique identifier for the message")
     role: Literal["user", "assistant", "system"] = Field(description="Role of the message sender")
-    text_format: Literal["plain", "markdown", "html", "voice"] = Field(default="plain", description="Format of the message content")
     content: Content = Field(description="Structured content of the message")
     created_at: datetime = Field(default_factory=lambda: datetime.now(dt_timezone.utc), description="Timestamp when the message was created")
     conversation_id: Optional[str] = Field(default=None, description="ID of the conversation this message belongs to")
@@ -41,7 +38,6 @@ class ChatMessage(BaseModel):
 
 class Conversation(BaseModel):
     """Complete conversation with messages and metadata"""
-    
     conversation_id: str = Field(description="Unique identifier for the conversation")
     title: str = Field(default="New Conversation", description="Title of the conversation")
     messages: Optional[List[ChatMessage]] = Field(default=None, description="List of messages in the conversation")
@@ -74,10 +70,13 @@ class Conversation(BaseModel):
 
 class ChatRequest(BaseModel):
     """Request to send a chat message"""
-    
-    role: Literal["user", "assistant", "system"] = Field(description="Role of the message sender")
-    text: str = Field(description="Text content of the request")
-    message_id: Optional[str] = Field(default=None, description="Optional custom message ID")
+    response_format: Literal[
+        "plain", "markdown", "html", "ssml", 
+        "json", "csv", "xml", "yaml", "prompt",
+        "python", "bash", "sql", "regex", 
+        "dockerfile", "makefile", "ui_answer"
+    ] = Field(default="plain", description="Format of response expected from the agent")
+    input: str = Field(description="Text content of the request")
     conversation_id: Optional[str] = Field(default=None, description="ID of the conversation")
     previous_message_id: Optional[str] = Field(default=None, description="ID of the previous message for threading")
     model: Optional[str] = Field(default=None, description="LLM model to use for the request")
@@ -85,7 +84,6 @@ class ChatRequest(BaseModel):
 
 class ConversationRequest(BaseModel):
     """Request model for creating a new conversation"""
-    
     conversation_id: Optional[str] = Field(
         None,
         description="Optional custom conversation ID. If not provided, will be auto-generated",

@@ -71,19 +71,6 @@ class Conversation(models.Model):
 class Message(models.Model):
     """Django model for storing chat messages in PostgreSQL"""
     
-    ROLE_CHOICES = [
-        ('user', 'User'),
-        ('assistant', 'Assistant'),
-        ('system', 'System'),
-    ]
-    
-    TEXT_FORMAT_CHOICES = [
-        ('plain', 'Plain'),
-        ('markdown', 'Markdown'),
-        ('html', 'HTML'),
-        ('voice', 'Voice'),
-    ]
-    
     message_id = models.CharField(max_length=255, primary_key=True, db_index=True)
     conversation = models.ForeignKey(
         Conversation, 
@@ -92,8 +79,7 @@ class Message(models.Model):
         db_index=True,
         to_field='conversation_id'
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
-    text_format = models.CharField(max_length=20, choices=TEXT_FORMAT_CHOICES, default='plain')
+    role = models.CharField(max_length=20)
     content = models.JSONField(default=dict)
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     previous_message_id = models.CharField(max_length=255, null=True, blank=True)
@@ -140,7 +126,6 @@ class Message(models.Model):
         return ChatMessage(
             message_id=str(self.message_id),
             role=self.role,
-            text_format=self.text_format,
             content=Content(**self.content) if isinstance(self.content, dict) else self.content,
             created_at=self.created_at,
             conversation_id=str(self.conversation.conversation_id),
