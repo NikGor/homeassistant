@@ -1,873 +1,700 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Menu, ShoppingCart, Bell, Search, Heart, Star, ArrowRight, X, MapPin, FileText, Download, ExternalLink, Copy, Eye, ChevronRight, Sparkles } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    ChartData,
+    ChartOptions
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+import {
+    Zap, ArrowRightCircle, CheckCircle, AlertTriangle, Trash2, Settings, User, Power,
+    Play, Map, ParkingCircle, Phone, Mail, Calendar, PhoneCall, Send, Star, Check,
+    Search, Store, GitCompareArrows, Youtube, Clapperboard, Tv2, Music, Guitar,
+    Save, MessageSquareQuote, PlusCircle, CloudSun, CalendarDays, Clock, Sparkles, MoreHorizontal
+} from 'lucide-react';
 
-export default function ModernUIKit() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('cards');
-  const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
+// Register Chart.js components
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend
+);
 
-  useEffect(() => {
-    if (activeTab === 'map' && mapRef.current && !mapInstanceRef.current) {
-      // Загружаем Leaflet CSS
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
+// Helper component for Lucide icons to avoid repetition
+// In a real app, you'd just use the components directly,
+// but this matches the "i" tag replacement.
+// On second thought, it's better to replace them directly.
 
-      // Загружаем Leaflet JS
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = () => {
-        // Инициализация карты
-        const L = window.L;
-        const map = L.map(mapRef.current).setView([55.7558, 37.6173], 12);
+const App: React.FC = () => {
 
-        // Темная тема для карты
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          attribution: '© OpenStreetMap contributors © CARTO',
-          subdomains: 'abcd',
-          maxZoom: 20
-        }).addTo(map);
+    // Chart.js Configuration
+    const chartData: ChartData<'bar'> = {
+        labels: ["Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь"],
+        datasets: [{
+            label: "MAU",
+            data: [1200, 1500, 1400, 1800, 2200, 2500],
+            backgroundColor: "rgba(99, 102, 241, 0.6)",
+            borderColor: "rgba(99, 102, 241, 1)",
+            borderWidth: 1,
+            borderRadius: 4
+        }]
+    };
 
-        // Кастомная иконка маркера
-        const customIcon = L.divIcon({
-          className: 'custom-marker',
-          html: '<div style="background: linear-gradient(135deg, #475569, #64748b); width: 40px; height: 40px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5);"><div style="transform: rotate(45deg); color: white; font-size: 20px;">📍</div></div>',
-          iconSize: [40, 40],
-          iconAnchor: [20, 40]
-        });
+    const chartOptions: ChartOptions<'bar'> = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                labels: {
+                    color: "#e2e8f0"
+                }
+            },
+            tooltip: {
+                backgroundColor: "#1e293b",
+                titleColor: "#e2e8f0",
+                bodyColor: "#cbd5e1"
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    color: "#94a3b8"
+                },
+                grid: {
+                    color: "rgba(255, 255, 255, 0.1)"
+                }
+            },
+            x: {
+                ticks: {
+                    color: "#94a3b8"
+                },
+                grid: {
+                    color: "rgba(255, 255, 255, 0.05)"
+                }
+            }
+        }
+    };
 
-        // Добавление маркеров
-        L.marker([55.7558, 37.6173], { icon: customIcon }).addTo(map)
-          .bindPopup('<div style="color: #1e293b; font-weight: 600;">Красная площадь<br><span style="color: #64748b; font-size: 12px;">Москва, Россия</span></div>');
 
-        L.marker([55.7520, 37.6175], { icon: customIcon }).addTo(map)
-          .bindPopup('<div style="color: #1e293b; font-weight: 600;">Кремль<br><span style="color: #64748b; font-size: 12px;">Исторический центр</span></div>');
+    // We apply the background to the root div instead of the body
+    return (
+        <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 text-gray-200 p-4 md:p-8 min-h-screen">
+            <div className="max-w-7xl mx-auto space-y-16">
 
-        L.marker([55.7539, 37.6208], { icon: customIcon }).addTo(map)
-          .bindPopup('<div style="color: #1e293b; font-weight: 600;">ГУМ<br><span style="color: #64748b; font-size: 12px;">Торговый центр</span></div>');
+                {/* Header */}
+                <header className="text-center">
+                    <h1 className="text-4xl md:text-5xl font-bold text-white">
+                        Modern UI Set
+                    </h1>
+                    <p className="text-xl text-indigo-400 mt-2">Component Showcase (2025)</p>
+                </header>
 
-        mapInstanceRef.current = map;
-
-        // Анимация при загрузке
-        setTimeout(() => {
-          map.invalidateSize();
-        }, 100);
-      };
-      document.body.appendChild(script);
-    }
-  }, [activeTab]);
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-neutral-950 p-8">
-      {/* Header */}
-      <header className="backdrop-blur-md bg-white/10 rounded-2xl p-6 mb-8 border border-white/20 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-3 rounded-xl bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-slate-500/50 active:scale-95"
-            >
-              <Menu className="text-white" size={24} />
-            </button>
-            <h1 className="text-3xl font-bold text-white">Modern UI Kit</h1>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <input 
-                type="text" 
-                placeholder="Search..."
-                className="pl-12 pr-4 py-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-slate-500 transition-all w-64"
-              />
-              <Search className="absolute left-4 top-3.5 text-white/60" size={20} />
-            </div>
-            
-            <button className="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110 relative hover:shadow-lg hover:shadow-red-500/30 active:scale-95">
-              <Bell className="text-white" size={20} />
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">3</span>
-            </button>
-            
-            <button className="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-slate-500/30 active:scale-95">
-              <ShoppingCart className="text-white" size={20} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Side Menu */}
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="backdrop-blur-md bg-white/10 w-80 p-6 border-r border-white/20 shadow-2xl">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold text-white">Menu</h2>
-              <button 
-                onClick={() => setIsMenuOpen(false)}
-                className="p-2 rounded-lg hover:bg-white/10 transition-all"
-              >
-                <X className="text-white" size={24} />
-              </button>
-            </div>
-            
-            <nav className="space-y-2">
-              {['Dashboard', 'Projects', 'Analytics', 'Settings', 'Profile'].map((item, i) => (
-                <button 
-                  key={i}
-                  className="w-full text-left px-6 py-4 rounded-xl bg-white/5 hover:bg-white/20 text-white transition-all duration-300 hover:translate-x-2 border border-white/10"
-                >
-                  {item}
-                </button>
-              ))}
-            </nav>
-          </div>
-          <div 
-            className="flex-1 bg-black/50 backdrop-blur-sm"
-            onClick={() => setIsMenuOpen(false)}
-          />
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex gap-3 mb-8 flex-wrap">
-        {['cards', 'buttons', 'text', 'forms', 'map', 'docs', 'widgets'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 ${
-              activeTab === tab
-                ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-lg scale-105'
-                : 'bg-white/10 backdrop-blur-md text-white/70 hover:text-white border border-white/20 hover:bg-white/15 hover:scale-105 active:scale-95'
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Cards Section */}
-      {activeTab === 'cards' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Glassmorphism Card */}
-          <div className="backdrop-blur-lg bg-white/10 rounded-3xl p-6 border border-white/20 shadow-2xl hover:shadow-slate-500/50 transition-all duration-300 hover:scale-105 hover:-translate-y-2">
-            <div className="w-full h-48 bg-gradient-to-br from-slate-600 to-slate-800 rounded-2xl mb-4 flex items-center justify-center">
-              <Heart className="text-white" size={64} />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">Glassmorphism</h3>
-            <p className="text-white/70 mb-4">Modern glass effect with backdrop blur and transparency</p>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-white">$299</span>
-              <button className="px-4 py-2 bg-gradient-to-r from-slate-600 to-slate-700 rounded-full text-white font-semibold hover:from-slate-500 hover:to-slate-600 transition-all duration-300 flex items-center gap-2 hover:shadow-lg hover:shadow-slate-500/50 hover:scale-105 active:scale-95">
-                Buy Now <ArrowRight size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* Product Card */}
-          <div className="backdrop-blur-lg bg-white/10 rounded-3xl p-6 border border-white/20 shadow-2xl group hover:shadow-emerald-500/50 transition-all duration-300 hover:scale-105 hover:-translate-y-2">
-            <div className="relative">
-              <div className="w-full h-48 bg-gradient-to-br from-emerald-700 to-teal-800 rounded-2xl mb-4 flex items-center justify-center overflow-hidden">
-                <Star className="text-white group-hover:scale-125 transition-transform duration-300" size={64} />
-              </div>
-              <div className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">-30%</div>
-            </div>
-            <div className="flex items-center gap-1 mb-2">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={16} className="fill-yellow-400 text-yellow-400" />
-              ))}
-              <span className="text-white/70 text-sm ml-2">(128)</span>
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">Premium Product</h3>
-            <p className="text-white/70 mb-4">High quality item with amazing features</p>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl font-bold text-white">$199</span>
-              <span className="text-white/50 line-through">$289</span>
-            </div>
-          </div>
-
-          {/* Profile Card */}
-          <div className="backdrop-blur-lg bg-white/10 rounded-3xl p-6 border border-white/20 shadow-2xl hover:shadow-amber-500/50 transition-all duration-300 hover:scale-105 hover:-translate-y-2">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-amber-600 to-orange-700 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                JD
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">John Doe</h3>
-                <p className="text-white/70">UI/UX Designer</p>
-              </div>
-            </div>
-            <p className="text-white/70 mb-4">Creating beautiful digital experiences with modern design principles</p>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white">142</div>
-                <div className="text-white/60 text-sm">Projects</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white">2.8k</div>
-                <div className="text-white/60 text-sm">Followers</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white">892</div>
-                <div className="text-white/60 text-sm">Following</div>
-              </div>
-            </div>
-            <button className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-700 rounded-full text-white font-semibold hover:from-amber-500 hover:to-orange-600 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/50 hover:scale-105 active:scale-95">
-              Follow
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Buttons Section */}
-      {activeTab === 'buttons' && (
-        <div className="backdrop-blur-lg bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl">
-          <h2 className="text-2xl font-bold text-white mb-6">Button Styles</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Primary Buttons */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white/80 mb-3">Primary</h3>
-              <button className="w-full py-3 px-6 bg-gradient-to-r from-slate-600 to-slate-700 rounded-full text-white font-semibold hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/70 active:scale-95">
-                Default
-              </button>
-              <button className="w-full py-3 px-6 bg-gradient-to-r from-emerald-700 to-teal-800 rounded-full text-white font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-emerald-500/70 active:scale-95">
-                Success
-              </button>
-              <button className="w-full py-3 px-6 bg-gradient-to-r from-red-600 to-red-700 rounded-full text-white font-semibold hover:from-red-500 hover:to-red-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-red-500/70 active:scale-95">
-                Danger
-              </button>
-              <button className="w-full py-3 px-6 bg-gradient-to-r from-amber-600 to-orange-700 rounded-full text-white font-semibold hover:from-amber-500 hover:to-orange-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-amber-500/70 active:scale-95">
-                Warning
-              </button>
-              <button className="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full text-white font-semibold hover:from-blue-500 hover:to-blue-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-blue-500/70 active:scale-95">
-                Info
-              </button>
-            </div>
-
-            {/* Outline Buttons */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white/80 mb-3">Outline</h3>
-              <button className="w-full py-3 px-6 border-2 border-slate-500 text-slate-300 rounded-full font-semibold hover:bg-slate-600 hover:text-white transition-all duration-300 hover:scale-105 hover:border-slate-400 hover:shadow-lg hover:shadow-slate-500/50 active:scale-95">
-                Default
-              </button>
-              <button className="w-full py-3 px-6 border-2 border-emerald-600 text-emerald-400 rounded-full font-semibold hover:bg-emerald-600 hover:text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/50 active:scale-95">
-                Success
-              </button>
-              <button className="w-full py-3 px-6 border-2 border-red-500 text-red-400 rounded-full font-semibold hover:bg-red-600 hover:text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-red-500/50 active:scale-95">
-                Danger
-              </button>
-              <button className="w-full py-3 px-6 border-2 border-amber-600 text-amber-400 rounded-full font-semibold hover:bg-amber-600 hover:text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-amber-500/50 active:scale-95">
-                Warning
-              </button>
-              <button className="w-full py-3 px-6 border-2 border-blue-500 text-blue-400 rounded-full font-semibold hover:bg-blue-600 hover:text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/50 active:scale-95">
-                Info
-              </button>
-            </div>
-
-            {/* Glass Buttons */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white/80 mb-3">Glass</h3>
-              <button className="w-full py-3 px-6 backdrop-blur-md bg-white/10 border border-white/20 text-white rounded-full font-semibold hover:bg-white/20 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-white/30 active:scale-95">
-                Default
-              </button>
-              <button className="w-full py-3 px-6 backdrop-blur-md bg-emerald-600/20 border border-emerald-600/30 text-emerald-200 rounded-full font-semibold hover:bg-emerald-600/30 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/50 active:scale-95">
-                Success
-              </button>
-              <button className="w-full py-3 px-6 backdrop-blur-md bg-red-600/20 border border-red-600/30 text-red-200 rounded-full font-semibold hover:bg-red-600/30 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-red-500/50 active:scale-95">
-                Danger
-              </button>
-              <button className="w-full py-3 px-6 backdrop-blur-md bg-amber-600/20 border border-amber-600/30 text-amber-200 rounded-full font-semibold hover:bg-amber-600/30 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-amber-500/50 active:scale-95">
-                Warning
-              </button>
-              <button className="w-full py-3 px-6 backdrop-blur-md bg-blue-600/20 border border-blue-600/30 text-blue-200 rounded-full font-semibold hover:bg-blue-600/30 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/50 active:scale-95">
-                Info
-              </button>
-            </div>
-
-            {/* Solid Buttons */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white/80 mb-3">Solid</h3>
-              <button className="w-full py-3 px-6 bg-slate-600 text-white rounded-full font-semibold hover:bg-slate-500 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/50 active:scale-95">
-                Default
-              </button>
-              <button className="w-full py-3 px-6 bg-emerald-700 text-white rounded-full font-semibold hover:bg-emerald-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-emerald-500/50 active:scale-95">
-                Success
-              </button>
-              <button className="w-full py-3 px-6 bg-red-600 text-white rounded-full font-semibold hover:bg-red-500 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-red-500/50 active:scale-95">
-                Danger
-              </button>
-              <button className="w-full py-3 px-6 bg-amber-600 text-white rounded-full font-semibold hover:bg-amber-500 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-amber-500/50 active:scale-95">
-                Warning
-              </button>
-              <button className="w-full py-3 px-6 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-500 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-blue-500/50 active:scale-95">
-                Info
-              </button>
-            </div>
-          </div>
-
-          {/* Sizes Section */}
-          <div className="mt-10">
-            <h3 className="text-lg font-semibold text-white/80 mb-4">Button Sizes</h3>
-            <div className="flex gap-4 flex-wrap items-end">
-              <button className="py-2 px-4 bg-gradient-to-r from-slate-600 to-slate-700 rounded-full text-white text-sm font-semibold hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/70 active:scale-95">
-                Small
-              </button>
-              <button className="py-3 px-6 bg-gradient-to-r from-slate-600 to-slate-700 rounded-full text-white font-semibold hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/70 active:scale-95">
-                Medium
-              </button>
-              <button className="py-4 px-8 bg-gradient-to-r from-slate-600 to-slate-700 rounded-full text-white text-lg font-semibold hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/70 active:scale-95">
-                Large
-              </button>
-              <button className="py-5 px-10 bg-gradient-to-r from-slate-600 to-slate-700 rounded-full text-white text-xl font-bold hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/70 active:scale-95">
-                Extra Large
-              </button>
-            </div>
-          </div>
-
-          {/* Icon Buttons */}
-          <div className="mt-10">
-            <h3 className="text-lg font-semibold text-white/80 mb-4">Icon Buttons</h3>
-            <div className="flex gap-4 flex-wrap">
-              <button className="p-3 rounded-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-slate-500/70 active:scale-95">
-                <Heart className="text-white" size={20} />
-              </button>
-              <button className="p-4 rounded-full bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-amber-500/70 active:scale-95">
-                <Star className="text-white" size={24} />
-              </button>
-              <button className="p-5 rounded-full bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-emerald-500/70 active:scale-95">
-                <ShoppingCart className="text-white" size={28} />
-              </button>
-              <button className="p-3 rounded-full backdrop-blur-md bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-white/30 active:scale-95">
-                <Bell className="text-white" size={20} />
-              </button>
-              <button className="p-4 rounded-full backdrop-blur-md bg-red-600/20 border border-red-600/30 hover:bg-red-600/40 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-red-500/50 active:scale-95">
-                <X className="text-red-300" size={24} />
-              </button>
-              <button className="p-5 rounded-full backdrop-blur-md bg-blue-600/20 border border-blue-600/30 hover:bg-blue-600/40 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-500/50 active:scale-95">
-                <Search className="text-blue-300" size={28} />
-              </button>
-            </div>
-          </div>
-
-          {/* Button with Icons */}
-          <div className="mt-10">
-            <h3 className="text-lg font-semibold text-white/80 mb-4">Buttons with Icons</h3>
-            <div className="flex gap-4 flex-wrap">
-              <button className="py-3 px-6 bg-gradient-to-r from-slate-600 to-slate-700 rounded-full text-white font-semibold hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/70 active:scale-95 flex items-center gap-2">
-                <Heart size={20} /> Like
-              </button>
-              <button className="py-3 px-6 bg-gradient-to-r from-emerald-700 to-teal-800 rounded-full text-white font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-emerald-500/70 active:scale-95 flex items-center gap-2">
-                <ShoppingCart size={20} /> Add to Cart
-              </button>
-              <button className="py-3 px-6 bg-gradient-to-r from-amber-600 to-orange-700 rounded-full text-white font-semibold hover:from-amber-500 hover:to-orange-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-amber-500/70 active:scale-95 flex items-center gap-2">
-                Continue <ArrowRight size={20} />
-              </button>
-              <button className="py-3 px-6 border-2 border-slate-500 text-slate-300 rounded-full font-semibold hover:bg-slate-600 hover:text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-slate-500/50 active:scale-95 flex items-center gap-2">
-                <Search size={20} /> Search
-              </button>
-            </div>
-          </div>
-
-          {/* Disabled State */}
-          <div className="mt-10">
-            <h3 className="text-lg font-semibold text-white/80 mb-4">Disabled State</h3>
-            <div className="flex gap-4 flex-wrap">
-              <button disabled className="py-3 px-6 bg-slate-700/50 text-slate-500 rounded-full font-semibold cursor-not-allowed opacity-50">
-                Disabled
-              </button>
-              <button disabled className="py-3 px-6 border-2 border-slate-700 text-slate-600 rounded-full font-semibold cursor-not-allowed opacity-50">
-                Disabled Outline
-              </button>
-              <button disabled className="py-3 px-6 backdrop-blur-md bg-white/5 border border-white/10 text-white/40 rounded-full font-semibold cursor-not-allowed opacity-50">
-                Disabled Glass
-              </button>
-            </div>
-          </div>
-
-          {/* Loading State */}
-          <div className="mt-10">
-            <h3 className="text-lg font-semibold text-white/80 mb-4">Loading State</h3>
-            <div className="flex gap-4 flex-wrap">
-              <button className="py-3 px-6 bg-gradient-to-r from-slate-600 to-slate-700 rounded-full text-white font-semibold shadow-lg flex items-center gap-2">
-                <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                Loading...
-              </button>
-              <button className="py-3 px-6 bg-gradient-to-r from-emerald-700 to-teal-800 rounded-full text-white font-semibold shadow-lg flex items-center gap-2">
-                <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                Processing
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Text Section */}
-      {activeTab === 'text' && (
-        <div className="backdrop-blur-lg bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl">
-          <div className="space-y-8">
-            <div>
-              <h1 className="text-6xl font-bold bg-gradient-to-r from-slate-300 via-stone-200 to-neutral-400 bg-clip-text text-transparent mb-4">
-                Huge Heading
-              </h1>
-              <p className="text-white/70 text-lg">Large, expressive typography is trending in 2025</p>
-            </div>
-
-            <div>
-              <h2 className="text-4xl font-bold text-white mb-3">Section Title</h2>
-              <p className="text-white/80 text-lg leading-relaxed">
-                Modern design emphasizes readability with generous spacing and clear hierarchy. 
-                Typography plays a crucial role in creating engaging user experiences.
-              </p>
-            </div>
-
-            <div className="backdrop-blur-md bg-white/5 rounded-2xl p-6 border border-white/10">
-              <h3 className="text-2xl font-semibold text-white mb-3">Quote Block</h3>
-              <blockquote className="text-white/70 text-xl italic border-l-4 border-slate-500 pl-6">
-                "Design is not just what it looks like and feels like. Design is how it works."
-              </blockquote>
-              <p className="text-white/50 mt-3">— Steve Jobs</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="backdrop-blur-md bg-gradient-to-br from-slate-600/20 to-slate-700/20 rounded-2xl p-6 border border-slate-500/30">
-                <h4 className="text-xl font-bold text-white mb-2">Feature Title</h4>
-                <p className="text-white/70">Short description of an amazing feature that will blow your mind</p>
-              </div>
-              <div className="backdrop-blur-md bg-gradient-to-br from-emerald-700/20 to-teal-800/20 rounded-2xl p-6 border border-emerald-600/30">
-                <h4 className="text-xl font-bold text-white mb-2">Another Feature</h4>
-                <p className="text-white/70">More incredible functionality that users will love</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Forms Section */}
-      {activeTab === 'forms' && (
-        <div className="backdrop-blur-lg bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold text-white mb-6">Modern Form</h2>
-          
-          <div className="space-y-6">
-            <div>
-              <label className="block text-white font-semibold mb-2">Full Name</label>
-              <input 
-                type="text"
-                placeholder="John Doe"
-                className="w-full px-6 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-slate-500 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-white font-semibold mb-2">Email Address</label>
-              <input 
-                type="email"
-                placeholder="john@example.com"
-                className="w-full px-6 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-white font-semibold mb-2">Message</label>
-              <textarea 
-                placeholder="Your message here..."
-                rows={4}
-                className="w-full px-6 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-slate-500 transition-all resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-white font-semibold mb-2">Choose Option</label>
-              <select className="w-full px-6 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-slate-500 transition-all">
-                <option className="bg-slate-800">Option 1</option>
-                <option className="bg-slate-800">Option 2</option>
-                <option className="bg-slate-800">Option 3</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <input 
-                type="checkbox"
-                id="terms"
-                className="w-6 h-6 rounded-lg bg-white/10 border-2 border-white/20 checked:bg-slate-600 focus:ring-2 focus:ring-slate-500"
-              />
-              <label htmlFor="terms" className="text-white/80">I agree to the terms and conditions</label>
-            </div>
-
-            <button className="w-full py-4 bg-gradient-to-r from-slate-600 to-slate-700 rounded-2xl text-white font-bold text-lg hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/70 active:scale-95">
-              Submit Form
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Map Section */}
-      {activeTab === 'map' && (
-        <div className="space-y-6">
-          {/* Map Card */}
-          <div className="backdrop-blur-lg bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <MapPin className="text-white" size={32} />
-              <div>
-                <h2 className="text-3xl font-bold text-white">Interactive Map</h2>
-                <p className="text-white/70">Leaflet + OpenStreetMap - No API key needed!</p>
-              </div>
-            </div>
-            
-            <div className="relative rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl" style={{ height: '500px' }}>
-              <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="backdrop-blur-md bg-slate-600/20 rounded-xl p-4 border border-slate-500/30">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center">
-                    <MapPin className="text-white" size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-white font-semibold">Free & Open</h4>
-                    <p className="text-white/60 text-sm">No API key required</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="backdrop-blur-md bg-emerald-700/20 rounded-xl p-4 border border-emerald-600/30">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-700 to-teal-800 rounded-full flex items-center justify-center">
-                    <Star className="text-white" size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-white font-semibold">Dark Theme</h4>
-                    <p className="text-white/60 text-sm">Matches your design</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="backdrop-blur-md bg-amber-600/20 rounded-xl p-4 border border-amber-600/30">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-amber-600 to-orange-700 rounded-full flex items-center justify-center">
-                    <Heart className="text-white" size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-white font-semibold">Customizable</h4>
-                    <p className="text-white/60 text-sm">Add markers & popups</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="backdrop-blur-lg bg-white/10 rounded-3xl p-6 border border-white/20">
-              <h3 className="text-xl font-bold text-white mb-4">✅ Advantages</h3>
-              <ul className="space-y-2 text-white/80">
-                <li>• Полностью бесплатно</li>
-                <li>• Не нужна регистрация</li>
-                <li>• Легкая интеграция</li>
-                <li>• Темная тема из коробки</li>
-                <li>• Кастомные маркеры</li>
-                <li>• Popup с информацией</li>
-              </ul>
-            </div>
-
-            <div className="backdrop-blur-lg bg-white/10 rounded-3xl p-6 border border-white/20">
-              <h3 className="text-xl font-bold text-white mb-4">🗺️ Map Providers</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-white/80">Leaflet + OSM</span>
-                  <span className="px-3 py-1 bg-emerald-600 text-white rounded-full text-sm font-semibold">Free</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-white/80">Google Maps</span>
-                  <span className="px-3 py-1 bg-amber-600 text-white rounded-full text-sm font-semibold">$200/mo</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-white/80">Mapbox</span>
-                  <span className="px-3 py-1 bg-slate-600 text-white rounded-full text-sm font-semibold">API Key</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Document Preview Section */}
-      {activeTab === 'docs' && (
-        <div className="space-y-6">
-          <h2 className="text-3xl font-bold text-white mb-6">RAG Search Results</h2>
-          
-          {/* Document Card 1 */}
-          <div className="backdrop-blur-lg bg-white/10 rounded-3xl border border-white/20 shadow-2xl overflow-hidden hover:shadow-emerald-500/30 transition-all duration-300">
-            <div className="p-6">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="p-3 bg-gradient-to-br from-emerald-700 to-teal-800 rounded-xl">
-                  <FileText className="text-white" size={28} />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-xl font-bold text-white">Product Requirements Document</h3>
-                    <span className="px-2 py-1 bg-emerald-600/30 text-emerald-300 text-xs rounded-full border border-emerald-500/50">PDF</span>
-                    <span className="px-2 py-1 bg-amber-600/30 text-amber-300 text-xs rounded-full border border-amber-500/50 flex items-center gap-1">
-                      <Sparkles size={12} /> 95% match
-                    </span>
-                  </div>
-                  <p className="text-white/60 text-sm">requirements/product-spec-2024.pdf • 2.4 MB • Updated 3 days ago</p>
-                </div>
-              </div>
-
-              <div className="backdrop-blur-md bg-white/5 rounded-2xl p-4 mb-4 border border-white/10">
-                <div className="text-white/90 text-sm leading-relaxed">
-                  <p className="mb-2">
-                    <span className="bg-amber-500/30 px-1 rounded">The authentication system</span> must support OAuth 2.0 and JWT tokens with a minimum session duration of 24 hours. All API endpoints require authentication except for the public documentation pages.
-                  </p>
-                  <p className="text-white/70">
-                    Security requirements include rate limiting (100 requests per minute), HTTPS enforcement, and SQL injection prevention through parameterized queries...
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 mt-3 text-white/50 text-xs">
-                  <span>Page 12, Section 3.2</span>
-                  <span>•</span>
-                  <span>Authentication & Security</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="backdrop-blur-md bg-slate-600/20 rounded-xl p-4 border border-slate-500/30">
-                  <div className="aspect-[4/5] bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center mb-3 overflow-hidden relative">
-                    <div className="absolute inset-0 bg-white/5 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-                      <FileText className="text-white/60 mb-2" size={48} />
-                      <div className="w-full space-y-2">
-                        <div className="h-2 bg-white/20 rounded w-3/4 mx-auto"></div>
-                        <div className="h-2 bg-white/20 rounded w-full"></div>
-                        <div className="h-2 bg-white/20 rounded w-2/3 mx-auto"></div>
-                        <div className="h-2 bg-amber-500/40 rounded w-full"></div>
-                        <div className="h-2 bg-white/20 rounded w-4/5 mx-auto"></div>
-                      </div>
+                {/* 1. Buttons */}
+                <section>
+                    <h2 className="text-3xl font-bold text-white mb-6 pb-3 border-b border-slate-700">1. Buttons</h2>
+                    
+                    {/* Button Styles */}
+                    <div className="mb-6">
+                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Button Styles</h3>
+                        <div className="flex flex-wrap gap-4 items-center">
+                            {/* Primary */}
+                            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-y-0.5">
+                                <Zap size={18} />
+                                Primary Action
+                            </button>
+                            
+                            {/* Secondary */}
+                            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-y-0.5">
+                                <ArrowRightCircle size={18} />
+                                Secondary
+                            </button>
+                            
+                            {/* Success */}
+                            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-y-0.5">
+                                <CheckCircle size={18} />
+                                Success
+                            </button>
+                            
+                            {/* Warning */}
+                            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-slate-900 bg-yellow-400 hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-y-0.5">
+                                <AlertTriangle size={18} />
+                                Warning
+                            </button>
+                            
+                            {/* Danger */}
+                            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-y-0.5">
+                                <Trash2 size={18} />
+                                Danger
+                            </button>
+                        </div>
                     </div>
-                  </div>
-                  <p className="text-white/70 text-xs text-center">Document Preview</p>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <button className="py-3 px-4 bg-gradient-to-r from-emerald-700 to-teal-800 rounded-xl text-white font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-emerald-500/50 active:scale-95 flex items-center justify-center gap-2">
-                    <Eye size={18} /> Open Full
-                  </button>
-                  <button className="py-3 px-4 bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl text-white font-semibold hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/50 active:scale-95 flex items-center justify-center gap-2">
-                    <Download size={18} /> Download
-                  </button>
-                  <button className="py-3 px-4 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-white font-semibold hover:bg-white/20 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
-                    <Copy size={18} /> Copy Text
-                  </button>
-                  <button className="py-3 px-4 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-white font-semibold hover:bg-white/20 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
-                    <ExternalLink size={18} /> Share
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#authentication</span>
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#security</span>
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#api</span>
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#oauth</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Document Card 2 - Excel */}
-          <div className="backdrop-blur-lg bg-white/10 rounded-3xl border border-white/20 shadow-2xl overflow-hidden hover:shadow-emerald-500/30 transition-all duration-300">
-            <div className="p-6">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="p-3 bg-gradient-to-br from-emerald-700 to-teal-800 rounded-xl">
-                  <FileText className="text-white" size={28} />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-xl font-bold text-white">Q4 Sales Report 2024</h3>
-                    <span className="px-2 py-1 bg-emerald-600/30 text-emerald-300 text-xs rounded-full border border-emerald-500/50">XLSX</span>
-                    <span className="px-2 py-1 bg-amber-600/30 text-amber-300 text-xs rounded-full border border-amber-500/50 flex items-center gap-1">
-                      <Sparkles size={12} /> 87% match
-                    </span>
-                  </div>
-                  <p className="text-white/60 text-sm">reports/sales-q4-2024.xlsx • 1.2 MB • Updated 1 week ago</p>
-                </div>
-              </div>
-
-              <div className="backdrop-blur-md bg-white/5 rounded-2xl p-4 mb-4 border border-white/10">
-                <div className="text-white/90 text-sm leading-relaxed">
-                  <p className="mb-2">
-                    Total revenue for Q4 reached <span className="bg-emerald-500/30 px-1 rounded font-semibold">$2.4M</span>, representing a <span className="bg-emerald-500/30 px-1 rounded font-semibold">23% increase</span> compared to Q3. The EMEA region showed the strongest growth at 31%, driven primarily by enterprise contracts.
-                  </p>
-                  <p className="text-white/70">
-                    Key performance indicators: Customer acquisition cost decreased by 15%, average deal size increased to $45K...
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 mt-3 text-white/50 text-xs">
-                  <span>Sheet: Summary</span>
-                  <span>•</span>
-                  <span>Cells A1:E25</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="backdrop-blur-md bg-slate-600/20 rounded-xl p-4 border border-slate-500/30">
-                  <div className="aspect-[4/5] bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg overflow-hidden relative">
-                    <div className="absolute inset-0 p-2 text-[8px] font-mono text-white/40">
-                      <div className="grid grid-cols-4 gap-1">
-                        <div className="bg-emerald-600/30 p-1 rounded">Region</div>
-                        <div className="bg-emerald-600/30 p-1 rounded">Q3</div>
-                        <div className="bg-emerald-600/30 p-1 rounded">Q4</div>
-                        <div className="bg-emerald-600/30 p-1 rounded">Growth</div>
-                        <div className="bg-white/10 p-1 rounded">EMEA</div>
-                        <div className="bg-white/10 p-1 rounded">$780K</div>
-                        <div className="bg-white/10 p-1 rounded">$1.02M</div>
-                        <div className="bg-emerald-500/40 p-1 rounded">+31%</div>
-                        <div className="bg-white/10 p-1 rounded">AMER</div>
-                        <div className="bg-white/10 p-1 rounded">$890K</div>
-                        <div className="bg-white/10 p-1 rounded">$1.05M</div>
-                        <div className="bg-emerald-500/40 p-1 rounded">+18%</div>
-                        <div className="bg-white/10 p-1 rounded">APAC</div>
-                        <div className="bg-white/10 p-1 rounded">$285K</div>
-                        <div className="bg-white/10 p-1 rounded">$330K</div>
-                        <div className="bg-emerald-500/40 p-1 rounded">+16%</div>
-                      </div>
+                    
+                    {/* Icon Only */}
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Icon Buttons</h3>
+                        <div className="flex flex-wrap gap-4 items-center">
+                            <button className="inline-flex items-center justify-center h-11 w-11 rounded-full font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-y-0.5">
+                                <Settings size={20} />
+                            </button>
+                            <button className="inline-flex items-center justify-center h-11 w-11 rounded-full font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-y-0.5">
+                                <User size={20} />
+                            </button>
+                            <button className="inline-flex items-center justify-center h-11 w-11 rounded-full font-semibold text-white bg-red-600 hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-y-0.5">
+                                <Power size={20} />
+                            </button>
+                        </div>
                     </div>
-                  </div>
-                  <p className="text-white/70 text-xs text-center mt-2">Spreadsheet Preview</p>
-                </div>
+                </section>
+                
+                {/* 2. Cards */}
+                <section>
+                    <h2 className="text-3xl font-bold text-white mb-6 pb-3 border-b border-slate-700">2. Cards</h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        
+                        {/* Base Card */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Base Card</h3>
+                                <p className="text-xl font-bold text-white mt-1">Начните свой проект</p>
+                                <p className="text-gray-300 mt-2 text-sm">Это универсальная карточка. Используйте ее для общей информации, подтверждений или сводок.</p>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Play size={16} />
+                                        Начать
+                                    </button>
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        Узнать больше
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Location Card */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Location Card</h3>
+                                <p className="text-xl font-bold text-white mt-1">Эйфелева башня</p>
+                                <p className="text-gray-300 mt-2 text-sm">Примерно 6 ч 15 мин езды (590 км)</p>
+                                <p className="text-gray-400 mt-3 text-sm">
+                                    Champ de Mars, 5 Av. Anatole France<br />
+                                    75007 Paris, France
+                                </p>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Map size={16} />
+                                        Открыть карту
+                                    </button>
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <ParkingCircle size={16} />
+                                        Найти парковку
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
-                <div className="flex flex-col gap-3">
-                  <button className="py-3 px-4 bg-gradient-to-r from-emerald-700 to-teal-800 rounded-xl text-white font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-emerald-500/50 active:scale-95 flex items-center justify-center gap-2">
-                    <Eye size={18} /> Open Full
-                  </button>
-                  <button className="py-3 px-4 bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl text-white font-semibold hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/50 active:scale-95 flex items-center justify-center gap-2">
-                    <Download size={18} /> Download
-                  </button>
-                  <button className="py-3 px-4 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-white font-semibold hover:bg-white/20 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
-                    <Copy size={18} /> Copy Data
-                  </button>
-                  <button className="py-3 px-4 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-white font-semibold hover:bg-white/20 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
-                    <ExternalLink size={18} /> Share
-                  </button>
-                </div>
-              </div>
+                        {/* Contact Card */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Contact Card</h3>
+                                <p className="text-xl font-bold text-white mt-1">Dr. Elena Reed</p>
+                                <p className="text-gray-300 mt-1 text-sm">Ведущий AI-исследователь @ FutureTech</p>
+                                
+                                <div className="space-y-2 mt-4 text-sm">
+                                    <div className="flex items-center gap-2 text-gray-300">
+                                        <Phone className="w-4 h-4 text-indigo-400" />
+                                        <span>+49 123 4567890</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-300">
+                                        <Mail className="w-4 h-4 text-indigo-400" />
+                                        <span>e.reed@futuretech.de</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-300">
+                                        <Calendar className="w-4 h-4 text-indigo-400" />
+                                        <span>Доступна: Пн-Пт, 10:00-16:00 CET</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <PhoneCall size={16} />
+                                        Позвонить
+                                    </button>
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Send size={16} />
+                                        Email
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
-              <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#sales</span>
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#q4-2024</span>
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#revenue</span>
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#analytics</span>
-              </div>
+                        {/* Product Card */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col md:col-span-2 lg:col-span-3">
+                            <div className="flex flex-col md:flex-row">
+                                <div className="md:w-1/3">
+                                    <img src="https://placehold.co/600x400/1e293b/94a3b8?text=MacBook+Pro" 
+                                         onError={(e) => (e.currentTarget.src = 'https://placehold.co/600x400/1e293b/94a3b8?text=Image+Error')}
+                                         alt="MacBook Pro" 
+                                         className="object-cover h-48 w-full md:h-full" />
+                                </div>
+                                <div className="md:w-2/3 flex flex-col">
+                                    <div className="p-6">
+                                        <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Product Card</h3>
+                                        <p className="text-xl font-bold text-white mt-1">MacBook M3 Max Pro 36Gb</p>
+                                        <p className="text-gray-300 mt-1 text-sm">Brand: Apple</p>
+
+                                        <div className="flex items-baseline gap-4 mt-3">
+                                            <span className="text-2xl font-bold text-white">3.499,00 €</span>
+                                            <span className="text-sm text-yellow-400 flex items-center gap-1">
+                                                <Star className="w-4 h-4 fill-current" />
+                                                4.9 (128 обзоров)
+                                            </span>
+                                        </div>
+                                        
+                                        <p className="text-gray-300 font-semibold mt-4 mb-2">Ключевые характеристики:</p>
+                                        <ul className="space-y-1.5 text-sm text-gray-300">
+                                            <li className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-400" />
+                                                Чип Apple M3 Max
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-400" />
+                                                36 ГБ объединенной памяти
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-400" />
+                                                1 ТБ SSD-накопитель
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-400" />
+                                                16-дюймовый дисплей Liquid Retina XDR
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div className="mt-auto p-6 pt-0">
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                            <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                                <Search size={16} />
+                                                Показать детали
+                                            </button>
+                                            <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                                <Store size={16} />
+                                                Найти ритейлеров
+                                            </button>
+                                            <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                                <GitCompareArrows size={16} />
+                                                Сравнить цены
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Movie Card */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Movie Card</h3>
+                                <p className="text-xl font-bold text-white mt-1">Дюна: Часть вторая (2024)</p>
+                                
+                                <div className="space-y-2 mt-3 text-sm">
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Режиссер:</span> Дени Вильнёв</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">В ролях:</span> Тимоти Шаламе, Зендея, Ребекка Фергюсон</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Жанр:</span> Научная фантастика, Драма</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Рейтинг:</span> 8.9/10 (IMDb)</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Длительность:</span> 2ч 46м</p>
+                                </div>
+                                
+                                <p className="text-gray-300 mt-4 text-sm border-t border-slate-700 pt-3">
+                                    Пол Атрейдес объединяется с фременами, чтобы отомстить заговорщикам, уничтожившим его семью.
+                                </p>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Youtube size={16} />
+                                        Смотреть трейлер
+                                    </button>
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Clapperboard size={16} />
+                                        Где посмотреть
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Series Card */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Series Card</h3>
+                                <p className="text-xl font-bold text-white mt-1">Пространство (The Expanse)</p>
+                                <p className="text-gray-300 mt-1 text-sm">2015–2022 (Завершен)</p>
+                                
+                                <div className="space-y-2 mt-3 text-sm">
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-24 inline-block">Платформа:</span> Prime Video</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-24 inline-block">Сезонов:</span> 6 (62 эпизода)</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-24 inline-block">Жанр:</span> Научная фантастика, Драма, Триллер</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-24 inline-block">Рейтинг:</span> 8.5/10 (IMDb)</p>
+                                </div>
+                                
+                                <p className="text-gray-300 mt-4 text-sm border-t border-slate-700 pt-3">
+                                    В 24 веке команда космического корабля "Росинант" оказывается втянутой в заговор, угрожающий всей Солнечной системе.
+                                </p>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Youtube size={16} />
+                                        Трейлер
+                                    </button>
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Tv2 size={16} />
+                                        Гид по эпизодам
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Music Card */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Music Card</h3>
+                                <p className="text-xl font-bold text-white mt-1">Stairway to Heaven</p>
+                                <p className="text-gray-300 mt-1 text-sm">Led Zeppelin</p>
+                                
+                                <div className="space-y-2 mt-3 text-sm">
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Альбом:</span> Led Zeppelin IV (1971)</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Длительность:</span> 8:02</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Жанр:</span> Прогрессивный рок, Фолк-рок</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Страна:</span> Великобритания</p>
+                                </div>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Music size={16} />
+                                        Слушать
+                                    </button>
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Guitar size={16} />
+                                        Похожий рок
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Article Card */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Article Card</h3>
+                                <p className="text-xl font-bold text-white mt-1">Будущее ИИ в 2025 году: Новые горизонты</p>
+                                <p className="text-gray-300 mt-1 text-sm">Источник: TechHorizon Weekly <span className="text-gray-400">| 1 ноября 2025</span></p>
+                                
+                                <p className="text-gray-300 mt-4 text-sm border-t border-slate-700 pt-3">
+                                    Эксперты прогнозируют взрывной рост мультимодальных моделей и их интеграцию в повседневные инструменты. Ожидается, что автономные агенты станут более способными, выполняя сложные задачи с минимальным вмешательством человека.
+                                </p>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Save size={16} />
+                                        В заметки
+                                    </button>
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <MessageSquareQuote size={16} />
+                                        Суммаризировать
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Shopping List Card */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Shopping List Card</h3>
+                                <div className="flex justify-between items-baseline">
+                                     <p className="text-xl font-bold text-white mt-1">Покупки на неделю</p>
+                                     <span className="text-lg font-semibold text-gray-200">~ 28 €</span>
+                                </div>
+                               
+                                <div className="space-y-3 mt-4 text-sm max-h-60 overflow-y-auto pr-2">
+                                    <div>
+                                        <h4 className="font-semibold text-indigo-300 mb-1.5">Obst & Gemüse</h4>
+                                        <ul className="list-disc list-inside text-gray-300 space-y-1">
+                                            <li>2 кг Kartoffeln</li>
+                                            <li>1 Bund Petersilie</li>
+                                            <li>2 Packungen Salat</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-indigo-300 mb-1.5">Molkerei (verpackt)</h4>
+                                        <ul className="list-disc list-inside text-gray-300 space-y-1">
+                                            <li>1 Flasche Milch (1 L)</li>
+                                            <li>1 Packung Eier (6 Stück)</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-indigo-300 mb-1.5">Getränke</h4>
+                                        <ul className="list-disc list-inside text-gray-300 space-y-1">
+                                            <li>6 Flaschen Wasser (1.5 L)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Save size={16} />
+                                        В заметки
+                                    </button>
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <PlusCircle size={16} />
+                                        Добавить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Weather Card */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Weather Card</h3>
+                                <p className="text-xl font-bold text-white mt-1">Бад Мергентхайм</p>
+                                
+                                <div className="flex items-center gap-4 my-3">
+                                    <CloudSun className="w-20 h-20 text-yellow-300" />
+                                    <div>
+                                        <p className="text-5xl font-bold text-white">12°C</p>
+                                        <p className="text-gray-300">Ощущается как 10°C</p>
+                                    </div>
+                                </div>
+                                <p className="text-lg text-gray-200 font-medium">Переменная облачность</p>
+                                <p className="text-sm text-gray-300 mt-2">Рекомендация: Возьмите легкую куртку.</p>
+                                
+                                <div className="grid grid-cols-2 gap-3 mt-4 text-sm border-t border-slate-700 pt-3">
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Прогноз:</span> 15° / 7°</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Влажность:</span> 65%</p>
+                                    <p className="text-gray-300"><span className="font-semibold text-gray-400 w-20 inline-block">Ветер:</span> 10 км/ч (СЗ)</p>
+                                </div>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <CalendarDays size={16} />
+                                        7-дневный
+                                    </button>
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <Clock size={16} />
+                                        Почасовой
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                {/* 3. Card Grid */}
+                <section>
+                    <h2 className="text-3xl font-bold text-white mb-6 pb-3 border-b border-slate-700">3. Card Grid (2 Columns)</h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Re-using Weather Card for demo */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Weather Card</h3>
+                                <p className="text-xl font-bold text-white mt-1">Бад Мергентхайм</p>
+                                
+                                <div className="flex items-center gap-4 my-3">
+                                    <CloudSun className="w-20 h-20 text-yellow-300" />
+                                    <div>
+                                        <p className="text-5xl font-bold text-white">12°C</p>
+                                        <p className="text-gray-300">Ощущается как 10°C</p>
+                                    </div>
+                                </div>
+                                <p className="text-lg text-gray-200 font-medium">Переменная облачность</p>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <CalendarDays size={16} />
+                                        7-дневный
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Re-using Contact Card for demo */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-slate-700/50 flex flex-col">
+                            <div className="p-6">
+                                <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Contact Card</h3>
+                                <p className="text-xl font-bold text-white mt-1">Dr. Elena Reed</p>
+                                <p className="text-gray-300 mt-1 text-sm">Ведущий AI-исследователь @ FutureTech</p>
+                                
+                                <div className="space-y-2 mt-4 text-sm">
+                                    <div className="flex items-center gap-2 text-gray-300">
+                                        <Phone className="w-4 h-4 text-indigo-400" />
+                                        <span>+49 123 4567890</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-300">
+                                        <Mail className="w-4 h-4 text-indigo-400" />
+                                        <span>e.reed@futuretech.de</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-auto p-6 pt-0">
+                                <div className="flex gap-3">
+                                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 transition-colors">
+                                        <PhoneCall size={16} />
+                                        Позвонить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 4. Table */}
+                <section>
+                    <h2 className="text-3xl font-bold text-white mb-6 pb-3 border-b border-slate-700">4. Table</h2>
+                    
+                    <div className="bg-slate-800/70 backdrop-blur-md rounded-lg border border-slate-700/50 shadow-xl overflow-hidden">
+                        <div className="p-4 bg-slate-800/80 border-b border-slate-700/50">
+                            <h3 className="text-lg font-semibold text-white">Сравнение Cloud-хостинга (План 'Pro')</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-850/80">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-4 font-semibold text-sm text-gray-300 uppercase tracking-wider">Провайдер</th>
+                                        <th scope="col" className="px-6 py-4 font-semibold text-sm text-gray-300 uppercase tracking-wider">vCPUs</th>
+                                        <th scope="col" className="px-6 py-4 font-semibold text-sm text-gray-300 uppercase tracking-wider">Память</th>
+                                        <th scope="col" className="px-6 py-4 font-semibold text-sm text-gray-300 uppercase tracking-wider">SSD</th>
+                                        <th scope="col" className="px-6 py-4 font-semibold text-sm text-gray-300 uppercase tracking-wider">Цена/мес.</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700/50">
+                                    <tr>
+                                        <td className="px-6 py-4 whitespace-nowrap text-white font-medium">DigitalOcean</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">4</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">8 GB</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">160 GB</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">$80</td>
+                                    </tr>
+                                    {/* Highlighted Row Example (based on highlight_column) */}
+                                    <tr className="bg-slate-850/80">
+                                        <td className="px-6 py-4 whitespace-nowrap text-white font-medium">Hetzner</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-indigo-300 font-medium">6</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-indigo-300 font-medium">16 GB</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-indigo-300 font-medium">240 GB</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-indigo-300 font-medium">€45</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="px-6 py-4 whitespace-nowrap text-white font-medium">Vultr</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">4</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">8 GB</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">160 GB</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">$80</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+                
+                {/* 5. Text Answer */}
+                <section>
+                    <h2 className="text-3xl font-bold text-white mb-6 pb-3 border-b border-slate-700">5. Text Answer</h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Plain Text */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl p-6 border border-slate-700/50">
+                            <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider mb-2">type: "plain"</h3>
+                            <p className="text-gray-300 leading-relaxed">
+                                Это простой текстовый ответ. Он идеально подходит для коротких, прямых сообщений, не требующих сложного форматирования. Используйте его для подтверждений или простых пояснений.
+                            </p>
+                        </div>
+                        
+                        {/* Markdown */}
+                        <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl p-6 border border-slate-700/50">
+                            <h3 className="text-sm font-medium text-indigo-400 uppercase tracking-wider mb-2">type: "markdown"</h3>
+                            {/* For React, you'd use a library like 'react-markdown' to render this, but for this demo we simulate it with Tailwind prose */}
+                            <div className="prose prose-invert text-gray-300 max-w-none">
+                                <p>Это ответ в формате <strong className="text-white">Markdown</strong>. Он обеспечивает лучшую читаемость.</p>
+                                <p>Вы можете использовать:</p>
+                                <ul>
+                                    <li>Списки для перечислений.</li>
+                                    <li><code className="text-sm bg-slate-700 rounded px-1.5 py-0.5 font-mono">inline code</code> для примеров.</li>
+                                    <li><strong>Жирный</strong> или <em>курсивный</em> текст для выделения.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 6. Chart */}
+                <section>
+                    <h2 className="text-3xl font-bold text-white mb-6 pb-3 border-b border-slate-700">6. Chart</h2>
+                    
+                    <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl p-6 border border-slate-700/50">
+                        {/* Title and Description from model */}
+                        <div>
+                            <h3 className="text-xl font-bold text-white">Ежемесячные активные пользователи (MAU)</h3>
+                            <p className="text-gray-300 mt-1 text-sm">График показывает рост MAU за последние 6 месяцев, с пиком в октябре.</p>
+                        </div>
+                        
+                        {/* Canvas for Chart.js */}
+                        <div className="mt-4" style={{ height: '300px' }}>
+                            <Bar options={chartOptions} data={chartData} />
+                        </div>
+                    </div>
+                </section>
+
+                {/* 7. Quick Action Buttons */}
+                <section>
+                    <h2 className="text-3xl font-bold text-white mb-6 pb-3 border-b border-slate-700">7. Quick Action Buttons</h2>
+
+                    <div className="bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl p-6 border border-slate-700/50">
+                        <p className="text-center text-gray-400 mb-4 text-sm">Постоянная панель действий для следующих шагов</p>
+                        <div className="flex flex-wrap gap-4 justify-center">
+                            {/* Primary */}
+                            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-y-0.5">
+                                <Sparkles size={18} />
+                                Что дальше?
+                            </button>
+                            
+                            {/* Secondary */}
+                            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-Y-0.5">
+                                <MessageSquareQuote size={18} />
+                                Суммаризируй это
+                            </button>
+                            
+                            {/* Secondary */}
+                            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-gray-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-zinc-800 shadow-lg transition-transform transform hover:-translate-Y-0.5">
+                                <MoreHorizontal size={18} />
+                                Больше опций
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
             </div>
-          </div>
-
-          {/* Document Card 3 - Code */}
-          <div className="backdrop-blur-lg bg-white/10 rounded-3xl border border-white/20 shadow-2xl overflow-hidden hover:shadow-emerald-500/30 transition-all duration-300">
-            <div className="p-6">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="p-3 bg-gradient-to-br from-amber-600 to-orange-700 rounded-xl">
-                  <FileText className="text-white" size={28} />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-xl font-bold text-white">Authentication Module</h3>
-                    <span className="px-2 py-1 bg-amber-600/30 text-amber-300 text-xs rounded-full border border-amber-500/50">PY</span>
-                    <span className="px-2 py-1 bg-amber-600/30 text-amber-300 text-xs rounded-full border border-amber-500/50 flex items-center gap-1">
-                      <Sparkles size={12} /> 92% match
-                    </span>
-                  </div>
-                  <p className="text-white/60 text-sm">backend/auth/oauth_handler.py • 845 lines • Updated yesterday</p>
-                </div>
-              </div>
-
-              <div className="backdrop-blur-md bg-slate-900/50 rounded-2xl p-4 mb-4 border border-white/10 font-mono text-sm">
-                <div className="text-emerald-400 mb-1"># OAuth2 Token Validation</div>
-                <div className="text-white/90">
-                  <span className="text-purple-400">def</span> <span className="text-blue-400">validate_token</span>(<span className="text-amber-400">token</span>):
-                </div>
-                <div className="text-white/90 pl-4">
-                  <span className="text-slate-400">"""Validates JWT token and returns user data"""</span>
-                </div>
-                <div className="text-white/90 pl-4">
-                  <span className="text-purple-400">try</span>:
-                </div>
-                <div className="text-white/90 pl-8 bg-amber-500/20 -mx-4 px-4">
-                  decoded = jwt.decode(token, SECRET_KEY)
-                </div>
-                <div className="text-white/90 pl-8">
-                  <span className="text-purple-400">return</span> User.get(decoded[<span className="text-green-400">'user_id'</span>])
-                </div>
-                <div className="flex items-center gap-2 mt-3 text-white/50 text-xs font-sans">
-                  <span>Lines 145-152</span>
-                  <span>•</span>
-                  <span>Function: validate_token</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="backdrop-blur-md bg-slate-600/20 rounded-xl p-4 border border-slate-500/30">
-                  <div className="aspect-[4/5] bg-gradient-to-br from-slate-900 to-slate-800 rounded-lg p-3 overflow-hidden font-mono text-[7px] text-white/60">
-                    <div className="text-emerald-400">import jwt</div>
-                    <div className="text-emerald-400">from flask import request</div>
-                    <div className="mt-2 text-purple-400">class AuthHandler:</div>
-                    <div className="pl-2 text-slate-400">"""OAuth2 Handler"""</div>
-                    <div className="pl-2 mt-1">def __init__(self):</div>
-                    <div className="pl-4">self.secret = KEY</div>
-                    <div className="mt-2 bg-amber-500/20 -mx-3 px-3 py-1">def validate(token):</div>
-                    <div className="pl-4">return decode()</div>
-                    <div className="mt-2">def refresh(token):</div>
-                    <div className="pl-4">return new_token</div>
-                  </div>
-                  <p className="text-white/70 text-xs text-center mt-2">Code Preview</p>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <button className="py-3 px-4 bg-gradient-to-r from-amber-600 to-orange-700 rounded-xl text-white font-semibold hover:from-amber-500 hover:to-orange-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-amber-500/50 active:scale-95 flex items-center justify-center gap-2">
-                    <Eye size={18} /> View Code
-                  </button>
-                  <button className="py-3 px-4 bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl text-white font-semibold hover:from-slate-500 hover:to-slate-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-slate-500/50 active:scale-95 flex items-center justify-center gap-2">
-                    <Download size={18} /> Download
-                  </button>
-                  <button className="py-3 px-4 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-white font-semibold hover:bg-white/20 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
-                    <Copy size={18} /> Copy Code
-                  </button>
-                  <button className="py-3 px-4 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-white font-semibold hover:bg-white/20 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
-                    <ChevronRight size={18} /> Go to Repo
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#python</span>
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#authentication</span>
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#backend</span>
-                <span className="px-3 py-1 backdrop-blur-md bg-slate-600/20 text-slate-300 text-xs rounded-full border border-slate-500/30">#jwt</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Info Panel */}
-          <div className="backdrop-blur-lg bg-white/10 rounded-3xl p-6 border border-white/20">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <Sparkles className="text-amber-400" size={24} />
-              RAG Search Features
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="backdrop-blur-md bg-emerald-700/20 rounded-xl p-4 border border-emerald-600/30">
-                <h4 className="font-semibold text-white mb-2">Semantic Search</h4>
-                <p className="text-white/70 text-sm">AI-powered relevance matching with confidence scores</p>
-              </div>
-              <div className="backdrop-blur-md bg-slate-600/20 rounded-xl p-4 border border-slate-500/30">
-                <h4 className="font-semibold text-white mb-2">Rich Previews</h4>
-                <p className="text-white/70 text-sm">Visual document previews with highlighted matches</p>
-              </div>
-              <div className="backdrop-blur-md bg-amber-600/20 rounded-xl p-4 border border-amber-600/30">
-                <h4 className="font-semibold text-white mb-2">Quick Actions</h4>
-                <p className="text-white/70 text-sm">Download, share, copy, and open documents instantly</p>
-              </div>
-            </div>
-          </div>
         </div>
-      )}
-    </div>
-  );
-}
+    );
+};
+
+export default App;

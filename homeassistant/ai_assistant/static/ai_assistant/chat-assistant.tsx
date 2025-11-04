@@ -1,13 +1,88 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, MessageCircle, Plus, Search, Menu, X, Copy, Quote, Wifi, ArrowLeft, User, Bot, MoreVertical, Trash2 } from 'lucide-react';
 
+interface Content {
+  content_format: 'plain' | 'markdown' | 'html' | 'ssml' | 'json' | 'csv' | 'xml' | 'yaml' | 'prompt' | 'python' | 'bash' | 'sql' | 'regex' | 'dockerfile' | 'makefile' | 'ui_answer';
+  text?: string;
+  ui_answer?: UIAnswer;
+}
+
+interface UIAnswer {
+  intro_text?: TextAnswer;
+  items: AdvancedAnswerItem[];
+  quick_action_buttons?: QuickActionButtons;
+}
+
+interface TextAnswer {
+  type: 'plain' | 'markdown' | 'html' | 'voice';
+  text: string;
+}
+
+interface AdvancedAnswerItem {
+  order: number;
+  type: 'text_answer' | 'card_grid' | 'table' | 'chart';
+  content: any; // Will contain CardGrid, Table, Chart, or TextAnswer
+  layout_hint?: 'full_width' | 'half_width' | 'inline' | 'emphasis';
+  spacing?: 'tight' | 'normal' | 'loose';
+}
+
+interface QuickActionButtons {
+  buttons: AssistantButton[];
+}
+
+interface AssistantButton {
+  text: string;
+  style?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
+  icon?: string;
+  type: 'assistant_button';
+  assistant_request: string;
+}
+
+interface FrontendButton {
+  text: string;
+  style?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
+  icon?: string;
+  type: 'frontend_button';
+  command: 'navigate_to' | 'open_map' | 'call' | 'email' | 'message' | 'show_details' | 'export_to_notes' | 'export_to_calendar' | 'open_on_youtube_video' | 'open_on_youtube_music' | 'check_amazon';
+}
+
+interface CardGrid {
+  grid_dimensions: '1_column' | '2_columns';
+  cards: Card[];
+}
+
+interface Card {
+  type: 'card';
+  title?: string;
+  subtitle?: string;
+  text?: string;
+  buttons?: (FrontendButton | AssistantButton)[];
+}
+
+interface Table {
+  title?: string;
+  headers: string[];
+  rows: string[][];
+  sortable?: boolean;
+  highlight_column?: number;
+}
+
+interface Chart {
+  chart_type: 'bar' | 'line' | 'pie' | 'doughnut' | 'area' | 'scatter';
+  chart_config: string;
+  title?: string;
+  description?: string;
+  height?: number;
+}
+
 interface Message {
   message_id: string;
-  role: 'user' | 'assistant';
-  text: string;
-  text_format: 'html' | 'text';
+  role: 'user' | 'assistant' | 'system';
+  content: Content;
   created_at: string;
-  metadata?: any;
+  conversation_id?: string;
+  previous_message_id?: string;
+  model?: string;
 }
 
 interface Conversation {
@@ -16,23 +91,7 @@ interface Conversation {
   created_at: string;
 }
 
-interface UIButton {
-  label: string;
-  command?: string;
-  assistant_request?: string;
-}
-
-interface Card {
-  title: string;
-  subtitle?: string;
-  text: string;
-}
-
-interface NavigationCard {
-  title: string;
-  description?: string;
-  buttons: UIButton[];
-}
+// Legacy interfaces removed - now using new Content structure
 
 // API Class for handling backend communication
 class ChatAPI {
@@ -82,10 +141,10 @@ const ChatAssistant: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [inputValue, setInputValue] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -155,8 +214,10 @@ const ChatAssistant: React.FC = () => {
     const userMessage: Message = {
       message_id: `temp-user-${Date.now()}`,
       role: 'user',
-      text: inputValue,
-      text_format: 'html',
+      content: {
+        content_format: 'plain',
+        text: inputValue
+      },
       created_at: new Date().toISOString()
     };
 
@@ -166,19 +227,19 @@ const ChatAssistant: React.FC = () => {
 
     try {
       const result = await api.current.sendMessage({
-        role: 'user',
-        text: inputValue,
-        text_format: 'html',
+        response_format: 'ui_answer',
+        input: inputValue,
         conversation_id: currentConversation
       });
 
       const assistantMessage: Message = {
         message_id: result.message_id || `temp-assistant-${Date.now()}`,
         role: 'assistant',
-        text: result.text,
-        text_format: result.text_format,
-        created_at: result.created_at || new Date().toISOString(),
-        metadata: result.metadata
+        content: result.content || {
+          content_format: 'ui_answer',
+          ui_answer: result.ui_answer
+        },
+        created_at: result.created_at || new Date().toISOString()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -189,27 +250,26 @@ const ChatAssistant: React.FC = () => {
     }
   };
 
-  const executeCommand = async (command: string, assistantRequest?: string) => {
+  const executeCommand = async (assistantRequest: string) => {
     if (!currentConversation) return;
 
-    const messageText = assistantRequest || command;
     setIsLoading(true);
 
     try {
       const result = await api.current.sendMessage({
-        role: 'user',
-        text: messageText,
-        text_format: 'html',
+        response_format: 'ui_answer',
+        input: assistantRequest,
         conversation_id: currentConversation
       });
 
       const assistantMessage: Message = {
         message_id: result.message_id || `temp-assistant-${Date.now()}`,
         role: 'assistant',
-        text: result.text,
-        text_format: result.text_format,
-        created_at: result.created_at || new Date().toISOString(),
-        metadata: result.metadata
+        content: result.content || {
+          content_format: 'ui_answer',
+          ui_answer: result.ui_answer
+        },
+        created_at: result.created_at || new Date().toISOString()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -258,6 +318,222 @@ const ChatAssistant: React.FC = () => {
     });
   };
 
+  const getTextFromContent = (content: Content): string => {
+    if (content.text) return content.text;
+    if (content.ui_answer?.intro_text?.text) return content.ui_answer.intro_text.text;
+    return 'Сообщение';
+  };
+
+  const renderContent = (content: Content) => {
+    if (content.text) {
+      // Simple text content
+      return (
+        <div 
+          className="prose prose-invert max-w-none"
+          dangerouslySetInnerHTML={{ __html: content.text }}
+        />
+      );
+    }
+
+    if (content.ui_answer) {
+      return renderUIAnswer(content.ui_answer);
+    }
+
+    return <div className="text-white/70">Неподдерживаемый формат контента</div>;
+  };
+
+  const getSpacingClass = (spacing?: 'tight' | 'normal' | 'loose') => {
+    switch (spacing) {
+      case 'tight': return 'space-y-2';
+      case 'loose': return 'space-y-8';
+      default: return 'space-y-4';
+    }
+  };
+
+  const getButtonStyle = (style?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger') => {
+    switch (style) {
+      case 'primary': return 'bg-indigo-600 hover:bg-indigo-500 text-white';
+      case 'success': return 'bg-green-600 hover:bg-green-500 text-white';
+      case 'warning': return 'bg-yellow-500 hover:bg-yellow-400 text-slate-900';
+      case 'danger': return 'bg-red-600 hover:bg-red-500 text-white';
+      default: return 'bg-slate-700 hover:bg-slate-600 text-white';
+    }
+  };
+
+  const renderAdvancedAnswerItem = (item: AdvancedAnswerItem) => {
+    switch (item.type) {
+      case 'text_answer':
+        return (
+          <div 
+            className="prose prose-invert max-w-none"
+            dangerouslySetInnerHTML={{ __html: (item.content as TextAnswer).text }}
+          />
+        );
+      
+      case 'card_grid':
+        return renderCardGrid(item.content as CardGrid);
+      
+      case 'table':
+        return renderTable(item.content as Table);
+      
+      case 'chart':
+        return renderChart(item.content as Chart);
+      
+      default:
+        return <div className="text-white/70">Неподдерживаемый тип элемента: {item.type}</div>;
+    }
+  };
+
+  const renderCardGrid = (cardGrid: CardGrid) => {
+    const gridClass = cardGrid.grid_dimensions === '2_columns' 
+      ? 'grid grid-cols-1 md:grid-cols-2 gap-4' 
+      : 'grid grid-cols-1 gap-4';
+
+    return (
+      <div className={gridClass}>
+        {cardGrid.cards.map((card, index) => (
+          <div
+            key={index}
+            className="backdrop-blur-lg bg-white/10 rounded-2xl p-4 border border-white/20 shadow-xl hover:shadow-slate-500/30 transition-all duration-300 hover:scale-105"
+          >
+            {card.title && <h3 className="font-semibold text-white mb-2">{card.title}</h3>}
+            {card.subtitle && <p className="text-sm text-white/70 mb-2">{card.subtitle}</p>}
+            {card.text && (
+              <div 
+                className="text-white/80 text-sm mb-3"
+                dangerouslySetInnerHTML={{ __html: card.text }}
+              />
+            )}
+            {card.buttons && card.buttons.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {card.buttons.map((button, buttonIndex) => renderButton(button, buttonIndex))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderButton = (button: FrontendButton | AssistantButton, index: number) => {
+    const handleClick = () => {
+      if (button.type === 'assistant_button') {
+        executeCommand(button.assistant_request);
+      } else {
+        // Handle frontend commands
+        handleFrontendCommand(button.command);
+      }
+    };
+
+    return (
+      <button
+        key={index}
+        onClick={handleClick}
+        className={`px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95 ${getButtonStyle(button.style)}`}
+      >
+        {button.icon && <span className="mr-2">{button.icon}</span>}
+        {button.text}
+      </button>
+    );
+  };
+
+  const handleFrontendCommand = (command: string) => {
+    // Placeholder for frontend command handling
+    console.log('Frontend command:', command);
+    // TODO: Implement specific frontend commands like navigate_to, open_map, etc.
+  };
+
+  const renderTable = (table: Table) => {
+    return (
+      <div className="backdrop-blur-lg bg-white/10 rounded-lg border border-white/20 shadow-xl overflow-hidden">
+        {table.title && (
+          <div className="p-4 bg-slate-800/80 border-b border-slate-700/50">
+            <h3 className="font-semibold text-white">{table.title}</h3>
+          </div>
+        )}
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-800/50">
+              <tr>
+                {table.headers.map((header, index) => (
+                  <th key={index} className="px-4 py-3 text-left text-white font-semibold">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {table.rows.map((row, rowIndex) => (
+                <tr key={rowIndex} className="border-t border-white/10 hover:bg-white/5">
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex} className="px-4 py-3 text-white/80">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderChart = (chart: Chart) => {
+    return (
+      <div className="backdrop-blur-lg bg-white/10 rounded-xl shadow-2xl p-6 border border-white/20">
+        {chart.title && (
+          <h3 className="text-xl font-bold text-white mb-2">{chart.title}</h3>
+        )}
+        {chart.description && (
+          <p className="text-white/70 mb-4">{chart.description}</p>
+        )}
+        <div style={{ height: `${chart.height || 300}px` }}>
+          <div className="text-white/50 flex items-center justify-center h-full">
+            График (Chart.js) - {chart.chart_type}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderUIAnswer = (uiAnswer: UIAnswer) => {
+    return (
+      <div className="space-y-6">
+        {/* Intro text */}
+        {uiAnswer.intro_text && (
+          <div 
+            className="prose prose-invert max-w-none"
+            dangerouslySetInnerHTML={{ __html: uiAnswer.intro_text.text }}
+          />
+        )}
+
+        {/* Items */}
+        {uiAnswer.items.sort((a, b) => a.order - b.order).map((item, index) => (
+          <div key={index} className={`${getSpacingClass(item.spacing)}`}>
+            {renderAdvancedAnswerItem(item)}
+          </div>
+        ))}
+
+        {/* Quick action buttons */}
+        {uiAnswer.quick_action_buttons && (
+          <div className="flex flex-wrap gap-3 pt-4 border-t border-white/20">
+            {uiAnswer.quick_action_buttons.buttons.map((button, index) => (
+              <button
+                key={index}
+                onClick={() => executeCommand(button.assistant_request)}
+                className={`px-4 py-2 rounded-full font-semibold transition-all duration-300 hover:scale-105 active:scale-95 ${getButtonStyle(button.style)}`}
+              >
+                {button.icon && <span className="mr-2">{button.icon}</span>}
+                {button.text}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const filteredConversations = conversations.filter(conv =>
     conv.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -267,7 +543,7 @@ const ChatAssistant: React.FC = () => {
     
     return (
       <div key={message.message_id} className={`mb-6 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-        <div className={`max-w-[70%] ${isUser ? 'order-2' : 'order-1'}`}>
+        <div className={`max-w-[85%] ${isUser ? 'order-2' : 'order-1'}`}>
           <div className={`backdrop-blur-lg rounded-3xl p-6 border shadow-2xl relative group ${
             isUser 
               ? 'bg-gradient-to-r from-slate-600 to-slate-700 border-slate-500/30 text-white' 
@@ -287,92 +563,22 @@ const ChatAssistant: React.FC = () => {
               </span>
             </div>
             
-            <div 
-              className="prose prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: message.text }}
-            />
+            {/* Render content based on format */}
+            {renderContent(message.content)}
             
             <button
-              onClick={() => copyToClipboard(message.text)}
+              onClick={() => copyToClipboard(getTextFromContent(message.content))}
               className="absolute top-4 right-4 p-2 rounded-full bg-black/20 hover:bg-black/40 transition-all opacity-0 group-hover:opacity-100"
             >
               <Copy className="w-4 h-4" />
             </button>
           </div>
-          
-          {/* Render metadata cards */}
-          {message.metadata && renderMetadata(message.metadata)}
         </div>
       </div>
     );
   };
 
-  const renderMetadata = (metadata: any) => {
-    if (!metadata) return null;
-
-    return (
-      <div className="mt-4 space-y-4">
-        {/* UI Buttons */}
-        {metadata.ui_elements?.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {metadata.ui_elements.map((button: UIButton, index: number) => (
-              <button
-                key={index}
-                onClick={() => executeCommand(button.command || button.label, button.assistant_request)}
-                className="px-4 py-2 rounded-full backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all duration-300 hover:scale-105 active:scale-95"
-              >
-                {button.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Cards */}
-        {metadata.cards?.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {metadata.cards.map((card: Card, index: number) => (
-              <div
-                key={index}
-                className="backdrop-blur-lg bg-white/10 rounded-2xl p-4 border border-white/20 shadow-xl hover:shadow-slate-500/30 transition-all duration-300 hover:scale-105"
-              >
-                <h3 className="font-semibold text-white mb-2">{card.title}</h3>
-                {card.subtitle && (
-                  <p className="text-sm text-white/70 mb-2">{card.subtitle}</p>
-                )}
-                <div 
-                  className="text-white/80 text-sm"
-                  dangerouslySetInnerHTML={{ __html: card.text }}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Navigation Card */}
-        {metadata.navigation_card && (
-          <div className="backdrop-blur-lg bg-amber-600/20 rounded-2xl p-4 border border-amber-600/30">
-            <h3 className="font-semibold text-amber-200 mb-2">
-              {metadata.navigation_card.title}
-            </h3>
-            {metadata.navigation_card.description && (
-              <p className="text-white/80 mb-3">{metadata.navigation_card.description}</p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {metadata.navigation_card.buttons?.map((button: UIButton, index: number) => (
-                <button
-                  key={index}
-                  onClick={() => executeCommand(button.command || button.label, button.assistant_request)}
-                  className="px-3 py-2 rounded-full backdrop-blur-md bg-amber-600/20 border border-amber-600/30 text-amber-200 hover:bg-amber-600/40 transition-all duration-300 hover:scale-105"
-                >
-                  {button.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+  // renderMetadata removed - now using renderUIAnswer
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-neutral-950 flex flex-col">

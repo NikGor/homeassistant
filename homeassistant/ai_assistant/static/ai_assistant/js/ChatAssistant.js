@@ -107,8 +107,10 @@ export const ChatAssistant = () => {
         const userMessage = {
             message_id: `temp-user-${Date.now()}`,
             role: 'user',
-            text: messageText,
-            text_format: 'html',
+            content: {
+                content_format: 'plain',
+                text: messageText
+            },
             created_at: new Date().toISOString()
         };
 
@@ -139,9 +141,8 @@ export const ChatAssistant = () => {
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
 
             const result = await api.current.sendMessage({
-                role: 'user',
-                text: messageText,
-                text_format: 'html',
+                response_format: 'ui_answer',
+                input: messageText,
                 conversation_id: conversationId,
                 previous_message_id: lastAssistantMessage?.message_id || null,
                 model: selectedModel
@@ -150,10 +151,11 @@ export const ChatAssistant = () => {
             const assistantMessage = {
                 message_id: result.message_id || `temp-assistant-${Date.now()}`,
                 role: 'assistant',
-                text: result.text,
-                text_format: result.text_format,
-                created_at: result.created_at || new Date().toISOString(),
-                metadata: result.metadata
+                content: result.content || {
+                    content_format: 'ui_answer',
+                    ui_answer: result.ui_answer
+                },
+                created_at: result.created_at || new Date().toISOString()
             };
 
             setMessages(prev => [...prev, assistantMessage]);
@@ -194,6 +196,12 @@ export const ChatAssistant = () => {
             }
         }
         
+        // Для assistant_button команд отправляем assistantRequest
+        if (command === 'assistant_button' && assistantRequest) {
+            await sendMessage(assistantRequest);
+            return;
+        }
+        
         // Для остальных команд отправляем как сообщение
         await sendMessage(assistantRequest || command);
     };
@@ -210,9 +218,12 @@ export const ChatAssistant = () => {
     }`;
 
     const chatAreaClasses = `chat-area p-6 ${!isSidebarOpen ? 'chat-area-full' : ''}`;
-    const inputAreaClasses = `input-fixed p-4 border-t border-white/20 backdrop-blur-md bg-white/5 flex items-center gap-3 ${
+    const inputAreaClasses = `input-fixed p-4 border-t border-white/20 backdrop-blur-md bg-white/5 ${
         !isSidebarOpen ? 'input-full' : ''
     }`;
+    
+    // В свернутом режиме центрируем контент
+    const chatContentClasses = !isSidebarOpen ? 'max-w-4xl mx-auto' : '';
 
     return React.createElement('div', {
         className: 'layout-container'
@@ -256,7 +267,9 @@ export const ChatAssistant = () => {
             isLoading,
             messagesEndRef,
             executeCommand,
-            onCreateNewChat: createNewChat
+            onCreateNewChat: createNewChat,
+            isSidebarOpen: isSidebarOpen,
+            contentClassName: chatContentClasses
         }),
 
         // Input Area
@@ -484,22 +497,33 @@ const AppSidebar = ({ className, conversations, currentConversation, searchQuery
     ]);
 };
 
-const ChatArea = ({ className, currentConversation, messages, isLoading, messagesEndRef, executeCommand, onCreateNewChat }) => {
+const ChatArea = ({ className, currentConversation, messages, isLoading, messagesEndRef, executeCommand, onCreateNewChat, isSidebarOpen, contentClassName }) => {
     return React.createElement('div', { className }, 
-        currentConversation ? [
-            messages.length === 0 ? React.createElement(EmptyState, {
-                key: 'empty'
-            }) : React.createElement('div', {
-                key: 'messages'
-            }, [
-                ...messages.map((message, index) => React.cloneElement(MessageComponent(message, executeCommand), { key: `message-${message.message_id || index}` })),
-                isLoading ? React.createElement(TypingIndicator, { key: 'typing' }) : null,
-                React.createElement('div', { key: 'end', ref: messagesEndRef })
-            ].filter(Boolean))
-        ].filter(Boolean) : React.createElement(WelcomeScreen, {
-            key: 'welcome',
-            onCreateNewChat
-        })
+        React.createElement('div', { className: contentClassName },
+            currentConversation ? [
+                messages.length === 0 ? React.createElement(EmptyState, {
+                    key: 'empty'
+                }) : React.createElement('div', {
+                    key: 'messages'
+                }, 
+                    // Если боковая панель свернута - показываем только последнее сообщение
+                    isSidebarOpen ? [
+                        // Полный список сообщений
+                        ...messages.map((message, index) => React.cloneElement(MessageComponent(message, executeCommand), { key: `message-${message.message_id || index}` })),
+                        isLoading ? React.createElement(TypingIndicator, { key: 'typing' }) : null,
+                        React.createElement('div', { key: 'end', ref: messagesEndRef })
+                    ].filter(Boolean) : [
+                        // Только последнее сообщение
+                        messages.length > 0 ? React.cloneElement(MessageComponent(messages[messages.length - 1], executeCommand), { key: `last-message-${messages[messages.length - 1].message_id}` }) : null,
+                        isLoading ? React.createElement(TypingIndicator, { key: 'typing' }) : null,
+                        React.createElement('div', { key: 'end', ref: messagesEndRef })
+                    ].filter(Boolean)
+                )
+            ].filter(Boolean) : React.createElement(WelcomeScreen, {
+                key: 'welcome',
+                onCreateNewChat
+            })
+        )
     );
 };
 

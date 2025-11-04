@@ -550,6 +550,5 @@ class Content(BaseModel):
         "python", "bash", "sql", "regex", 
         "dockerfile", "makefile", "ui_answer"
     ] = Field(default="plain", description="Format of the content")
-    
     text: Optional[str] = Field(default=None, description="Text content")
     ui_answer: Optional[UIAnswer] = Field(default=None, description="UI elements content")
