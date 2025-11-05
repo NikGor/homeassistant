@@ -39,53 +39,51 @@
         
         .header-fixed {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 20px;
+            right: 20px;
             z-index: 40;
-            height: 80px;
-        }
-        
-        .sidebar-fixed {
-            position: fixed;
-            top: 80px;
-            left: 0;
-            bottom: 80px;
-            width: 320px;
-            z-index: 30;
-            transition: transform 0.3s ease;
+            width: 64px;
+            height: 128px;
         }
         
         .chat-area {
-            margin-left: 320px;
-            margin-top: 80px;
-            margin-bottom: 80px;
-            height: calc(100vh - 160px);
+            padding-top: 20px;
+            padding-bottom: 100px;
+            padding-right: 84px; /* Учитываем узкую панель справа (64px + 20px отступ) */
+            height: calc(100vh - 120px);
             overflow-y: auto;
-            transition: margin-left 0.3s ease;
         }
         
         .input-fixed {
             position: fixed;
-            bottom: 0;
-            left: 320px;
-            right: 0;
+            bottom: 20px;
+            left: 20px;
+            right: 84px;
             z-index: 40;
-            height: 80px;
-            transition: left 0.3s ease;
+            height: auto;
         }
         
-        /* Sidebar hidden state */
-        .sidebar-hidden {
-            transform: translateX(-100%);
+        /* Scrollbar styles */
+        .scrollbar-thin {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
         }
         
-        .chat-area-full {
-            margin-left: 0;
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
         }
         
-        .input-full {
-            left: 0;
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
         }
         
         /* Prose styles for message content */
@@ -135,21 +133,16 @@
         
         /* Mobile responsive */
         @media (max-width: 768px) {
-            .sidebar-fixed {
-                width: 280px;
-                transform: translateX(-100%);
-            }
-            
-            .sidebar-fixed.sidebar-open {
-                transform: translateX(0);
-            }
-            
             .chat-area {
-                margin-left: 0;
+                max-width: none !important;
+                padding: 10px 10px 100px 10px;
+                padding-right: 74px; /* Учитываем узкую панель на мобильных */
             }
             
             .input-fixed {
-                left: 0;
+                bottom: 10px;
+                left: 10px;
+                right: 74px;
             }
         }
     </style>

@@ -194,18 +194,20 @@ const renderIcon = (iconName) => {
  */
 export const MessageComponent = (message, executeCommand) => {
     const isUser = message.role === 'user';
+    const hasSimpleTextOnly = message.content?.text && !message.content?.ui_answer;
     
     return React.createElement('div', {
         className: `mb-6 flex ${isUser ? 'justify-end' : 'justify-start'}`
     }, React.createElement('div', {
         className: `max-w-[85%] ${isUser ? 'order-2' : 'order-1'}`
     }, [
-        React.createElement(MessageBubble, {
+        // MessageBubble только для пользователя или простого текста
+        (isUser || hasSimpleTextOnly) ? React.createElement(MessageBubble, {
             key: 'bubble',
             message,
             isUser,
             onCopy: () => copyToClipboard(getTextFromContent(message.content))
-        }),
+        }) : null,
         
         // Рендерим новую структуру content
         message.content ? React.createElement(ContentRenderer, {
@@ -223,18 +225,18 @@ const MessageBubble = ({ message, isUser, onCopy }) => {
     const hasSimpleTextOnly = message.content?.text && !message.content?.ui_answer;
     
     return React.createElement('div', {
-        className: `backdrop-blur-lg rounded-3xl p-6 border shadow-2xl relative group transition-all duration-300 hover:scale-[1.02] ${
+        className: `backdrop-blur-lg rounded-3xl p-6 border shadow-2xl relative group hover:border-white/40 ${
             isUser 
-                ? 'bg-gradient-to-r from-slate-600 to-slate-700 border-slate-500/30 text-white' 
+                ? 'bg-gradient-to-r from-slate-600 to-slate-700 border-slate-500/30 hover:border-slate-400/50 text-white' 
                 : 'bg-white/10 border-white/20 text-white'
         }`
     }, [
-        // Заголовок сообщения
-        React.createElement(MessageHeader, {
+        // Заголовок сообщения - только для пользователя
+        isUser ? React.createElement(MessageHeader, {
             key: 'header',
             isUser,
             createdAt: message.created_at
-        }),
+        }) : null,
         
         // Только простой текстовый контент (без UIAnswer)
         hasSimpleTextOnly ? React.createElement('div', {
@@ -247,23 +249,23 @@ const MessageBubble = ({ message, isUser, onCopy }) => {
         React.createElement('button', {
             key: 'copy',
             onClick: onCopy,
-            className: 'absolute top-4 right-4 p-2 rounded-full bg-black/20 hover:bg-black/40 transition-all opacity-0 group-hover:opacity-100 hover:scale-110'
+            className: 'absolute top-4 right-4 p-2 rounded-full bg-black/20 hover:bg-black/40 opacity-0 group-hover:opacity-100'
         }, React.createElement(CopyIcon))
     ].filter(Boolean));
 };
 
 /**
- * Заголовок сообщения с иконкой и временем
+ * Заголовок сообщения с иконкой и временем (только для пользователя)
  */
 const MessageHeader = ({ isUser, createdAt }) => {
     return React.createElement('div', {
         className: 'flex items-center gap-2 mb-3'
     }, [
-        isUser ? React.createElement(UserIcon, { key: 'icon' }) : React.createElement(BotIcon, { key: 'icon' }),
+        React.createElement(UserIcon, { key: 'icon' }),
         React.createElement('span', {
             key: 'name',
             className: 'text-sm opacity-70'
-        }, isUser ? 'Вы' : 'Archie'),
+        }, 'Вы'),
         React.createElement('span', {
             key: 'time',
             className: 'text-xs opacity-50 ml-auto'
@@ -397,7 +399,7 @@ const UIAnswerRenderer = ({ uiAnswer, executeCommand }) => {
             React.createElement('button', {
                 key: index,
                 onClick: () => executeCommand('assistant_button', button.assistant_request),
-                className: `inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all duration-300 hover:scale-105 active:scale-95 ${getButtonStyle(button.style)}`
+                className: `inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold hover:border-white/40 ${getButtonStyle(button.style)}`
             }, [
                 button.icon ? renderIcon(button.icon) : null,
                 button.text
@@ -423,7 +425,7 @@ const UIButtons = ({ buttons, executeCommand }) => {
                 button.command || button.text, 
                 button.assistant_request
             ),
-            className: 'px-4 py-2 rounded-full backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg hover:shadow-white/30'
+            className: 'px-4 py-2 rounded-full backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-white/40'
         }, button.text)
     ));
 };
@@ -492,7 +494,7 @@ const CardComponent = ({ card, executeCommand }) => {
     }, React.createElement(CopyIcon)));
 
     return React.createElement('div', {
-        className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-4 border border-white/20 shadow-xl hover:shadow-slate-500/30 transition-all duration-300 hover:scale-105 group relative'
+        className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-4 border border-white/20 shadow-xl hover:border-white/40 group relative'
     }, cardElements);
 };
 
@@ -523,7 +525,7 @@ const NavigationCards = ({ cards, executeCommand }) => {
     }, cards.map((navCard, index) => 
         React.createElement('div', {
             key: index,
-            className: 'backdrop-blur-lg bg-amber-600/20 rounded-2xl p-4 border border-amber-600/30 shadow-xl hover:shadow-amber-500/30 transition-all duration-300'
+            className: 'backdrop-blur-lg bg-amber-600/20 rounded-2xl p-4 border border-amber-600/30 shadow-xl hover:border-amber-400/50'
         }, [
             React.createElement('h3', {
                 key: 'title',
@@ -542,7 +544,7 @@ const NavigationCards = ({ cards, executeCommand }) => {
                 React.createElement('button', {
                     key: btnIndex,
                     onClick: () => handleNavigationClick(button, navCard),
-                    className: 'px-3 py-2 rounded-full backdrop-blur-md bg-amber-600/20 border border-amber-600/30 text-amber-200 hover:bg-amber-600/40 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-amber-500/50'
+                    className: 'px-3 py-2 rounded-full backdrop-blur-md bg-amber-600/20 border border-amber-600/30 text-amber-200 hover:bg-amber-600/40 hover:border-amber-400/50'
                 }, button.text)
             )) : null
         ].filter(Boolean))
@@ -582,7 +584,7 @@ const ToolCardsRenderer = ({ cards, executeCommand }) => {
     }, cards.map((card, index) => 
         React.createElement('div', {
             key: index,
-            className: 'backdrop-blur-lg bg-purple-600/20 rounded-2xl p-4 border border-purple-600/30 shadow-xl hover:shadow-purple-500/30 transition-all duration-300 hover:scale-105'
+            className: 'backdrop-blur-lg bg-purple-600/20 rounded-2xl p-4 border border-purple-600/30 shadow-xl hover:border-purple-400/50'
         }, [
             React.createElement('h3', {
                 key: 'title',
@@ -604,7 +606,7 @@ const ToolCardsRenderer = ({ cards, executeCommand }) => {
                         action.command || action.text, 
                         action.assistant_request
                     ),
-                    className: 'px-3 py-2 rounded-lg backdrop-blur-md bg-purple-600/30 border border-purple-600/40 text-purple-200 hover:bg-purple-600/50 transition-all duration-300'
+                    className: 'px-3 py-2 rounded-lg backdrop-blur-md bg-purple-600/30 border border-purple-600/40 text-purple-200 hover:bg-purple-600/50 hover:border-purple-400/60'
                 }, action.text || action.label)
             )) : null
         ].filter(Boolean))
@@ -640,7 +642,7 @@ const ContactCards = ({ cards, executeCommand }) => {
     }, cards.map((card, index) => 
         React.createElement('div', {
             key: index,
-            className: 'backdrop-blur-lg bg-green-600/20 rounded-2xl p-4 border border-green-600/30 shadow-xl hover:shadow-green-500/30 transition-all duration-300'
+            className: 'backdrop-blur-lg bg-green-600/20 rounded-2xl p-4 border border-green-600/30 shadow-xl hover:border-green-400/50'
         }, [
             React.createElement('h3', {
                 key: 'title',
@@ -669,7 +671,7 @@ const ContactCards = ({ cards, executeCommand }) => {
                 React.createElement('button', {
                     key: btnIndex,
                     onClick: () => handleContactClick(button, card),
-                    className: 'px-3 py-2 rounded-lg backdrop-blur-md bg-green-600/30 border border-green-600/40 text-green-200 hover:bg-green-600/50 transition-all duration-300'
+                    className: 'px-3 py-2 rounded-lg backdrop-blur-md bg-green-600/30 border border-green-600/40 text-green-200 hover:bg-green-600/50 hover:border-green-400/60'
                 }, button.text)
             )) : null
         ].filter(Boolean))
@@ -681,7 +683,7 @@ const ContactCards = ({ cards, executeCommand }) => {
  */
 const FootballWidget = ({ widget, executeCommand }) => {
     return React.createElement('div', {
-        className: 'backdrop-blur-lg bg-blue-600/20 rounded-2xl p-4 border border-blue-600/30 shadow-xl hover:shadow-blue-500/30 transition-all duration-300'
+        className: 'backdrop-blur-lg bg-blue-600/20 rounded-2xl p-4 border border-blue-600/30 shadow-xl hover:border-blue-400/50'
     }, [
         React.createElement('h3', {
             key: 'title',
@@ -825,7 +827,7 @@ const NewCardComponent = ({ card, executeCommand }) => {
             React.createElement('button', {
                 key: btnIndex,
                 onClick: () => handleButtonClick(button),
-                className: `inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95 ${getButtonStyle(button.style)}`
+                className: `inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-semibold hover:border-white/40 ${getButtonStyle(button.style)}`
             }, [
                 button.icon ? renderIcon(button.icon) : null,
                 button.text
@@ -834,7 +836,7 @@ const NewCardComponent = ({ card, executeCommand }) => {
     }
 
     return React.createElement('div', {
-        className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-4 border border-white/20 shadow-xl hover:shadow-slate-500/30 transition-all duration-300 hover:scale-105'
+        className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-4 border border-white/20 shadow-xl hover:border-white/40'
     }, cardElements);
 };
 

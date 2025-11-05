@@ -84,3 +84,49 @@ export const MessageCircleIcon = () => React.createElement('svg', {
 }, [
     React.createElement('path', { key: 'path', d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" })
 ]);
+
+export const CpuIcon = () => React.createElement('svg', {
+    width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", 
+    stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"
+}, [
+    React.createElement('rect', { key: 'rect', width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }),
+    React.createElement('path', { key: 'path1', d: "m4 6 2-2 2 2" }),
+    React.createElement('path', { key: 'path2', d: "M6 4v4" }),
+    React.createElement('path', { key: 'path3', d: "m14 6 2-2 2 2" }),
+    React.createElement('path', { key: 'path4', d: "M16 4v4" }),
+    React.createElement('path', { key: 'path5', d: "m4 14 2-2 2 2" }),
+    React.createElement('path', { key: 'path6', d: "M6 12v4" })
+]);
+
+export const TrashIcon = () => React.createElement('svg', {
+    width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", 
+    stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"
+}, [
+    React.createElement('path', { key: 'path1', d: "M3 6h18" }),
+    React.createElement('path', { key: 'path2', d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" }),
+    React.createElement('path', { key: 'path3', d: "M8 6V4c0-1 1-2 2-2h4c0-1 1-2 2-2v2" })
+]);
+
+export const XIcon = () => React.createElement('svg', {
+    width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", 
+    stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"
+}, [
+    React.createElement('path', { key: 'path1', d: "m18 6-12 12" }),
+    React.createElement('path', { key: 'path2', d: "m6 6 12 12" })
+]);
+
+export const CheckIcon = () => React.createElement('svg', {
+    width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", 
+    stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"
+}, [
+    React.createElement('path', { key: 'path', d: "m9 12 2 2 4-4" })
+]);
+
+export const MoreVerticalIcon = () => React.createElement('svg', {
+    width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", 
+    stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"
+}, [
+    React.createElement('circle', { key: 'circle1', cx: "12", cy: "12", r: "1" }),
+    React.createElement('circle', { key: 'circle2', cx: "12", cy: "5", r: "1" }),
+    React.createElement('circle', { key: 'circle3', cx: "12", cy: "19", r: "1" })
+]);
