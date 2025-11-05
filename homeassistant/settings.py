@@ -104,6 +104,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Allow iframe embedding for same origin
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 # Logging configuration according to LOGGING_GUIDELINES.md
 LOGGING = {
     'version': 1,

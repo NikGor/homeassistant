@@ -17,7 +17,6 @@
         :root {
             --screen-width: 1024px; /* фикс целевой */
             --screen-height: 600px; /* фикс целевой */
-            --chat-height: 165px; /* было 180 */
             --tile-gap: 10px; /* было 12 */
             --tile-columns: 2;
             --tile-rows: 4;
@@ -54,7 +53,7 @@
             flex: 1;
             display: flex;
             overflow: hidden;
-            height: calc(100vh - var(--chat-height));
+            height: 100vh;
         }
 
         .button-panel {
@@ -84,14 +83,7 @@
             gap: 10px;
         }
 
-        .chat-window {
-            height: var(--chat-height);
-            background-color: #1e1e1e;
-            border-top: 1px solid #333;
-            padding: 10px 14px;
-            display: flex;
-            flex-direction: column;
-        }
+
 
         .btn-tile {
             height: 100%;
@@ -201,66 +193,10 @@
             line-height: 1.1;
         }
 
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            margin-bottom: 15px;
-            background-color: #252525;
-            border-radius: 10px;
-            padding: 10px 12px;
-            border: 1px solid #333;
-            font-size: 0.95rem;
-        }
 
-        .chat-input {
-            display: flex;
-        }
-
-        .chat-input input {
-            flex: 1;
-            background-color: #252525;
-            border: 1px solid #3498db;
-            color: #e0e0e0;
-            border-radius: 20px;
-            padding: 10px 16px;
-            font-size: 1rem;
-        }
-
-        .chat-input button {
-            margin-left: 10px;
-            background-color: #3498db;
-            border: none;
-            border-radius: 16px;
-            width: 48px;
-            height: 48px;
-        }
-
-        .message {
-            margin-bottom: 10px;
-            padding: 8px 12px;
-            border-radius: 10px;
-            max-width: 80%;
-        }
-
-        .user-message {
-            background-color: #3498db;
-            color: white;
-            align-self: flex-end;
-            margin-left: auto;
-        }
-
-        .ai-message {
-            background-color: #2c3e50;
-            color: white;
-            align-self: flex-start;
-        }
 
         @media (orientation: portrait) {
             /* fallback если повернули устройство */
-            :root {
-                --chat-height: 220px;
-            }
-
             .main-content {
                 flex-direction: column;
             }
@@ -278,13 +214,11 @@
         }
 
         /* Скрыть скроллбар но оставить прокрутку */
-        .info-panel::-webkit-scrollbar,
-        .chat-messages::-webkit-scrollbar {
+        .info-panel::-webkit-scrollbar {
             width: 6px;
         }
 
-        .info-panel::-webkit-scrollbar-thumb,
-        .chat-messages::-webkit-scrollbar-thumb {
+        .info-panel::-webkit-scrollbar-thumb {
             background: #333;
             border-radius: 3px;
         }
@@ -299,6 +233,15 @@
         .calendar-card .list-group-item { padding: 6px 0; font-size: calc(0.85rem * var(--scale)); border-color: #2a2a2a !important; }
         .calendar-card h6 { font-size: calc(0.85rem * var(--scale)); margin: 0 0 2px; }
         .calendar-card small { font-size: calc(0.7rem * var(--scale)); }
+
+        .chat-assistant-container {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
     </style>
 </head>
 
@@ -341,163 +284,26 @@
                 </button>
             </div>
 
-            <!-- Правая панель с информацией -->
+            <!-- Правая панель с чат-ассистентом -->
             <div class="info-panel">
                 <div class="info-content">
                     <div id="datetime" class="text-center"></div>
-
-                    <!-- Компактные карточки погоды в одну строку -->
-                    <div class="weather-row d-flex gap-2">
-                        <!-- Сегодня -->
-                        <div class="weather-card flex-fill">
-                            <h6><i class="bi bi-cloud-sun" style="color: #3498db;"></i> Сегодня</h6>
-                            {% if weather %}
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div>
-                                        <div style="font-size: calc(1.4rem * var(--scale)); font-weight: bold;">{{ weather.temperature|floatformat:0 }}°C</div>
-                                        <small>{{ weather.description }}</small>
-                                    </div>
-                                    <img src="https://openweathermap.org/img/wn/{{ weather.icon }}@2x.png" 
-                                         alt="{{ weather.description }}" 
-                                         style="width: 32px; height: 32px;">
-                                </div>
-                                <div class="d-flex justify-content-between text-small">
-                                    <div class="text-center">
-                                        <i class="bi bi-droplet" style="color: #3498db; font-size: 0.8rem;"></i>
-                                        <div style="font-size: 0.7rem;">{{ weather.humidity }}%</div>
-                                    </div>
-                                    <div class="text-center">
-                                        <i class="bi bi-speedometer2" style="color: #3498db; font-size: 0.8rem;"></i>
-                                        <div style="font-size: 0.7rem;">{{ weather.pressure|floatformat:0 }}</div>
-                                    </div>
-                                    <div class="text-center">
-                                        <i class="bi bi-wind" style="color: #3498db; font-size: 0.8rem;"></i>
-                                        <div style="font-size: 0.7rem;">{{ weather.wind_speed|floatformat:0 }} м/с</div>
-                                    </div>
-                                </div>
-                            {% else %}
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div style="font-size: calc(1.4rem * var(--scale)); font-weight: bold;">--°C</div>
-                                        <small>Нет данных</small>
-                                    </div>
-                                    <i class="bi bi-cloud-slash" style="color: #7f8c8d; font-size: 2rem;"></i>
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Завтра -->
-                        {% if forecast %}
-                        <div class="weather-card flex-fill">
-                            <h6><i class="bi bi-calendar-date" style="color: #f39c12;"></i> Завтра</h6>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div>
-                                    <div style="font-size: calc(1.4rem * var(--scale)); font-weight: bold;">{{ forecast.temperature|floatformat:0 }}°C</div>
-                                    <small>{{ forecast.description }}</small>
-                                </div>
-                                <img src="https://openweathermap.org/img/wn/{{ forecast.icon }}@2x.png" 
-                                     alt="{{ forecast.description }}" 
-                                     style="width: 32px; height: 32px;">
-                            </div>
-                            <div class="d-flex justify-content-between text-small">
-                                <div class="text-center">
-                                    <i class="bi bi-droplet" style="color: #3498db; font-size: 0.8rem;"></i>
-                                    <div style="font-size: 0.7rem;">{{ forecast.humidity }}%</div>
-                                </div>
-                                <div class="text-center">
-                                    <i class="bi bi-speedometer2" style="color: #3498db; font-size: 0.8rem;"></i>
-                                    <div style="font-size: 0.7rem;">{{ forecast.pressure|floatformat:0 }}</div>
-                                </div>
-                                <div class="text-center">
-                                    <i class="bi bi-wind" style="color: #3498db; font-size: 0.8rem;"></i>
-                                    <div style="font-size: 0.7rem;">{{ forecast.wind_speed|floatformat:0 }} м/с</div>
-                                </div>
-                            </div>
-                        </div>
-                        {% else %}
-                        <div class="weather-card flex-fill">
-                            <h6><i class="bi bi-calendar-date" style="color: #f39c12;"></i> Завтра</h6>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <div style="font-size: calc(1.4rem * var(--scale)); font-weight: bold;">--°C</div>
-                                    <small>Нет прогноза</small>
-                                </div>
-                                <i class="bi bi-cloud-slash" style="color: #7f8c8d; font-size: 2rem;"></i>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="calendar-card">
-                        <h5><i class="bi bi-calendar3" style="color: #2ecc71;"></i> События</h5>
-                        <ul class="list-group list-group-flush bg-transparent">
-                            <li class="list-group-item bg-transparent">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1"><i class="bi bi-people" style="color: #3498db;"></i> Встреча с командой</h6>
-                                    <small>10:00</small>
-                                </div>
-                                <small class="text-muted">Обсуждение нового проекта умного дома</small>
-                            </li>
-                            <li class="list-group-item bg-transparent">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1"><i class="bi bi-cup-hot" style="color: #e67e22;"></i> Обед с клиентом</h6>
-                                    <small>13:30</small>
-                                </div>
-                                <small class="text-muted">Ресторан "Панорама" - презентация системы</small>
-                            </li>
-                            <li class="list-group-item bg-transparent">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1"><i class="bi bi-presentation" style="color: #9b59b6;"></i> Презентация</h6>
-                                    <small>16:00</small>
-                                </div>
-                                <small class="text-muted">Демонстрация dashboard для инвесторов</small>
-                            </li>
-                            <li class="list-group-item bg-transparent">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1"><i class="bi bi-tools" style="color: #f39c12;"></i> Настройка освещения</h6>
-                                    <small>19:00</small>
-                                </div>
-                                <small class="text-muted">Калибровка датчиков движения в коридоре</small>
-                            </li>
-                            <li class="list-group-item bg-transparent">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1"><i class="bi bi-camera-video" style="color: #e74c3c;"></i> Тест камер</h6>
-                                    <small>20:30</small>
-                                </div>
-                                <small class="text-muted">Проверка записи в ночном режиме</small>
-                            </li>
-                            <li class="list-group-item bg-transparent border-0">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1"><i class="bi bi-moon" style="color: #34495e;"></i> Автоматика на ночь</h6>
-                                    <small>23:00</small>
-                                </div>
-                                <small class="text-muted">Активация режима "Сон" - выключение света, блокировка</small>
-                            </li>
-                        </ul>
+                    
+                    <!-- Встроенный чат-ассистент -->
+                    <div class="chat-assistant-container">
+                        <iframe 
+                            src="/ai-assistant/" 
+                            frameborder="0" 
+                            style="width: 100%; height: calc(100vh - 200px); border-radius: 10px; background: #1e1e1e;"
+                            sandbox="allow-same-origin allow-scripts allow-forms"
+                            loading="lazy">
+                        </iframe>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Окно чата снизу -->
-        <div class="chat-window">
-            <div class="chat-messages">
-                <div class="message ai-message">
-                    Добрый день! Я ваш ИИ-ассистент. Чем могу помочь вам сегодня?
-                </div>
-                <div class="message user-message">
-                    Напомни мне о встрече сегодня
-                </div>
-                <div class="message ai-message">
-                    У вас запланирована встреча с командой в 10:00, обед с клиентом в 13:30 и презентация в 16:00.
-                    Что-нибудь еще?
-                </div>
-            </div>
-            <div class="chat-input">
-                <input type="text" placeholder="Введите сообщение..." class="form-control">
-                <button class="btn btn-primary"><i class="bi bi-send"></i></button>
-            </div>
-        </div>
+
     </div>
 
     <!-- Bootstrap JS -->
@@ -591,55 +397,7 @@
             });
         });
 
-        // Отправка сообщения в чат
-        document.querySelector('.chat-input button').addEventListener('click', function () {
-            const input = document.querySelector('.chat-input input');
-            const message = input.value.trim();
 
-            if (message) {
-                const chatMessages = document.querySelector('.chat-messages');
-
-                // Добавление сообщения пользователя
-                const userMessageDiv = document.createElement('div');
-                userMessageDiv.classList.add('message', 'user-message');
-                userMessageDiv.textContent = message;
-                chatMessages.appendChild(userMessageDiv);
-
-                // Очистка поля ввода
-                input.value = '';
-
-                // В реальном приложении здесь будет запрос к API бэкенда
-                // sendApiRequest('/api/assistant/message', 'send')
-                //     .then(response => {
-                //         // Обработка ответа
-                //         const aiMessageDiv = document.createElement('div');
-                //         aiMessageDiv.classList.add('message', 'ai-message');
-                //         aiMessageDiv.textContent = response.message;
-                //         chatMessages.appendChild(aiMessageDiv);
-                //     });
-
-                // Имитация ответа ИИ (через 1 секунду)
-                setTimeout(function () {
-                    const aiMessageDiv = document.createElement('div');
-                    aiMessageDiv.classList.add('message', 'ai-message');
-                    aiMessageDiv.textContent = 'Я получил ваше сообщение: "' + message + '". Обрабатываю запрос...';
-                    chatMessages.appendChild(aiMessageDiv);
-
-                    // Прокрутка чата вниз
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }, 1000);
-
-                // Прокрутка чата вниз
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-        });
-
-        // Отправка сообщения по нажатию Enter
-        document.querySelector('.chat-input input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                document.querySelector('.chat-input button').click();
-            }
-        });
 
         // Инициализация при загрузке страницы
         document.addEventListener('DOMContentLoaded', function () {
@@ -651,12 +409,10 @@
 
         function adjustLayout() {
             const vh = window.innerHeight; // реальная высота
-            const chat = document.querySelector('.chat-window');
             const main = document.querySelector('.main-content');
             const buttonPanel = document.querySelector('.button-panel');
-            if (!chat || !main || !buttonPanel) return;
-            const chatH = chat.offsetHeight; // задан через var(--chat-height)
-            const available = vh - chatH;
+            if (!main || !buttonPanel) return;
+            const available = vh;
             main.style.height = available + 'px';
             // Расчёт высоты строк сетки для равномерного заполнения
             const rows = parseInt(getComputedStyle(buttonPanel).getPropertyValue('--tile-rows')) || 4;
