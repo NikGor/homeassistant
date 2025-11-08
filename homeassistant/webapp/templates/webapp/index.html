@@ -2,456 +2,1669 @@
 
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tablet Dashboard</title>
-    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
-    <!-- Bootstrap CSS -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css"
-        rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archie AI Home</title>
+    
+    <!-- Подключение Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Подключение библиотеки иконок Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Подключение шрифта Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- React and dependencies -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
     <style>
-        :root {
-            --screen-width: 1024px; /* фикс целевой */
-            --screen-height: 600px; /* фикс целевой */
-            --tile-gap: 10px; /* было 12 */
-            --tile-columns: 2;
-            --tile-rows: 4;
-            --base-font: 15px;
-            --scale: 1; /* динамическое масштабирование содержимого info-panel */
-            --tile-scale: 1; /* динамический масштаб плиток */
+        body, html {
+            font-family: 'Inter', sans-serif;
+            height: 100%;
+            overflow: hidden; /* Предотвращаем прокрутку body */
+            background: #000;
+        }
+        
+        /* Стили для кастомной полосы прокрутки */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 3px;
+        }
+        
+        /* Анимация пульсации для шара */
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 25px 4px rgba(0, 191, 255, 0.4);
+                transform: translate(-50%, -50%) scale(0.98);
+            }
+            50% {
+                box-shadow: 0 0 50px 15px rgba(0, 191, 255, 0.7);
+                transform: translate(-50%, -50%) scale(1);
+            }
         }
 
-        html,
-        body {
-            touch-action: manipulation;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
+        .orb {
+            width: min(60vw, 60vh, 500px); /* Адаптивный размер: 60% от меньшей стороны экрана, максимум 500px */
+            height: min(60vw, 60vh, 500px);
+            background: #050505;
+            border-radius: 50%;
+            animation: pulse 4s infinite ease-in-out;
+            box-shadow: 0 0 25px 4px rgba(0, 191, 255, 0.4);
+            position: fixed; /* Фиксируем относительно viewport */
+            top: 50%;
+            left: 50%;
+            z-index: 1; /* Убеждаемся что он под контентом */
+        }
+        
+        /* Стили для "Матового стекла" */
+        .frosted-glass-card {
+            background-color: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 191, 255, 0.25);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+        }
+        
+        .glass-tile {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
         }
 
-        body {
-            font-size: var(--base-font);
-            background-color: #121212;
-            color: #e0e0e0;
-            height: 100vh;
-            overflow: hidden;
+        .glass-button {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background 0.2s ease;
+        }
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        /* Стили для всплывающих подсказок */
+        .device-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .device-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s, visibility 0.2s;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            position: absolute;
+            z-index: 50;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+        .device-wrapper:hover .device-tooltip {
+            visibility: visible;
+            opacity: 1;
         }
 
-        .dashboard-container {
-            height: 100vh;
-            max-width: var(--screen-width);
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .main-content {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-            height: 100vh;
-        }
-
-        .button-panel {
-            background-color: #1e1e1e;
-            border-right: 1px solid #333;
-            padding: 12px;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: repeat(4, 1fr);
-            gap: var(--tile-gap);
-            width: 40%;
-        }
-
-        .info-panel {
-            background-color: #1e1e1e;
-            padding: 10px 14px 8px;
-            width: 60%;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .info-content {
-            flex-grow: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-
-
-        .btn-tile {
+        /* Стили для боковых панелей (сайдбаров) */
+        .sidebar {
+            background: rgba(10, 10, 10, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             height: 100%;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
+            padding: 0.75rem; /* 12px */
+            transition: all 0.3s ease-in-out;
+            z-index: 40;
+        }
+        
+        /* Стили для кнопок в сайдбарах */
+        .sidebar-item {
+            display: flex;
             align-items: center;
             justify-content: center;
-            background-color: #252525;
-            border: 2px solid;
-            color: #e0e0e0;
-            border-radius: 10px;
-            transition: all 0.3s;
-            text-align: center;
-            font-size: 0.85rem; /* чуть меньше */
-            min-height: 0; /* убрать фикс минимум */
+            height: 56px; /* 14 * 4 */
+            width: 56px; /* 14 * 4 */
+            border-radius: 0.5rem; /* 8px */
+            transition: all 0.2s ease;
+        }
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .sidebar-item.active {
+            background: rgba(0, 191, 255, 0.2);
+            color: #00bfff; /* DeepSkyBlue */
+        }
+        
+        /* Стили для развернутых кнопок */
+        .sidebar-item-expanded {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 0 1rem; /* 16px */
+            height: 48px; /* 12 * 4 */
+            border-radius: 0.5rem; /* 8px */
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .sidebar-item-expanded:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .sidebar-item-expanded.active {
+            background: rgba(0, 191, 255, 0.2);
+            color: #00bfff;
+        }
+        .sidebar-text {
+            opacity: 0;
+            transition: opacity 0.2s ease 0.1s;
+        }
+        
+        /* Контейнер для основного контента */
+        #main-content-area {
+            position: relative;
+            flex: 1;
+            height: 100%;
+            overflow: hidden; /* Важно: скрываем overflow здесь */
+            z-index: 10;
+            transition: all 0.3s ease-in-out;
         }
 
-        .btn-tile:hover {
-            background-color: #333;
-            transform: scale(1.05);
+        /* Оба "экрана" (Чат и Дашборд) */
+        .view-screen {
+            position: absolute;
+            inset: 0;
+            overflow-y: auto; /* Прокрутка *внутри* каждого экрана */
+            padding: 1rem; /* Отступы для прокрутки */
         }
 
-        .btn-tile:active,
-        .btn-tile.touch-active {
-            filter: brightness(1.3);
-            transform: scale(1.04);
+        /* AI Assistant integration styles */
+        #chat-assistant-root {
+            /* Remove default padding from view-screen for full AI Assistant control */
+            margin: -1rem;
+            height: calc(100% + 2rem);
         }
 
-        .btn-light {
-            border-color: #f8f9fa;
+        /* Override AI Assistant styles to match glassmorphism theme */
+        #chat-assistant-root .backdrop-blur-lg {
+            background: rgba(255, 255, 255, 0.07) !important;
+            border: 1px solid rgba(0, 191, 255, 0.25) !important;
         }
 
-        .btn-light i {
-            color: #f8f9fa;
+        #chat-assistant-root .bg-white\/10 {
+            background: rgba(255, 255, 255, 0.07) !important;
         }
 
-        .btn-music {
-            border-color: #8e44ad;
-        }
-
-        .btn-music i {
-            color: #8e44ad;
-        }
-
-        .btn-docs {
-            border-color: #f39c12;
-        }
-
-        .btn-docs i {
-            color: #f39c12;
-        }
-
-        .btn-camera {
-            border-color: #e74c3c;
-        }
-
-        .btn-camera i {
-            color: #e74c3c;
-        }
-
-        .btn-climate {
-            border-color: #3498db;
-        }
-
-        .btn-climate i {
-            color: #3498db;
-        }
-
-        .btn-media {
-            border-color: #2ecc71;
-        }
-
-        .btn-media i {
-            color: #2ecc71;
-        }
-
-        .btn-security {
-            border-color: #d35400;
-        }
-
-        .btn-security i {
-            color: #d35400;
-        }
-
-        .btn-settings {
-            border-color: #7f8c8d;
-        }
-
-        .btn-settings i {
-            color: #7f8c8d;
-        }
-
-        .btn-tile i {
-            font-size: calc(2.2rem * var(--tile-scale));
-            margin-bottom: 4px;
-        }
-
-        .button-panel .btn-tile span {
-            font-size: calc(0.85rem * var(--tile-scale));
-            line-height: 1.1;
-        }
-
-        #datetime {
-            font-size: calc(1.4rem * var(--scale));
-            margin-bottom: calc(10px * var(--scale));
-            color: #e0e0e0;
-            line-height: 1.1;
-        }
-
-
-
-        @media (orientation: portrait) {
-            /* fallback если повернули устройство */
-            .main-content {
-                flex-direction: column;
-            }
-
-            .button-panel {
-                width: 100%;
-                grid-template-columns: repeat(4, 1fr);
-                grid-auto-rows: 110px;
-            }
-
-            .info-panel {
-                width: 100%;
-                flex: 1;
-            }
-        }
-
-        /* Скрыть скроллбар но оставить прокрутку */
-        .info-panel::-webkit-scrollbar {
+        /* Ensure scrollbars match the theme */
+        #chat-assistant-root ::-webkit-scrollbar {
             width: 6px;
         }
-
-        .info-panel::-webkit-scrollbar-thumb {
-            background: #333;
+        #chat-assistant-root ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #chat-assistant-root ::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
             border-radius: 3px;
         }
 
-        .image-container, .abstract-image { display:none; }
-
-        .weather-card, .calendar-card { padding: 8px 10px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:10px; }
-        .weather-row { margin-bottom: 10px; }
-        .weather-card h6 { font-size: calc(0.9rem * var(--scale)); margin-bottom: 6px; color: #e0e0e0; }
-        .weather-card .d-flex, .calendar-card .d-flex { align-items: flex-start; }
-        .calendar-card h5 { font-size: calc(1rem * var(--scale)); margin-bottom: 8px; }
-        .calendar-card .list-group-item { padding: 6px 0; font-size: calc(0.85rem * var(--scale)); border-color: #2a2a2a !important; }
-        .calendar-card h6 { font-size: calc(0.85rem * var(--scale)); margin: 0 0 2px; }
-        .calendar-card small { font-size: calc(0.7rem * var(--scale)); }
-
-        .chat-assistant-container {
-            flex: 1;
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 10px;
+        /* Простые стили для чатов */
+        .chat-item {
+            padding: 8px 12px;
+            margin: 2px 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
         }
+
+        .chat-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
     </style>
 </head>
+<body class="bg-black text-gray-300 h-screen overflow-hidden flex">
 
-<body>
-    <div class="dashboard-container">
-        <div class="main-content">
-            <!-- Левая панель с кнопками 2x4 -->
-            <div class="button-panel">
-                <button class="btn-tile btn-light" onclick="window.location.href='/light/'">
-                    <i class="bi bi-lightbulb"></i>
-                    <span>Свет</span>
-                </button>
-                <button class="btn-tile btn-music" id="music-btn" data-api="/api/music">
-                    <i class="bi bi-music-note-beamed"></i>
-                    <span>Музыка</span>
-                </button>
-                <button class="btn-tile btn-docs" id="docs-btn" data-api="/api/docs">
-                    <i class="bi bi-file-earmark-text"></i>
-                    <span>Документы</span>
-                </button>
-                <button class="btn-tile btn-camera" onclick="window.location.href='/camera/'">
-                    <i class="bi bi-camera"></i>
-                    <span>Камера</span>
-                </button>
-                <button class="btn-tile btn-climate" onclick="window.location.href='/weather/'">
-                    <i class="bi bi-thermometer-half"></i>
-                    <span>Климат</span>
-                </button>
-                <button class="btn-tile btn-media" onclick="window.location.href='/ai-assistant/'">
-                    <i class="bi bi-robot"></i>
-                    <span>Archie</span>
-                </button>
-                <button class="btn-tile btn-security" data-api="/api/security">
-                    <i class="bi bi-shield-lock"></i>
-                    <span>Безопасность</span>
-                </button>
-                <button class="btn-tile btn-settings" data-api="/api/settings">
-                    <i class="bi bi-gear"></i>
-                    <span>Настройки</span>
-                </button>
+    <!-- Анимированный фоновый элемент (дышащий круг) -->
+    <div class="orb"></div>
+
+    <!-- 
+      ЛЕВАЯ БОКОВАЯ ПАНЕЛЬ ("Арчи")
+    -->
+    <nav id="left-sidebar" class="sidebar" style="border-right: 1px solid rgba(255, 255, 255, 0.1);">
+        <!-- Верхняя группа: Приложения "Арчи" -->
+        <div class="flex-1 flex flex-col">
+            <!-- Контейнер для свернутых иконок -->
+            <div id="left-sidebar-collapsed-icons" class="flex-1 flex flex-col">
+                <!-- Будет заполняться JS -->
             </div>
-
-            <!-- Правая панель с чат-ассистентом -->
-            <div class="info-panel">
-                <div class="info-content">
-                    <div id="datetime" class="text-center"></div>
-                    
-                    <!-- Встроенный чат-ассистент -->
-                    <div class="chat-assistant-container">
-                        <iframe 
-                            src="/ai-assistant/" 
-                            frameborder="0" 
-                            style="width: 100%; height: calc(100vh - 200px); border-radius: 10px; background: #1e1e1e;"
-                            sandbox="allow-same-origin allow-scripts allow-forms"
-                            loading="lazy">
-                        </iframe>
-                    </div>
-                </div>
+            
+            <!-- Контейнер для развернутого меню -->
+            <div id="left-sidebar-expanded-menu" class="hidden flex-1 flex flex-col">
+                <!-- Будет заполняться JS -->
             </div>
         </div>
 
+        <!-- Нижняя группа: Свернуть/Развернуть -->
+        <div class="space-y-3">
+            <button id="left-sidebar-toggle-btn" class="sidebar-item text-gray-400 w-14 h-14" title="Развернуть панель">
+                <!-- Иконка будет меняться JS -->
+            </button>
+        </div>
+    </nav>
 
-    </div>
+    <!-- 
+      ОСНОВНАЯ ОБЛАСТЬ КОНТЕНТА
+      (Содержит переключаемые экраны)
+    -->
+    <main id="main-content-area">
+        <!-- 
+          ЭКРАН 1: ЧАТ АРЧИ (z-10)
+        -->
+        <div id="chat-view" class="view-screen z-10">
+            <!-- AI Assistant will be rendered here by React -->
+            <div id="chat-assistant-root" class="h-full w-full"></div>
+        </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+        <!-- 
+          ЭКРАН 2: ДАШБОРД УМНОГО ДОМА (z-10, скрыт)
+        -->
+        <div id="dashboard-view" class="view-screen z-10 hidden">
+            <div id="dashboard-tiles" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
+                <!-- Плитки будут генерироваться здесь JS -->
+            </div>
+
+            <div id="global-quick-actions" class="flex flex-wrap gap-3">
+                <!-- Кнопки будут генерироваться здесь JS -->
+            </div>
+        </div>
+
+    </main>
+    
+    <!-- 
+      ПРАВАЯ БОКОВАЯ ПАНЕЛЬ ("Дом")
+    -->
+    <nav id="right-sidebar" class="sidebar" style="border-left: 1px solid rgba(255, 255, 255, 0.1);">
+        <!-- Верхняя группа: Приложения "Дома" -->
+        <div>
+            <!-- Контейнер для свернутых иконок -->
+            <div id="right-sidebar-collapsed-icons" class="space-y-3">
+                <!-- Сюда JS добавит иконки "Главная", "Archie" и приложения -->
+            </div>
+            
+            <!-- Контейнер для развернутого меню -->
+            <div id="right-sidebar-expanded-menu" class="hidden space-y-2">
+                <!-- Сюда JS добавит пункты меню "Главная", "Archie" и приложения -->
+            </div>
+        </div>
+
+        <!-- Нижняя группа: Свернуть/Развернуть -->
+        <div class="space-y-3">
+            <button id="right-sidebar-toggle-btn" class="sidebar-item text-gray-400 w-14 h-14" title="Развернуть панель">
+                <!-- Иконка будет меняться JS -->
+            </button>
+        </div>
+    </nav>
+
 
     <script>
-        // Обновление даты и времени
-        function updateDateTime() {
-            const now = new Date();
-            const options = {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            };
-            document.getElementById('datetime').textContent = now.toLocaleDateString('ru-RU', options);
+        // Данные из JSON для дашборда
+        const dashboardData = {
+            "type": "tool_call",
+            "voice_response": "Создаю атмосферу джазового бара: приглушаю свет и запускаю джазовую музыку.",
+            "smarthome_dashboard": {
+                "type": "smarthome_dashboard",
+                "tiles": [
+                    { "category": "light", "title": "Свет", "subtitle": "2 из 3 включены, тёплый белый", "icon": "lightbulb", "status_color": "orange", "quick_actions": ["Выключить все", "Приглушить свет", "Сменить цвет"], "devices": [{ "name": "Торшер комната 1", "icon": "lamp", "color": "orange", "variant": "outline", "tooltip": "Выкл., 80%, 3000K" }, { "name": "Потолочная комната 1", "icon": "lightbulb", "color": "orange", "variant": "solid", "tooltip": "Вкл., 60%, 4000K" }, { "name": "Спальня", "icon": "bed", "color": "yellow", "variant": "solid", "tooltip": "Вкл., 40%, 2700K" }] },
+                    { "category": "climate", "title": "Климат", "subtitle": "Средняя 21.8°C, обогрев активен", "icon": "thermometer", "status_color": "orange", "quick_actions": ["Эко режим", "Снизить температуру", "Выключить обогрев"], "devices": [{ "name": "Регулятор комната 1", "icon": "flame", "color": "orange", "variant": "solid", "tooltip": "22.5°C→23.0°C, 45%, обогрев" }, { "name": "Регулятор комната 2", "icon": "thermometer", "color": "green", "variant": "outline", "tooltip": "21.0°C→21.5°C, 48%, выкл." }] },
+                    { "category": "music", "title": "Музыка", "subtitle": "Не играет", "icon": "music", "status_color": "gray", "quick_actions": ["Джаз плейлист", "Расслабляющая музыка", "Последний трек"], "devices": null },
+                    { "category": "documents", "title": "Документы", "subtitle": "Поиск готов", "icon": "file-search", "status_color": "blue", "quick_actions": ["Найти документ", "Последние файлы", "Архив"], "devices": null },
+                    { "category": "apps", "title": "Приложения", "subtitle": "Все системы в норме", "icon": "grid-3x3", "status_color": "green", "quick_actions": ["Перезагрузить", "Обновления", "Логи"], "devices": null },
+                    { "category": "settings", "title": "Настройки", "subtitle": "Конфигурация", "icon": "settings", "status_color": "gray", "quick_actions": ["Открыть настройки"], "devices": null }
+                ],
+                "quick_actions": [
+                    { "type": "assistant_button", "text": "Джазовая атмосфера", "style": "primary", "icon": "music", "assistant_request": "Создать атмосферу джазового бара" },
+                    { "type": "assistant_button", "text": "Выключить свет", "style": "secondary", "icon": "lightbulb-off", "assistant_request": "Выключить весь свет" }
+                ]
+            }
+        };
+
+        // --- Глобальные переменные состояния ---
+        let isLeftSidebarExpanded = false;
+        let isRightSidebarExpanded = false;
+
+        // --- Получение ссылок на DOM-элементы ---
+        
+        // --- Левая панель ---
+        const leftSidebar = document.getElementById('left-sidebar');
+        const leftSidebarCollapsedIcons = document.getElementById('left-sidebar-collapsed-icons');
+        const leftSidebarExpandedMenu = document.getElementById('left-sidebar-expanded-menu');
+        const leftSidebarToggleBtn = document.getElementById('left-sidebar-toggle-btn');
+        
+        // --- Правая панель ---
+        const rightSidebar = document.getElementById('right-sidebar');
+        const rightSidebarCollapsedIcons = document.getElementById('right-sidebar-collapsed-icons');
+        const rightSidebarExpandedMenu = document.getElementById('right-sidebar-expanded-menu');
+        const rightSidebarToggleBtn = document.getElementById('right-sidebar-toggle-btn');
+        
+        // --- Контент ---
+        const mainContentArea = document.getElementById('main-content-area');
+        const chatView = document.getElementById('chat-view');
+        const dashboardView = document.getElementById('dashboard-view');
+        
+        // --- Элементы Дашборда ---
+        const globalQuickActionsContainer = document.getElementById('global-quick-actions');
+        const dashboardTilesContainer = document.getElementById('dashboard-tiles');
+
+        // --- Вспомогательные функции ---
+
+        // (getTailwindColorClass и getTailwindBgColorClass)
+        function getTailwindColorClass(colorName, shade = 400) {
+            const colorMap = { "gray": "gray", "green": "green", "blue": "blue", "orange": "orange", "yellow": "yellow", "red": "red", "purple": "purple" };
+            return `text-${colorMap[colorName] || 'gray'}-${shade}`;
+        }
+        function getTailwindBgColorClass(colorName, shade = 600, opacity = 20) {
+            const colorMap = { "gray": "gray", "green": "green", "blue": "blue", "orange": "orange", "yellow": "yellow", "red": "red", "purple": "purple" };
+            return `bg-${colorMap[colorName] || 'gray'}-${shade}/${opacity}`;
         }
 
-        // Обновление времени при загрузке и каждую минуту
-        updateDateTime();
-        setInterval(updateDateTime, 60000);
+        // --- Функции рендеринга ---
 
-        // Функция для отправки API-запросов на бэкенд
-        async function sendApiRequest(endpoint, action = 'toggle') {
-            try {
-                const response = await fetch(endpoint, {
+        // Рендеринг ЛЕВОЙ боковой панели ("Арчи")
+        function renderLeftSidebar() {
+            leftSidebarCollapsedIcons.innerHTML = '';
+            leftSidebarExpandedMenu.innerHTML = '';
+
+            // Кнопка "Новый чат"
+            const newChatCollapsed = document.createElement('a');
+            newChatCollapsed.href = "#";
+            newChatCollapsed.className = "sidebar-item text-gray-300";
+            newChatCollapsed.title = "Новый чат";
+            newChatCollapsed.onclick = (e) => {
+                e.preventDefault();
+                // Простое создание нового чата через API
+                fetch('/ai-assistant/api/conversations/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ action: action })
-                });
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                }).then(response => response.json())
+                  .then(newChat => {
+                      console.log('New chat created:', newChat);
+                      loadChats(); // Перезагрузить список
+                      if (window.chatAssistantAPI) {
+                          window.chatAssistantAPI.selectConversation(newChat.conversation_id);
+                      }
+                  }).catch(error => console.error('Error creating chat:', error));
+            };
+            newChatCollapsed.innerHTML = `<i data-lucide="plus-circle" class="w-6 h-6"></i>`;
+            leftSidebarCollapsedIcons.appendChild(newChatCollapsed);
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+            const newChatExpanded = document.createElement('a');
+            newChatExpanded.href = "#";
+            newChatExpanded.className = "sidebar-item-expanded text-gray-300";
+            newChatExpanded.onclick = (e) => {
+                e.preventDefault();
+                // Простое создание нового чата через API
+                fetch('/ai-assistant/api/conversations/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                }).then(response => response.json())
+                  .then(newChat => {
+                      console.log('New chat created:', newChat);
+                      loadChats(); // Перезагрузить список
+                      if (window.chatAssistantAPI) {
+                          window.chatAssistantAPI.selectConversation(newChat.conversation_id);
+                      }
+                  }).catch(error => console.error('Error creating chat:', error));
+            };
+            newChatExpanded.innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Новый чат</span>`;
+            leftSidebarExpandedMenu.appendChild(newChatExpanded);
+
+            // Разделитель только в развернутом виде
+            leftSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
+
+            // Список чатов (только в развернутом виде)
+            const chatsContainerExpanded = document.createElement('div');
+            chatsContainerExpanded.id = 'chats-container-expanded';
+            chatsContainerExpanded.className = 'flex-1 overflow-y-auto space-y-1';
+            chatsContainerExpanded.style.maxHeight = 'calc(100vh - 300px)'; // Ограничиваем высоту
+            leftSidebarExpandedMenu.appendChild(chatsContainerExpanded);
+
+            // Разделитель внизу только в развернутом виде
+            leftSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
+
+            // Кнопка "Поиск"
+            const searchCollapsed = document.createElement('a');
+            searchCollapsed.href = "#";
+            searchCollapsed.className = "sidebar-item text-gray-300";
+            searchCollapsed.title = "Поиск";
+            searchCollapsed.innerHTML = `<i data-lucide="search" class="w-6 h-6"></i>`;
+            leftSidebarCollapsedIcons.appendChild(searchCollapsed);
+
+            const searchExpanded = document.createElement('a');
+            searchExpanded.href = "#";
+            searchExpanded.className = "sidebar-item-expanded text-gray-300";
+            searchExpanded.innerHTML = `<i data-lucide="search" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Поиск</span>`;
+            leftSidebarExpandedMenu.appendChild(searchExpanded);
+
+            // Кнопка "Настройки"
+            const settingsCollapsed = document.createElement('a');
+            settingsCollapsed.href = "#";
+            settingsCollapsed.className = "sidebar-item text-gray-300";
+            settingsCollapsed.title = "Настройки";
+            settingsCollapsed.innerHTML = `<i data-lucide="settings" class="w-6 h-6"></i>`;
+            leftSidebarCollapsedIcons.appendChild(settingsCollapsed);
+
+            const settingsExpanded = document.createElement('a');
+            settingsExpanded.href = "#";
+            settingsExpanded.className = "sidebar-item-expanded text-gray-300";
+            settingsExpanded.innerHTML = `<i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Настройки</span>`;
+            leftSidebarExpandedMenu.appendChild(settingsExpanded);
+        }
+
+        // Функции для группировки чатов по датам
+        function getDateGroup(dateString) {
+            const chatDate = new Date(dateString);
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            // Начало текущей недели (понедельник)
+            const currentWeekStart = new Date(today);
+            const dayOfWeek = today.getDay();
+            const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Воскресенье = 0
+            currentWeekStart.setDate(today.getDate() - daysToMonday);
+            
+            // Начало прошлой недели
+            const lastWeekStart = new Date(currentWeekStart);
+            lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+            
+            // Начало текущего месяца
+            const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            if (chatDate >= today) {
+                return 'today';
+            } else if (chatDate >= yesterday) {
+                return 'yesterday';
+            } else if (chatDate >= currentWeekStart) {
+                return 'thisWeek';
+            } else if (chatDate >= lastWeekStart) {
+                return 'lastWeek';
+            } else if (chatDate >= currentMonthStart) {
+                return 'thisMonth';
+            } else {
+                return 'older';
+            }
+        }
+        
+        function getGroupTitle(groupKey) {
+            const titles = {
+                'today': 'Сегодня',
+                'yesterday': 'Вчера',
+                'thisWeek': 'На этой неделе',
+                'lastWeek': 'На прошлой неделе',
+                'thisMonth': 'В этом месяце',
+                'older': 'Раньше'
+            };
+            return titles[groupKey] || 'Другое';
+        }
+        
+        function groupChatsByDate(chats) {
+            const groups = {
+                'today': [],
+                'yesterday': [],
+                'thisWeek': [],
+                'lastWeek': [],
+                'thisMonth': [],
+                'older': []
+            };
+            
+            chats.forEach(chat => {
+                const group = getDateGroup(chat.created_at);
+                groups[group].push(chat);
+            });
+            
+            // Возвращаем только группы с чатами
+            const result = [];
+            Object.keys(groups).forEach(groupKey => {
+                if (groups[groupKey].length > 0) {
+                    result.push({
+                        key: groupKey,
+                        title: getGroupTitle(groupKey),
+                        chats: groups[groupKey]
+                    });
                 }
-
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                console.error('API request failed:', error);
-                // Для демонстрации сейчас показываем alert, но в реальном приложении
-                // лучше показать уведомление на странице
-                alert(`API запрос к ${endpoint} не выполнен: ${error.message}`);
-                return null;
+            });
+            
+            return result;
+        }
+        
+        function formatChatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (date >= today) {
+                return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            } else if (date >= yesterday) {
+                return 'Вчера';
+            } else {
+                return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
             }
         }
 
-        // Получение погодных данных
-        async function fetchWeatherData() {
-            // В реальном приложении здесь будет запрос к API бэкенда
-            // Сейчас используем заглушку
-            console.log('Запрос погодных данных с бэкенда...');
-            // Имитация запроса к API
-            // await sendApiRequest('/api/weather/current');
+        // Простая загрузка чатов
+        async function loadChats() {
+            try {
+                const response = await fetch('/ai-assistant/api/conversations/');
+                if (response.ok) {
+                    const conversations = await response.json();
+                    console.log('Chats loaded:', conversations);
+                    
+                    // Сортируем по дате (новые сверху)
+                    conversations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    
+                    renderChatsInSidebar(conversations);
+                } else {
+                    console.error('Failed to load chats:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading chats:', error);
+            }
         }
 
-        // Получение данных календаря
-        async function fetchCalendarEvents() {
-            // В реальном приложении здесь будет запрос к API бэкенда
-            console.log('Запрос событий календаря с бэкенда...');
-            // Имитация запроса к API
-            // await sendApiRequest('/api/calendar/today');
+        // Простой рендеринг чатов в сайдбаре
+        function renderChatsInSidebar(conversations) {
+            const chatsContainer = document.getElementById('chats-container-expanded');
+            if (!chatsContainer) return;
+
+            chatsContainer.innerHTML = '';
+
+            if (!conversations || conversations.length === 0) {
+                chatsContainer.innerHTML = '<div class="text-gray-500 text-sm p-3 text-center">Нет чатов</div>';
+                return;
+            }
+
+            conversations.forEach(chat => {
+                const chatItem = document.createElement('div');
+                chatItem.className = 'relative group';
+                
+                const chatLink = document.createElement('a');
+                chatLink.href = "#";
+                chatLink.className = 'chat-item text-gray-300 pr-8 block cursor-pointer';
+                chatLink.onclick = (e) => {
+                    e.preventDefault();
+                    if (window.chatAssistantAPI) {
+                        window.chatAssistantAPI.selectConversation(chat.conversation_id);
+                    }
+                };
+                
+                // Простое отображение с title и датой
+                const title = chat.title && chat.title !== 'New Conversation' 
+                    ? chat.title 
+                    : 'Новый чат';
+                const displayTitle = title.length > 25 ? title.substring(0, 25) + '...' : title;
+                const dateDisplay = formatChatDate(chat.created_at);
+                
+                chatLink.innerHTML = `
+                    <div class="flex items-start">
+                        <i data-lucide="message-circle" class="w-4 h-4 flex-shrink-0 text-gray-400 mt-1"></i>
+                        <div class="ml-3 flex-1 min-w-0">
+                            <div class="font-medium text-sm text-white truncate">${displayTitle}</div>
+                            <div class="text-xs text-gray-500 truncate">${dateDisplay}</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Кнопка удаления
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300';
+                deleteBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Удалить чат "${title}"?`)) {
+                        try {
+                            await fetch(`/ai-assistant/api/conversations/${chat.conversation_id}/`, {
+                                method: 'DELETE'
+                            });
+                            loadChats(); // Перезагрузить список
+                        } catch (error) {
+                            console.error('Failed to delete chat:', error);
+                        }
+                    }
+                };
+                deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-3 h-3"></i>';
+                
+                chatItem.appendChild(chatLink);
+                chatItem.appendChild(deleteBtn);
+                chatsContainer.appendChild(chatItem);
+            });
+
+            // Обновить иконки
+            lucide.createIcons();
+        }
+        // Рендеринг ПРАВОЙ боковой панели ("Дом")
+        function renderRightSidebar() {
+            rightSidebarCollapsedIcons.innerHTML = '';
+            rightSidebarExpandedMenu.innerHTML = '';
+
+            const homeCollapsed = document.createElement('a');
+            homeCollapsed.href = "#";
+            homeCollapsed.className = "sidebar-item text-gray-300";
+            homeCollapsed.dataset.appCategory = 'home';
+            homeCollapsed.title = "Главная";
+            homeCollapsed.innerHTML = `<i data-lucide="layout-grid" class="w-6 h-6"></i>`;
+            rightSidebarCollapsedIcons.appendChild(homeCollapsed);
+
+            const homeExpanded = document.createElement('a');
+            homeExpanded.href = "#";
+            homeExpanded.className = "sidebar-item-expanded text-gray-300";
+            homeExpanded.dataset.appCategory = 'home';
+            homeExpanded.innerHTML = `<i data-lucide="layout-grid" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Главная</span>`;
+            rightSidebarExpandedMenu.appendChild(homeExpanded);
+
+            const archieCollapsed = document.createElement('a');
+            archieCollapsed.href = "#";
+            archieCollapsed.className = "sidebar-item text-gray-300 active"; // Archie активен по умолч.
+            archieCollapsed.dataset.appCategory = 'archie';
+            archieCollapsed.title = "Archie Чат";
+            archieCollapsed.innerHTML = `<i data-lucide="brain" class="w-6 h-6"></i>`;
+            rightSidebarCollapsedIcons.appendChild(archieCollapsed);
+
+            const archieExpanded = document.createElement('a');
+            archieExpanded.href = "#";
+            archieExpanded.className = "sidebar-item-expanded text-gray-300 active";
+            archieExpanded.dataset.appCategory = 'archie';
+            archieExpanded.innerHTML = `<i data-lucide="brain" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Archie Чат</span>`;
+            rightSidebarExpandedMenu.appendChild(archieExpanded);
+
+            rightSidebarCollapsedIcons.innerHTML += '<hr class="border-t border-white/10 my-2">';
+            rightSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
+
+            dashboardData.smarthome_dashboard.tiles.forEach(tile => {
+                const iconColorClass = getTailwindColorClass(tile.status_color);
+                
+                const collapsedItem = document.createElement('a');
+                collapsedItem.href = `/${tile.category}/`;
+                collapsedItem.className = `sidebar-item ${iconColorClass}`;
+                collapsedItem.dataset.appCategory = tile.category;
+                collapsedItem.title = tile.title;
+                collapsedItem.innerHTML = `<i data-lucide="${tile.icon}" class="w-6 h-6"></i>`;
+                rightSidebarCollapsedIcons.appendChild(collapsedItem);
+
+                const expandedItem = document.createElement('a');
+                expandedItem.href = `/${tile.category}/`;
+                expandedItem.className = `sidebar-item-expanded text-gray-300`; // Текст всегда светлый
+                expandedItem.dataset.appCategory = tile.category;
+                expandedItem.innerHTML = `<i data-lucide="${tile.icon}" class="w-5 h-5 flex-shrink-0 ${iconColorClass}"></i><span class="sidebar-text ml-4 font-medium">${tile.title}</span>`;
+                rightSidebarExpandedMenu.appendChild(expandedItem);
+            });
         }
 
-        // Получение абстрактного изображения
-        async function fetchAbstractImage() {
-            // В реальном приложении здесь будет запрос к API бэкенда
-            console.log('Запрос абстрактного изображения с бэкенда...');
-            // Имитация запроса к API, в реальном приложении раскомментировать и заменить на реальный путь:
-            // document.getElementById('abstractImagePlaceholder').src = '/api/abstract-image';
+        // Рендеринг плиток Дашборда
+        function renderDashboardGrid() {
+            globalQuickActionsContainer.innerHTML = '';
+            dashboardTilesContainer.innerHTML = '';
+            
+            if (dashboardData.smarthome_dashboard.quick_actions) {
+                dashboardData.smarthome_dashboard.quick_actions.forEach(action => {
+                    const button = document.createElement('button');
+                    let buttonClasses = ['glass-button', 'px-4', 'py-2', 'rounded-lg', 'text-white', 'flex', 'items-center', 'gap-2', 'text-sm'];
+                    if (action.style === 'primary') buttonClasses.push('btn-primary');
+                    else if (action.style === 'secondary') buttonClasses.push('btn-secondary');
+                    button.className = buttonClasses.join(' ');
+                    button.innerHTML = `<i data-lucide="${action.icon}" class="w-5 h-5"></i><span>${action.text}</span>`;
+                    button.onclick = () => alert(`Запрос: "${action.assistant_request}"`);
+                    globalQuickActionsContainer.appendChild(button);
+                });
+            }
+
+            dashboardData.smarthome_dashboard.tiles.forEach(tile => {
+                const tileElement = document.createElement('div');
+                tileElement.className = 'glass-tile rounded-2xl p-6 flex flex-col justify-between min-h-[260px] cursor-pointer';
+                tileElement.onclick = () => window.location.href = `/${tile.category}/`;
+                const statusIconColorClass = getTailwindColorClass(tile.status_color);
+
+                let devicesHtml = '';
+                if (tile.devices && tile.devices.length > 0) {
+                    devicesHtml = `<div class="mt-4 flex flex-wrap gap-3">
+                        ${tile.devices.map(device => {
+                            const deviceIconColorClass = getTailwindColorClass(device.color);
+                            const deviceBgColorClass = device.variant === 'solid' ? getTailwindBgColorClass(device.color) : '';
+                            return `
+                                <div class="relative device-wrapper">
+                                    <div class="device-icon ${device.variant === 'solid' ? 'variant-solid ' + deviceBgColorClass : 'variant-outline'}">
+                                        <i data-lucide="${device.icon}" class="w-5 h-5 ${deviceIconColorClass}"></i>
+                                    </div>
+                                    <span class="device-tooltip text-xs">${device.tooltip}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>`;
+                }
+
+                let quickActionsHtml = '';
+                if (tile.quick_actions && tile.quick_actions.length > 0) {
+                    quickActionsHtml = `<div class="mt-6 flex flex-wrap gap-2">
+                        ${tile.quick_actions.map(action => `
+                            <button class="glass-button text-xs px-3 py-1.5 rounded-lg text-white">${action}</button>
+                        `).join('')}
+                    </div>`;
+                }
+
+                tileElement.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start">
+                            <h2 class="text-xl font-semibold text-white">${tile.title}</h2>
+                            <i data-lucide="${tile.icon}" class="w-6 h-6 ${statusIconColorClass}"></i>
+                        </div>
+                        <p class="text-sm text-gray-300 mt-1">${tile.subtitle}</p>
+                        ${devicesHtml}
+                    </div>
+                    ${quickActionsHtml}
+                `;
+                dashboardTilesContainer.appendChild(tileElement);
+            });
         }
 
-        // Обработчики для всех кнопок
-        document.querySelectorAll('.btn-tile').forEach(button => {
-            button.addEventListener('click', async function () {
-                const apiEndpoint = this.getAttribute('data-api');
-                if (apiEndpoint) {
-                    console.log(`Отправка запроса на ${apiEndpoint}`);
-                    // Для демонстрации сейчас используем alert
-                    alert(`Отправка запроса на ${apiEndpoint}`);
-                    // В реальном приложении раскомментировать:
-                    // const response = await sendApiRequest(apiEndpoint);
-                    // if (response) {
-                    //     console.log('Получен ответ:', response);
-                    //     // Обработка ответа
-                    // }
+        // --- Функции управления состоянием ---
+
+        // Показать "Чат"
+        function showChatView() {
+            chatView.classList.remove('hidden');
+            dashboardView.classList.add('hidden');
+            leftSidebar.classList.remove('hidden'); // Показываем левый сайдбар в режиме чата
+            updateSidebarActiveState('archie');
+        }
+
+        // Показать "Дашборд"
+        function showDashboardView() {
+            chatView.classList.add('hidden');
+            dashboardView.classList.remove('hidden');
+            leftSidebar.classList.add('hidden'); // Скрываем левый сайдбар в режиме дашборда
+            updateSidebarActiveState('home');
+        }
+
+        // Обновить активное состояние кнопок "Archie" / "Home"
+        function updateSidebarActiveState(activeCategory) {
+            document.querySelectorAll('#right-sidebar a').forEach(el => {
+                if (el.dataset.appCategory === activeCategory) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+        }
+
+        // Свернуть/Развернуть ЛЕВУЮ панель
+        function toggleLeftSidebar(forceCollapse = false) {
+            isLeftSidebarExpanded = !isLeftSidebarExpanded;
+            if (forceCollapse) isLeftSidebarExpanded = false;
+
+            // Экспортируем состояние для React компонента
+            window.isLeftSidebarExpanded = isLeftSidebarExpanded;
+
+            if (isLeftSidebarExpanded) {
+                leftSidebar.classList.remove('w-20');
+                leftSidebar.classList.add('w-72');
+                mainContentArea.style.marginLeft = '0'; // Убираем margin
+                leftSidebarCollapsedIcons.classList.add('hidden');
+                leftSidebarExpandedMenu.classList.remove('hidden');
+                leftSidebarToggleBtn.innerHTML = `<i data-lucide="chevron-left" class="w-6 h-6"></i>`;
+                leftSidebarToggleBtn.title = "Свернуть панель";
+                document.querySelectorAll('#left-sidebar .sidebar-text').forEach(el => el.style.opacity = '1');
+                
+                // Загружаем чаты при раскрытии панели
+                loadChats();
+            } else {
+                leftSidebar.classList.add('w-20');
+                leftSidebar.classList.remove('w-72');
+                mainContentArea.style.marginLeft = '0'; // Убираем margin
+                leftSidebarCollapsedIcons.classList.remove('hidden');
+                leftSidebarExpandedMenu.classList.add('hidden');
+                leftSidebarToggleBtn.innerHTML = `<i data-lucide="chevron-right" class="w-6 h-6"></i>`;
+                leftSidebarToggleBtn.title = "Развернуть панель";
+                document.querySelectorAll('#left-sidebar .sidebar-text').forEach(el => el.style.opacity = '0');
+            }
+            lucide.createIcons({
+                nodes: [leftSidebarToggleBtn]
+            });
+        }
+        
+        // Свернуть/Развернуть ПРАВУЮ панель
+        function toggleRightSidebar(forceCollapse = false) {
+            isRightSidebarExpanded = !isRightSidebarExpanded;
+            if (forceCollapse) isRightSidebarExpanded = false;
+
+            if (isRightSidebarExpanded) {
+                rightSidebar.classList.remove('w-20');
+                rightSidebar.classList.add('w-72');
+                mainContentArea.style.marginRight = '0'; // Убираем margin
+                rightSidebarCollapsedIcons.classList.add('hidden');
+                rightSidebarExpandedMenu.classList.remove('hidden');
+                rightSidebarToggleBtn.innerHTML = `<i data-lucide="chevron-right" class="w-6 h-6"></i>`;
+                rightSidebarToggleBtn.title = "Свернуть панель";
+                document.querySelectorAll('#right-sidebar .sidebar-text').forEach(el => el.style.opacity = '1');
+            } else {
+                rightSidebar.classList.add('w-20');
+                rightSidebar.classList.remove('w-72');
+                mainContentArea.style.marginRight = '0'; // Убираем margin
+                rightSidebarCollapsedIcons.classList.remove('hidden');
+                rightSidebarExpandedMenu.classList.add('hidden');
+                rightSidebarToggleBtn.innerHTML = `<i data-lucide="chevron-left" class="w-6 h-6"></i>`;
+                rightSidebarToggleBtn.title = "Развернуть панель";
+                document.querySelectorAll('#right-sidebar .sidebar-text').forEach(el => el.style.opacity = '0');
+            }
+            lucide.createIcons({
+                nodes: [rightSidebarToggleBtn]
+            });
+        }
+
+        // --- Инициализация и обработчики событий ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Рендеринг всего
+            renderLeftSidebar();
+            renderRightSidebar();
+            renderDashboardGrid();
+            
+            // 2. Инициализация иконок Lucide
+            lucide.createIcons();
+
+            // 3. Установка начального состояния
+            showChatView(); // Показываем чат по умолчанию (левый сайдбар будет видим)
+            // Устанавливаем иконки для кнопок сворачивания
+            leftSidebarToggleBtn.innerHTML = `<i data-lucide="chevron-right" class="w-6 h-6"></i>`;
+            rightSidebarToggleBtn.innerHTML = `<i data-lucide="chevron-left" class="w-6 h-6"></i>`;
+            lucide.createIcons({ nodes: [leftSidebarToggleBtn, rightSidebarToggleBtn] });
+            
+            // Устанавливаем начальные отступы для контента
+            mainContentArea.style.marginLeft = '0';
+            mainContentArea.style.marginRight = '0';
+            
+            // Экспортируем начальное состояние для React компонента
+            window.isLeftSidebarExpanded = isLeftSidebarExpanded;
+
+            // 4. Обработчик клика на кнопку "Свернуть/Развернуть" (ЛЕВАЯ ПАНЕЛЬ)
+            leftSidebarToggleBtn.addEventListener('click', () => toggleLeftSidebar());
+            
+            // 5. Обработчик клика на кнопку "Свернуть/Развернуть" (ПРАВАЯ ПАНЕЛЬ)
+            rightSidebarToggleBtn.addEventListener('click', () => toggleRightSidebar());
+
+            // 6. Обработчик кликов на элементы ПРАВОЙ ПАНЕЛИ (делегирование)
+            rightSidebar.addEventListener('click', (e) => {
+                const link = e.target.closest('a');
+                if (!link) return; 
+
+                const category = link.dataset.appCategory;
+
+                if (category === 'archie') {
+                    e.preventDefault();
+                    showChatView();
+                } else if (category === 'home') {
+                    e.preventDefault();
+                    showDashboardView();
+                    updateSidebarActiveState('home');
+                } else {
+                    // Для остальных категорий (light, weather и т.д.) позволяем переход по href
+                    // Ссылки уже настроены на /${category}/
+                }
+
+                // Сворачиваем, если была развернута
+                if (isRightSidebarExpanded) {
+                    toggleRightSidebar(true); // force collapse
+                }
+            });
+            
+            // 7. Обработчики для сворачивания панелей (Escape и Клик)
+            
+            // Клик на центральный контент
+            mainContentArea.addEventListener('click', () => {
+                // Сворачиваем левый сайдбар только если он видим (режим чата)
+                if (isLeftSidebarExpanded && !leftSidebar.classList.contains('hidden')) {
+                    toggleLeftSidebar(true); // force collapse
+                }
+                if (isRightSidebarExpanded) {
+                    toggleRightSidebar(true); // force collapse
+                }
+            });
+
+            // Нажатие Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    // Сворачиваем левый сайдбар только если он видим (режим чата)
+                    if (isLeftSidebarExpanded && !leftSidebar.classList.contains('hidden')) {
+                        toggleLeftSidebar(true); // force collapse
+                    }
+                    if (isRightSidebarExpanded) {
+                        toggleRightSidebar(true); // force collapse
+                    }
                 }
             });
         });
 
+    </script>
 
+    <!-- AI Assistant Integration -->
+    <script type="module">
+        // ChatAPI class - simplified version of the original
+        class ChatAPI {
+            constructor() {
+                this.baseUrl = '/ai-assistant/api';
+            }
 
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function () {
-            fetchWeatherData();
-            fetchCalendarEvents();
-            fetchAbstractImage();
-            console.log('Страница готова к работе с Python бэкендом');
-        });
+            async getConversations() {
+                try {
+                    const response = await fetch(`${this.baseUrl}/conversations/`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to get conversations:', error);
+                    return [];
+                }
+            }
 
-        function adjustLayout() {
-            const vh = window.innerHeight; // реальная высота
-            const main = document.querySelector('.main-content');
-            const buttonPanel = document.querySelector('.button-panel');
-            if (!main || !buttonPanel) return;
-            const available = vh;
-            main.style.height = available + 'px';
-            // Расчёт высоты строк сетки для равномерного заполнения
-            const rows = parseInt(getComputedStyle(buttonPanel).getPropertyValue('--tile-rows')) || 4;
-            const gap = parseInt(getComputedStyle(buttonPanel).gap) || 10;
-            const paddingY = 24; // top+bottom padding (approx)
-            let rowHeight = Math.floor((available - paddingY - gap * (rows - 1)) / rows);
-            if (rowHeight < 70) rowHeight = 70; // минимально допустимое
-            buttonPanel.style.gridAutoRows = rowHeight + 'px';
-            // Масштаб иконок и текста на плитках относительно базовых 100px
-            const base = 100;
-            const scale = Math.min(1, Math.max(0.72, rowHeight / base));
-            document.documentElement.style.setProperty('--tile-scale', scale.toFixed(2));
-        }
-        window.addEventListener('resize', () => { adjustLayout(); packInfoPanel(); });
-        document.addEventListener('DOMContentLoaded', () => { adjustLayout(); packInfoPanel(); });
-        function packInfoPanel() {
-            const infoPanel = document.querySelector('.info-panel');
-            if (!infoPanel) return;
-            const rootStyle = document.documentElement.style;
-            let scale = 1.0;
-            const minScale = 0.7;
-            rootStyle.setProperty('--scale', scale.toString());
-            // цикл уменьшает масштаб пока всё не влезет без вертикальной прокрутки или пока не достигнут предел
-            // (используем scrollHeight после применения стиля)
-            while (scale > minScale && infoPanel.scrollHeight > infoPanel.clientHeight + 2) {
-                scale -= 0.05;
-                rootStyle.setProperty('--scale', scale.toFixed(2));
+            async createConversation() {
+                try {
+                    const response = await fetch(`${this.baseUrl}/conversations/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: `Новый чат ${Date.now()}` })
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to create conversation:', error);
+                    return null;
+                }
+            }
+
+            async getMessages(conversationId) {
+                try {
+                    const response = await fetch(`${this.baseUrl}/conversations/${conversationId}/messages/`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to get messages:', error);
+                    return [];
+                }
+            }
+
+            async sendMessage(messageData) {
+                try {
+                    const response = await fetch(`${this.baseUrl}/messages/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(messageData)
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to send message:', error);
+                    throw error;
+                }
+            }
+
+            async deleteConversation(conversationId) {
+                try {
+                    const response = await fetch(`${this.baseUrl}/conversations/${conversationId}/`, {
+                        method: 'DELETE'
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                } catch (error) {
+                    console.error('Failed to delete conversation:', error);
+                    throw error;
+                }
             }
         }
-        // Тактильная подсветка
-        document.addEventListener('pointerdown', e => {
-            const t = e.target.closest('.btn-tile');
-            if (t) t.classList.add('touch-active');
-        });
-        document.addEventListener('pointerup', () => {
-            document.querySelectorAll('.btn-tile.touch-active').forEach(b => b.classList.remove('touch-active'));
-        });
-        document.addEventListener('pointercancel', () => {
-            document.querySelectorAll('.btn-tile.touch-active').forEach(b => b.classList.remove('touch-active'));
+
+        // IntegratedChatAssistant - полноценный чат с AI-driven UI
+        const IntegratedChatAssistant = () => {
+            const { useState, useRef, useEffect } = React;
+            
+            // State
+            const [conversations, setConversations] = useState([]);
+            const [currentConversation, setCurrentConversation] = useState(null);
+            const [messages, setMessages] = useState([]);
+            const [inputValue, setInputValue] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [isLeftSidebarExpanded, setIsLeftSidebarExpanded] = useState(false);
+            
+            const messagesEndRef = useRef(null);
+            const api = useRef(new ChatAPI());
+
+            // Слушаем изменения состояния левого сайдбара
+            useEffect(() => {
+                const updateSidebarState = () => {
+                    setIsLeftSidebarExpanded(window.isLeftSidebarExpanded || false);
+                };
+                
+                // Проверяем каждые 100мс
+                const interval = setInterval(updateSidebarState, 100);
+                return () => clearInterval(interval);
+            }, []);
+
+            // Load conversations on mount
+            useEffect(() => {
+                loadConversations();
+            }, []);
+
+            // Scroll to bottom when messages change
+            useEffect(() => {
+                scrollToBottom();
+            }, [messages]);
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            };
+
+            const loadConversations = async () => {
+                try {
+                    const convos = await api.current.getConversations();
+                    setConversations(convos);
+                    
+                    // Auto-select first conversation if exists
+                    if (convos.length > 0 && !currentConversation) {
+                        selectConversation(convos[0].conversation_id);
+                    }
+                } catch (err) {
+                    setError(`Не удалось загрузить чаты: ${err.message}`);
+                }
+            };
+
+            const selectConversation = async (conversationId) => {
+                setCurrentConversation(conversationId);
+                
+                try {
+                    const msgs = await api.current.getMessages(conversationId);
+                    setMessages(msgs);
+                } catch (err) {
+                    setError(`Не удалось загрузить сообщения: ${err.message}`);
+                }
+            };
+
+            const createNewChat = async () => {
+                try {
+                    const newConvo = await api.current.createConversation();
+                    if (newConvo) {
+                        setConversations(prev => [newConvo, ...prev]);
+                        setCurrentConversation(newConvo.conversation_id);
+                        setMessages([]);
+                    }
+                } catch (err) {
+                    setError(`Не удалось создать новый чат: ${err.message}`);
+                }
+            };
+
+            const sendMessage = async (e) => {
+                e.preventDefault();
+                if (!inputValue.trim() || !currentConversation || isLoading) return;
+
+                const userMessage = {
+                    message_id: `temp-user-${Date.now()}`,
+                    role: 'user',
+                    content: {
+                        content_format: 'plain',
+                        text: inputValue
+                    },
+                    created_at: new Date().toISOString()
+                };
+
+                setMessages(prev => [...prev, userMessage]);
+                setInputValue('');
+                setIsLoading(true);
+
+                try {
+                    const result = await api.current.sendMessage({
+                        response_format: 'ui_answer',
+                        input: inputValue,
+                        conversation_id: currentConversation
+                    });
+
+                    const assistantMessage = {
+                        message_id: result.message_id || `temp-assistant-${Date.now()}`,
+                        role: 'assistant',
+                        content: result.content || {
+                            content_format: 'ui_answer',
+                            ui_answer: result.ui_answer
+                        },
+                        created_at: result.created_at || new Date().toISOString()
+                    };
+
+                    setMessages(prev => [...prev, assistantMessage]);
+                } catch (err) {
+                    setError(`Не удалось отправить сообщение: ${err.message}`);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const executeCommand = async (assistantRequest) => {
+                if (!currentConversation) return;
+
+                setIsLoading(true);
+
+                try {
+                    const result = await api.current.sendMessage({
+                        response_format: 'ui_answer',
+                        input: assistantRequest,
+                        conversation_id: currentConversation
+                    });
+
+                    const assistantMessage = {
+                        message_id: result.message_id || `temp-assistant-${Date.now()}`,
+                        role: 'assistant',
+                        content: result.content || {
+                            content_format: 'ui_answer',
+                            ui_answer: result.ui_answer
+                        },
+                        created_at: result.created_at || new Date().toISOString()
+                    };
+
+                    setMessages(prev => [...prev, assistantMessage]);
+                } catch (err) {
+                    setError(`Ошибка выполнения команды: ${err.message}`);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const formatTime = (dateString) => {
+                return new Date(dateString).toLocaleTimeString('ru-RU', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+            };
+
+            // AI-driven UI rendering functions
+            const getSpacingClass = (spacing) => {
+                switch (spacing) {
+                    case 'tight': return 'space-y-2';
+                    case 'loose': return 'space-y-8';
+                    default: return 'space-y-4';
+                }
+            };
+
+            const getButtonStyle = (style) => {
+                switch (style) {
+                    case 'primary': return 'bg-indigo-600 hover:bg-indigo-500 text-white';
+                    case 'success': return 'bg-green-600 hover:bg-green-500 text-white';
+                    case 'warning': return 'bg-yellow-500 hover:bg-yellow-400 text-slate-900';
+                    case 'danger': return 'bg-red-600 hover:bg-red-500 text-white';
+                    default: return 'bg-slate-700 hover:bg-slate-600 text-white';
+                }
+            };
+
+            const renderAdvancedAnswerItem = (item) => {
+                switch (item.type) {
+                    case 'text_answer':
+                        return React.createElement('div', {
+                            key: `text-${item.order}`,
+                            className: 'prose prose-invert max-w-none',
+                            dangerouslySetInnerHTML: { __html: item.content.text }
+                        });
+                    
+                    case 'card_grid':
+                        return renderCardGrid(item.content, item.order);
+                    
+                    case 'table':
+                        return renderTable(item.content, item.order);
+                    
+                    case 'chart':
+                        return renderChart(item.content, item.order);
+                    
+                    default:
+                        return React.createElement('div', {
+                            key: `unknown-${item.order}`,
+                            className: 'text-white/70'
+                        }, `Неподдерживаемый тип элемента: ${item.type}`);
+                }
+            };
+
+            const renderCardGrid = (cardGrid, order) => {
+                const gridClass = cardGrid.grid_dimensions === '2_columns' 
+                    ? 'grid grid-cols-1 md:grid-cols-2 gap-4' 
+                    : 'grid grid-cols-1 gap-4';
+
+                return React.createElement('div', {
+                    key: `card-grid-${order}`,
+                    className: gridClass
+                }, cardGrid.cards.map((card, index) => 
+                    React.createElement('div', {
+                        key: `card-${index}`,
+                        className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-4 border border-white/20 shadow-xl hover:shadow-slate-500/30 transition-all duration-300 hover:scale-105'
+                    }, [
+                        card.title && React.createElement('h3', {
+                            key: 'title',
+                            className: 'font-semibold text-white mb-2'
+                        }, card.title),
+                        card.subtitle && React.createElement('p', {
+                            key: 'subtitle',
+                            className: 'text-sm text-white/70 mb-2'
+                        }, card.subtitle),
+                        card.text && React.createElement('div', {
+                            key: 'text',
+                            className: 'text-white/80 text-sm mb-3',
+                            dangerouslySetInnerHTML: { __html: card.text }
+                        }),
+                        card.buttons && card.buttons.length > 0 && React.createElement('div', {
+                            key: 'buttons',
+                            className: 'flex flex-wrap gap-2 mt-3'
+                        }, card.buttons.map((button, buttonIndex) => renderButton(button, buttonIndex)))
+                    ])
+                ));
+            };
+
+            const renderButton = (button, index) => {
+                const handleClick = () => {
+                    if (button.type === 'assistant_button') {
+                        executeCommand(button.assistant_request);
+                    } else {
+                        // Handle frontend commands
+                        console.log('Frontend command:', button.command);
+                    }
+                };
+
+                return React.createElement('button', {
+                    key: `button-${index}`,
+                    onClick: handleClick,
+                    className: `px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95 ${getButtonStyle(button.style)}`
+                }, [
+                    button.icon && React.createElement('span', {
+                        key: 'icon',
+                        className: 'mr-2'
+                    }, button.icon),
+                    React.createElement('span', {
+                        key: 'text'
+                    }, button.text)
+                ]);
+            };
+
+            const renderTable = (table, order) => {
+                return React.createElement('div', {
+                    key: `table-${order}`,
+                    className: 'backdrop-blur-lg bg-white/10 rounded-lg border border-white/20 shadow-xl overflow-hidden'
+                }, [
+                    table.title && React.createElement('div', {
+                        key: 'table-header',
+                        className: 'p-4 bg-slate-800/80 border-b border-slate-700/50'
+                    }, React.createElement('h3', {
+                        className: 'font-semibold text-white'
+                    }, table.title)),
+                    React.createElement('div', {
+                        key: 'table-wrapper',
+                        className: 'overflow-x-auto'
+                    }, React.createElement('table', {
+                        className: 'w-full'
+                    }, [
+                        React.createElement('thead', {
+                            key: 'thead',
+                            className: 'bg-slate-800/50'
+                        }, React.createElement('tr', {}, 
+                            table.headers.map((header, index) => 
+                                React.createElement('th', {
+                                    key: `header-${index}`,
+                                    className: 'px-4 py-3 text-left text-white font-semibold'
+                                }, header)
+                            )
+                        )),
+                        React.createElement('tbody', {
+                            key: 'tbody'
+                        }, table.rows.map((row, rowIndex) =>
+                            React.createElement('tr', {
+                                key: `row-${rowIndex}`,
+                                className: 'border-t border-white/10 hover:bg-white/5'
+                            }, row.map((cell, cellIndex) =>
+                                React.createElement('td', {
+                                    key: `cell-${cellIndex}`,
+                                    className: 'px-4 py-3 text-white/80'
+                                }, cell)
+                            ))
+                        ))
+                    ]))
+                ]);
+            };
+
+            const renderChart = (chart, order) => {
+                return React.createElement('div', {
+                    key: `chart-${order}`,
+                    className: 'backdrop-blur-lg bg-white/10 rounded-xl shadow-2xl p-6 border border-white/20'
+                }, [
+                    chart.title && React.createElement('h3', {
+                        key: 'chart-title',
+                        className: 'text-xl font-bold text-white mb-2'
+                    }, chart.title),
+                    chart.description && React.createElement('p', {
+                        key: 'chart-description',
+                        className: 'text-white/70 mb-4'
+                    }, chart.description),
+                    React.createElement('div', {
+                        key: 'chart-container',
+                        style: { height: `${chart.height || 300}px` }
+                    }, React.createElement('div', {
+                        className: 'text-white/50 flex items-center justify-center h-full'
+                    }, `График (Chart.js) - ${chart.chart_type}`))
+                ]);
+            };
+
+            const renderUIAnswer = (uiAnswer) => {
+                return React.createElement('div', {
+                    className: 'space-y-6'
+                }, [
+                    // Intro text
+                    uiAnswer.intro_text && React.createElement('div', {
+                        key: 'intro',
+                        className: 'prose prose-invert max-w-none',
+                        dangerouslySetInnerHTML: { __html: uiAnswer.intro_text.text }
+                    }),
+
+                    // Items
+                    React.createElement('div', {
+                        key: 'items'
+                    }, uiAnswer.items.sort((a, b) => a.order - b.order).map((item, index) => 
+                        React.createElement('div', {
+                            key: `item-${index}`,
+                            className: getSpacingClass(item.spacing)
+                        }, renderAdvancedAnswerItem(item))
+                    )),
+
+                    // Quick action buttons
+                    uiAnswer.quick_action_buttons && React.createElement('div', {
+                        key: 'quick-actions',
+                        className: 'flex flex-wrap gap-3 pt-4 border-t border-white/20'
+                    }, uiAnswer.quick_action_buttons.buttons.map((button, index) =>
+                        React.createElement('button', {
+                            key: `quick-${index}`,
+                            onClick: () => executeCommand(button.assistant_request),
+                            className: `px-4 py-2 rounded-full font-semibold transition-all duration-300 hover:scale-105 active:scale-95 ${getButtonStyle(button.style)}`
+                        }, [
+                            button.icon && React.createElement('span', {
+                                key: 'icon',
+                                className: 'mr-2'
+                            }, button.icon),
+                            React.createElement('span', {
+                                key: 'text'
+                            }, button.text)
+                        ])
+                    ))
+                ]);
+            };
+
+            const renderContent = (content) => {
+                if (content.text) {
+                    // Simple text content
+                    return React.createElement('div', {
+                        className: 'prose prose-invert max-w-none',
+                        dangerouslySetInnerHTML: { __html: content.text }
+                    });
+                }
+
+                if (content.ui_answer) {
+                    return renderUIAnswer(content.ui_answer);
+                }
+
+                return React.createElement('div', {
+                    className: 'text-white/70'
+                }, 'Неподдерживаемый формат контента');
+            };
+
+            const renderMessage = (message) => {
+                const isUser = message.role === 'user';
+                
+                return React.createElement('div', {
+                    key: message.message_id,
+                    className: `mb-6 flex ${isUser ? 'justify-end' : 'justify-start'}`
+                }, [
+                    React.createElement('div', {
+                        key: 'message-container',
+                        className: `max-w-[85%] ${isUser ? 'order-2' : 'order-1'}`
+                    }, [
+                        React.createElement('div', {
+                            key: 'message-bubble',
+                            className: `backdrop-blur-lg rounded-3xl p-6 border shadow-2xl relative group ${
+                                isUser 
+                                    ? 'bg-gradient-to-r from-slate-600 to-slate-700 border-slate-500/30 text-white' 
+                                    : 'bg-white/10 border-white/20 text-white'
+                            }`
+                        }, [
+                            React.createElement('div', {
+                                key: 'message-header',
+                                className: 'flex items-center gap-2 mb-3'
+                            }, [
+                                React.createElement('div', {
+                                    key: 'avatar',
+                                    className: `w-8 h-8 rounded-full flex items-center justify-center ${
+                                        isUser ? 'bg-slate-500' : 'bg-blue-500'
+                                    }`
+                                }, [
+                                    React.createElement('i', {
+                                        key: 'avatar-icon',
+                                        'data-lucide': isUser ? 'user' : 'bot',
+                                        className: 'w-4 h-4'
+                                    })
+                                ]),
+                                React.createElement('span', {
+                                    key: 'role',
+                                    className: 'font-semibold'
+                                }, isUser ? 'Вы' : 'Archie'),
+                                React.createElement('span', {
+                                    key: 'time',
+                                    className: 'text-xs opacity-70'
+                                }, formatTime(message.created_at))
+                            ]),
+                            React.createElement('div', {
+                                key: 'message-content',
+                                className: 'message-content'
+                            }, renderContent(message.content))
+                        ])
+                    ])
+                ]);
+            };
+
+            // Expose functions globally for left sidebar integration
+            useEffect(() => {
+                window.chatAssistantAPI = {
+                    createNewChat,
+                    conversations,
+                    currentConversation,
+                    selectConversation
+                };
+            }, [conversations, currentConversation]);
+
+            if (!currentConversation) {
+                return React.createElement('div', {
+                    className: 'h-full flex flex-col items-center justify-center text-center'
+                }, [
+                    React.createElement('div', {
+                        key: 'empty-state',
+                        className: 'text-white/60'
+                    }, [
+                        React.createElement('i', {
+                            key: 'icon',
+                            'data-lucide': 'message-circle',
+                            className: 'w-16 h-16 mx-auto mb-4'
+                        }),
+                        React.createElement('h3', {
+                            key: 'title',
+                            className: 'text-xl font-semibold mb-2'
+                        }, 'Выберите чат'),
+                        React.createElement('p', {
+                            key: 'description',
+                            className: 'text-sm'
+                        }, 'Создайте новый чат или выберите существующий из левой панели'),
+                        React.createElement('button', {
+                            key: 'create-button',
+                            onClick: createNewChat,
+                            className: 'mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full transition-colors'
+                        }, 'Создать новый чат')
+                    ])
+                ]);
+            }
+
+            // Определяем, что показывать: диалог или только последнее сообщение
+            const messagesToShow = isLeftSidebarExpanded ? messages : messages.slice(-1);
+
+            return React.createElement('div', {
+                className: 'h-full flex flex-col bg-transparent'
+            }, [
+                // Messages area
+                React.createElement('div', {
+                    key: 'messages-area',
+                    className: 'flex-1 overflow-y-auto px-4 py-4'
+                }, [
+                    ...messagesToShow.map(renderMessage),
+                    isLoading && React.createElement('div', {
+                        key: 'loading',
+                        className: 'flex justify-start mb-6'
+                    }, [
+                        React.createElement('div', {
+                            key: 'loading-bubble',
+                            className: 'backdrop-blur-lg rounded-3xl p-6 bg-white/10 border border-white/20'
+                        }, [
+                            React.createElement('div', {
+                                key: 'loading-text',
+                                className: 'text-white/60 mb-2'
+                            }, 'Archie печатает'),
+                            React.createElement('div', {
+                                key: 'loading-dots',
+                                className: 'flex gap-1'
+                            }, [
+                                React.createElement('div', {
+                                    key: 'dot1',
+                                    className: 'w-2 h-2 bg-white/60 rounded-full animate-pulse'
+                                }),
+                                React.createElement('div', {
+                                    key: 'dot2',
+                                    className: 'w-2 h-2 bg-white/60 rounded-full animate-pulse',
+                                    style: { animationDelay: '0.2s' }
+                                }),
+                                React.createElement('div', {
+                                    key: 'dot3',
+                                    className: 'w-2 h-2 bg-white/60 rounded-full animate-pulse',
+                                    style: { animationDelay: '0.4s' }
+                                })
+                            ])
+                        ])
+                    ]),
+                    React.createElement('div', {
+                        key: 'messages-end',
+                        ref: messagesEndRef
+                    })
+                ]),
+                
+                // Input area
+                React.createElement('div', {
+                    key: 'input-area',
+                    className: 'p-4'
+                }, [
+                    React.createElement('div', {
+                        key: 'input-container',
+                        className: 'relative'
+                    }, [
+                        React.createElement('div', {
+                            key: 'input-bg',
+                            className: 'absolute inset-0 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl'
+                        }),
+                        React.createElement('form', {
+                            key: 'input-form',
+                            className: 'relative flex items-center p-2',
+                            onSubmit: sendMessage
+                        }, [
+                            React.createElement('input', {
+                                key: 'input-field',
+                                type: 'text',
+                                placeholder: 'Напишите что-нибудь...',
+                                className: 'flex-1 bg-transparent text-white placeholder-gray-400 border-none outline-none focus:ring-0 p-3',
+                                value: inputValue,
+                                onChange: (e) => setInputValue(e.target.value),
+                                disabled: isLoading || !currentConversation
+                            }),
+                            React.createElement('button', {
+                                key: 'send-button',
+                                type: 'submit',
+                                disabled: !inputValue.trim() || isLoading || !currentConversation,
+                                className: 'p-3 text-gray-400 hover:text-white transition-colors rounded-lg disabled:opacity-50'
+                            }, React.createElement('i', {
+                                'data-lucide': 'send',
+                                className: 'w-6 h-6'
+                            }))
+                        ])
+                    ])
+                ]),
+
+                // Error display
+                error && React.createElement('div', {
+                    key: 'error',
+                    className: 'fixed bottom-4 right-4 bg-red-600 text-white px-6 py-3 rounded-full shadow-lg'
+                }, [
+                    React.createElement('span', { key: 'error-text' }, error),
+                    React.createElement('button', {
+                        key: 'error-close',
+                        onClick: () => setError(null),
+                        className: 'ml-3 text-white/80 hover:text-white'
+                    }, React.createElement('i', {
+                        'data-lucide': 'x',
+                        className: 'w-4 h-4'
+                    }))
+                ])
+            ]);
+        };
+        
+        // Initialize AI Assistant
+        function initializeChatAssistant() {
+            const chatContainer = document.getElementById('chat-assistant-root');
+            if (!chatContainer) {
+                console.error('Chat assistant container not found');
+                return;
+            }
+
+            if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+                console.error('React or ReactDOM not loaded');
+                return;
+            }
+
+            try {
+                const root = ReactDOM.createRoot(chatContainer);
+                root.render(React.createElement(IntegratedChatAssistant));
+                
+                // Re-initialize Lucide icons
+                setTimeout(() => {
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                }, 100);
+                
+                console.log('Integrated AI Assistant initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize AI Assistant:', error);
+                chatContainer.innerHTML = `
+                    <div class="flex items-center justify-center h-full">
+                        <div class="text-center text-white/60">
+                            <p class="text-lg">AI Assistant загружается...</p>
+                            <p class="text-sm mt-2">Если проблема не исчезает, обновите страницу</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initializeChatAssistant, 100);
         });
     </script>
 </body>
