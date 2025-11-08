@@ -149,6 +149,14 @@
             background: rgba(0, 191, 255, 0.2);
             color: #00bfff; /* DeepSkyBlue */
         }
+        .sidebar-item:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .sidebar-item:disabled:hover {
+            background: transparent;
+        }
         
         /* Стили для развернутых кнопок */
         .sidebar-item-expanded {
@@ -232,6 +240,156 @@
             background: rgba(255, 255, 255, 0.08);
         }
 
+        /* Responsive dashboard grid styles */
+        .dashboard-grid-landscape {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 1.5rem;
+            aspect-ratio: 3/2;
+            height: calc(100vh - 200px); /* Подстраиваем под доступную высоту */
+        }
+
+        .dashboard-grid-portrait {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 1.5rem;
+            aspect-ratio: 2/3;
+            height: calc(100vh - 200px); /* Подстраиваем под доступную высоту */
+        }
+
+        .dashboard-tile {
+            aspect-ratio: 1; /* Квадратные плитки */
+            min-height: 0; /* Позволяем сжиматься */
+        }
+
+        /* Стили для планшетных альбомных разрешений */
+        @media (max-height: 720px) and (orientation: landscape) {
+            .dashboard-compact {
+                height: calc(100vh - 80px) !important; /* Увеличиваем отступы для гармонии */
+            }
+            
+            .dashboard-tiles-compact {
+                gap: 1rem !important; /* Увеличиваем отступы между плитками */
+                margin-bottom: 1rem !important;
+            }
+            
+            .dashboard-tile-compact {
+                padding: 1rem !important; /* Комфортные внутренние отступы */
+                font-size: 0.875rem !important; /* Читаемый размер шрифта */
+                max-height: 280px !important; /* Ограничиваем высоту для планшетов */
+            }
+            
+            .dashboard-tile-compact h2 {
+                font-size: 1rem !important; /* Увеличиваем заголовки */
+                margin-bottom: 0.25rem !important;
+                line-height: 1.25 !important;
+            }
+            
+            .dashboard-tile-compact p {
+                font-size: 0.75rem !important; /* Читаемые подзаголовки */
+                line-height: 1.25 !important;
+            }
+            
+            .dashboard-tile-compact .device-icon {
+                width: 1.5rem !important; /* Увеличиваем иконки устройств */
+                height: 1.5rem !important;
+            }
+            
+            .dashboard-tile-compact i {
+                width: 1.25rem !important; /* Читаемые иконки */
+                height: 1.25rem !important;
+            }
+            
+            .quick-actions-compact {
+                gap: 0.75rem !important; /* Комфортные отступы между кнопками */
+                margin-bottom: 1rem !important;
+                height: 56px !important; /* Фиксированная высота для кнопок */
+            }
+            
+            .quick-action-btn-compact {
+                padding: 0.75rem 1.5rem !important; /* Крупные кнопки (large) */
+                font-size: 0.875rem !important;
+                font-weight: 500 !important;
+                height: 56px !important; /* Фиксированная высота */
+            }
+            
+            .quick-action-btn-compact i {
+                width: 1.125rem !important;
+                height: 1.125rem !important;
+            }
+            
+            /* Комфортные отступы */
+            .view-screen {
+                padding: 1rem !important;
+            }
+        }
+
+        /* Экстремальная оптимизация для очень низких экранов (600px и меньше) */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .dashboard-compact {
+                height: calc(100vh - 32px) !important; /* Точный расчет */
+            }
+            
+            .dashboard-tiles-compact {
+                gap: 0.75rem !important; /* 12px зазоры */
+                margin-bottom: 1rem !important; /* 16px под кнопки */
+                max-height: calc(100vh - 92px) !important; /* 600 - 32 (отступы) - 60 (кнопки) = 508px */
+            }
+            
+            .dashboard-tile-compact {
+                aspect-ratio: 1 !important; /* Строго квадратные */
+                padding: 0.5rem !important; /* 8px внутренние отступы */
+                max-height: 240px !important; /* Точный размер плитки */
+                min-height: 240px !important; /* Фиксированная высота */
+            }
+            
+            .dashboard-tile-compact h2 {
+                font-size: 0.75rem !important; /* 12px заголовки */
+                line-height: 1rem !important;
+                margin-bottom: 0.125rem !important; /* 2px */
+            }
+            
+            .dashboard-tile-compact p {
+                font-size: 0.625rem !important; /* 10px подзаголовки */
+                line-height: 0.75rem !important;
+            }
+            
+            .dashboard-tile-compact .device-icon {
+                width: 0.875rem !important; /* 14px иконки устройств */
+                height: 0.875rem !important;
+            }
+            
+            .dashboard-tile-compact i {
+                width: 0.875rem !important; /* 14px все иконки */
+                height: 0.875rem !important;
+            }
+            
+            .quick-actions-compact {
+                gap: 0.5rem !important; /* 8px зазоры между кнопками */
+                margin-bottom: 0 !important; /* Убираем лишние отступы */
+                height: 44px !important; /* Фиксированная высота для кнопок */
+            }
+            
+            .quick-action-btn-compact {
+                padding: 0.375rem 0.75rem !important; /* 6px/12px компактные кнопки */
+                font-size: 0.75rem !important; /* 12px текст */
+                font-weight: 500 !important;
+                height: 44px !important; /* Фиксированная высота */
+            }
+            
+            .quick-action-btn-compact i {
+                width: 0.875rem !important; /* 14px иконки кнопок */
+                height: 0.875rem !important;
+            }
+            
+            /* Точные отступы */
+            .view-screen {
+                padding: 1rem !important; /* 16px отступы */
+            }
+        }
+
     </style>
 </head>
 <body class="bg-black text-gray-300 h-screen overflow-hidden flex">
@@ -281,12 +439,16 @@
           ЭКРАН 2: ДАШБОРД УМНОГО ДОМА (z-10, скрыт)
         -->
         <div id="dashboard-view" class="view-screen z-10 hidden">
-            <div id="dashboard-tiles" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
-                <!-- Плитки будут генерироваться здесь JS -->
-            </div>
+            <div class="w-full lg:max-w-none lg:h-full lg:flex lg:items-center lg:justify-center">
+                <div class="lg:w-auto">
+                    <div id="dashboard-tiles" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
+                        <!-- Плитки будут генерироваться здесь JS -->
+                    </div>
 
-            <div id="global-quick-actions" class="flex flex-wrap gap-3">
-                <!-- Кнопки будут генерироваться здесь JS -->
+                    <div id="global-quick-actions" class="flex flex-wrap gap-3">
+                        <!-- Кнопки будут генерироваться здесь JS -->
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -326,12 +488,12 @@
             "smarthome_dashboard": {
                 "type": "smarthome_dashboard",
                 "tiles": [
-                    { "category": "light", "title": "Свет", "subtitle": "2 из 3 включены, тёплый белый", "icon": "lightbulb", "status_color": "orange", "quick_actions": ["Выключить все", "Приглушить свет", "Сменить цвет"], "devices": [{ "name": "Торшер комната 1", "icon": "lamp", "color": "orange", "variant": "outline", "tooltip": "Выкл., 80%, 3000K" }, { "name": "Потолочная комната 1", "icon": "lightbulb", "color": "orange", "variant": "solid", "tooltip": "Вкл., 60%, 4000K" }, { "name": "Спальня", "icon": "bed", "color": "yellow", "variant": "solid", "tooltip": "Вкл., 40%, 2700K" }] },
-                    { "category": "climate", "title": "Климат", "subtitle": "Средняя 21.8°C, обогрев активен", "icon": "thermometer", "status_color": "orange", "quick_actions": ["Эко режим", "Снизить температуру", "Выключить обогрев"], "devices": [{ "name": "Регулятор комната 1", "icon": "flame", "color": "orange", "variant": "solid", "tooltip": "22.5°C→23.0°C, 45%, обогрев" }, { "name": "Регулятор комната 2", "icon": "thermometer", "color": "green", "variant": "outline", "tooltip": "21.0°C→21.5°C, 48%, выкл." }] },
-                    { "category": "music", "title": "Музыка", "subtitle": "Не играет", "icon": "music", "status_color": "gray", "quick_actions": ["Джаз плейлист", "Расслабляющая музыка", "Последний трек"], "devices": null },
-                    { "category": "documents", "title": "Документы", "subtitle": "Поиск готов", "icon": "file-search", "status_color": "blue", "quick_actions": ["Найти документ", "Последние файлы", "Архив"], "devices": null },
-                    { "category": "apps", "title": "Приложения", "subtitle": "Все системы в норме", "icon": "grid-3x3", "status_color": "green", "quick_actions": ["Перезагрузить", "Обновления", "Логи"], "devices": null },
-                    { "category": "settings", "title": "Настройки", "subtitle": "Конфигурация", "icon": "settings", "status_color": "gray", "quick_actions": ["Открыть настройки"], "devices": null }
+                    { "category": "light", "title": "Свет", "subtitle": "2 из 3 включены, тёплый белый", "icon": "lightbulb", "status_color": "orange", "quick_actions": ["Выключить все", "Приглушить свет"], "devices": [{ "name": "Торшер комната 1", "icon": "lamp", "color": "orange", "variant": "outline", "tooltip": "Выкл., 80%, 3000K" }, { "name": "Потолочная комната 1", "icon": "lightbulb", "color": "orange", "variant": "solid", "tooltip": "Вкл., 60%, 4000K" }, { "name": "Спальня", "icon": "bed", "color": "yellow", "variant": "solid", "tooltip": "Вкл., 40%, 2700K" }] },
+                    { "category": "climate", "title": "Климат", "subtitle": "Средняя 21.8°C, обогрев активен", "icon": "thermometer", "status_color": "orange", "quick_actions": ["Эко режим", "Снизить температуру"], "devices": [{ "name": "Регулятор комната 1", "icon": "flame", "color": "orange", "variant": "solid", "tooltip": "22.5°C→23.0°C, 45%, обогрев" }, { "name": "Регулятор комната 2", "icon": "thermometer", "color": "green", "variant": "outline", "tooltip": "21.0°C→21.5°C, 48%, выкл." }] },
+                    { "category": "music", "title": "Музыка", "subtitle": "Не играет", "icon": "music", "status_color": "gray", "quick_actions": ["Джаз плейлист", "Последний трек"], "devices": null },
+                    { "category": "documents", "title": "Документы", "subtitle": "Поиск готов", "icon": "file-search", "status_color": "blue", "quick_actions": ["Найти документ", "Архив"], "devices": null },
+                    { "category": "apps", "title": "Приложения", "subtitle": "Все системы в норме", "icon": "grid-3x3", "status_color": "green", "quick_actions": ["Перезагрузить", "Логи"], "devices": null },
+                    { "category": "settings", "title": "Настройки", "subtitle": "Конфигурация", "icon": "settings", "status_color": "gray", "quick_actions": ["Открыть настройки", "Профиль"], "devices": null }
                 ],
                 "quick_actions": [
                     { "type": "assistant_button", "text": "Джазовая атмосфера", "style": "primary", "icon": "music", "assistant_request": "Создать атмосферу джазового бара" },
@@ -409,6 +571,32 @@
             };
             newChatCollapsed.innerHTML = `<i data-lucide="plus-circle" class="w-6 h-6"></i>`;
             leftSidebarCollapsedIcons.appendChild(newChatCollapsed);
+
+            // Кнопка "Предыдущее сообщение" (только в свернутом виде)
+            const prevMessageBtn = document.createElement('button');
+            prevMessageBtn.id = 'prev-message-btn';
+            prevMessageBtn.className = "sidebar-item text-gray-400";
+            prevMessageBtn.title = "Предыдущее сообщение";
+            prevMessageBtn.onclick = () => {
+                if (window.chatAssistantAPI) {
+                    window.chatAssistantAPI.navigateMessages('prev');
+                }
+            };
+            prevMessageBtn.innerHTML = `<i data-lucide="chevron-up" class="w-6 h-6"></i>`;
+            leftSidebarCollapsedIcons.appendChild(prevMessageBtn);
+
+            // Кнопка "Следующее сообщение" (только в свернутом виде)
+            const nextMessageBtn = document.createElement('button');
+            nextMessageBtn.id = 'next-message-btn';
+            nextMessageBtn.className = "sidebar-item text-gray-400";
+            nextMessageBtn.title = "Следующее сообщение";
+            nextMessageBtn.onclick = () => {
+                if (window.chatAssistantAPI) {
+                    window.chatAssistantAPI.navigateMessages('next');
+                }
+            };
+            nextMessageBtn.innerHTML = `<i data-lucide="chevron-down" class="w-6 h-6"></i>`;
+            leftSidebarCollapsedIcons.appendChild(nextMessageBtn);
 
             const newChatExpanded = document.createElement('a');
             newChatExpanded.href = "#";
@@ -720,14 +908,78 @@
             globalQuickActionsContainer.innerHTML = '';
             dashboardTilesContainer.innerHTML = '';
             
+            // Определяем ориентацию экрана и разрешение
+            const isLandscape = window.innerWidth > window.innerHeight;
+            const isTabletLandscape = isLandscape && window.innerHeight <= 720;
+            const isVeryLowScreen = isLandscape && window.innerHeight <= 600; // Для экстремально низких экранов
+            
+            // Устанавливаем CSS Grid классы в зависимости от ориентации
+            let containerClasses = 'grid gap-6 mb-6';
+            let tilesClasses = 'glass-tile rounded-2xl p-6 flex flex-col justify-between aspect-square cursor-pointer';
+            let quickActionsClasses = 'flex flex-wrap gap-3';
+            
+            if (isLandscape) {
+                // Альбомная ориентация: 3x2 (3 колонки, 2 ряда)
+                containerClasses += ' grid-cols-3 grid-rows-2 max-w-5xl mx-auto';
+                quickActionsClasses += ' max-w-5xl mx-auto';
+            } else {
+                // Портретная ориентация: 2x3 (2 колонки, 3 ряда)
+                containerClasses += ' grid-cols-2 grid-rows-3 max-w-2xl mx-auto';
+                quickActionsClasses += ' max-w-2xl mx-auto';
+            }
+            
+            // Добавляем компактные стили для планшетов в альбомной ориентации
+            if (isVeryLowScreen) {
+                // Экстремально компактные стили для очень низких экранов (600px и меньше)
+                containerClasses += ' dashboard-tiles-compact';
+                tilesClasses += ' dashboard-tile-compact';
+                quickActionsClasses += ' quick-actions-compact';
+                
+                // Применяем компактную высоту к контейнеру дашборда
+                const dashboardContainer = dashboardTilesContainer.parentElement.parentElement;
+                if (dashboardContainer) {
+                    dashboardContainer.classList.add('dashboard-compact');
+                }
+            } else if (isTabletLandscape) {
+                // Обычные компактные стили для планшетов (до 720px)
+                containerClasses += ' dashboard-tiles-compact';
+                tilesClasses += ' dashboard-tile-compact';
+                quickActionsClasses += ' quick-actions-compact';
+                
+                // Применяем компактную высоту к контейнеру дашборда
+                const dashboardContainer = dashboardTilesContainer.parentElement.parentElement;
+                if (dashboardContainer) {
+                    dashboardContainer.classList.add('dashboard-compact');
+                }
+            } else {
+                // Убираем компактные классы если они были применены ранее
+                const dashboardContainer = dashboardTilesContainer.parentElement.parentElement;
+                if (dashboardContainer) {
+                    dashboardContainer.classList.remove('dashboard-compact');
+                }
+            }
+            
+            dashboardTilesContainer.className = containerClasses;
+            globalQuickActionsContainer.className = quickActionsClasses;
+            
             if (dashboardData.smarthome_dashboard.quick_actions) {
                 dashboardData.smarthome_dashboard.quick_actions.forEach(action => {
                     const button = document.createElement('button');
-                    let buttonClasses = ['glass-button', 'px-4', 'py-2', 'rounded-lg', 'text-white', 'flex', 'items-center', 'gap-2', 'text-sm'];
+                    let buttonClasses = ['glass-button', 'px-6', 'py-3', 'rounded-lg', 'text-white', 'flex', 'items-center', 'gap-3', 'text-lg', 'font-medium']; // Large button стили
+                    
+                    // Добавляем компактный класс для планшетов
+                    if (isVeryLowScreen) {
+                        // Экстремально компактные кнопки для очень низких экранов
+                        buttonClasses.push('quick-action-btn-compact');
+                    } else if (isTabletLandscape) {
+                        // Обычные компактные кнопки для планшетов
+                        buttonClasses.push('quick-action-btn-compact');
+                    }
+                    
                     if (action.style === 'primary') buttonClasses.push('btn-primary');
                     else if (action.style === 'secondary') buttonClasses.push('btn-secondary');
                     button.className = buttonClasses.join(' ');
-                    button.innerHTML = `<i data-lucide="${action.icon}" class="w-5 h-5"></i><span>${action.text}</span>`;
+                    button.innerHTML = `<i data-lucide="${action.icon}" class="w-6 h-6"></i><span>${action.text}</span>`; // Крупные иконки
                     button.onclick = () => alert(`Запрос: "${action.assistant_request}"`);
                     globalQuickActionsContainer.appendChild(button);
                 });
@@ -735,7 +987,7 @@
 
             dashboardData.smarthome_dashboard.tiles.forEach(tile => {
                 const tileElement = document.createElement('div');
-                tileElement.className = 'glass-tile rounded-2xl p-6 flex flex-col justify-between min-h-[260px] cursor-pointer';
+                tileElement.className = tilesClasses;
                 tileElement.onclick = () => window.location.href = `/${tile.category}/`;
                 const statusIconColorClass = getTailwindColorClass(tile.status_color);
 
@@ -759,7 +1011,7 @@
 
                 let quickActionsHtml = '';
                 if (tile.quick_actions && tile.quick_actions.length > 0) {
-                    quickActionsHtml = `<div class="mt-6 flex flex-wrap gap-2">
+                    quickActionsHtml = `<div class="mt-6 grid grid-cols-2 gap-2">
                         ${tile.quick_actions.map(action => `
                             <button class="glass-button text-xs px-3 py-1.5 rounded-lg text-white">${action}</button>
                         `).join('')}
@@ -810,6 +1062,48 @@
             });
         }
 
+        // Обновить состояние кнопок навигации по сообщениям
+        function updateMessageNavigationButtons(currentIndex, totalMessages) {
+            const prevBtn = document.getElementById('prev-message-btn');
+            const nextBtn = document.getElementById('next-message-btn');
+            
+            if (!prevBtn || !nextBtn) return;
+
+            // Кнопки видны только в свернутом состоянии левого сайдбара
+            if (isLeftSidebarExpanded) {
+                prevBtn.style.display = 'none';
+                nextBtn.style.display = 'none';
+                return;
+            } else {
+                prevBtn.style.display = 'flex';
+                nextBtn.style.display = 'flex';
+            }
+
+            // Предыдущее сообщение доступно если индекс > 0
+            if (currentIndex <= 0) {
+                prevBtn.classList.add('opacity-30', 'cursor-not-allowed');
+                prevBtn.classList.remove('text-gray-400');
+                prevBtn.classList.add('text-gray-600');
+                prevBtn.disabled = true;
+            } else {
+                prevBtn.classList.remove('opacity-30', 'cursor-not-allowed', 'text-gray-600');
+                prevBtn.classList.add('text-gray-400');
+                prevBtn.disabled = false;
+            }
+
+            // Следующее сообщение доступно если индекс < total - 1
+            if (currentIndex >= totalMessages - 1) {
+                nextBtn.classList.add('opacity-30', 'cursor-not-allowed');
+                nextBtn.classList.remove('text-gray-400');
+                nextBtn.classList.add('text-gray-600');
+                nextBtn.disabled = true;
+            } else {
+                nextBtn.classList.remove('opacity-30', 'cursor-not-allowed', 'text-gray-600');
+                nextBtn.classList.add('text-gray-400');
+                nextBtn.disabled = false;
+            }
+        }
+
         // Свернуть/Развернуть ЛЕВУЮ панель
         function toggleLeftSidebar(forceCollapse = false) {
             isLeftSidebarExpanded = !isLeftSidebarExpanded;
@@ -843,6 +1137,11 @@
             lucide.createIcons({
                 nodes: [leftSidebarToggleBtn]
             });
+            
+            // Обновляем состояние кнопок навигации по сообщениям при переключении
+            if (window.chatAssistantAPI && window.chatAssistantAPI.updateNavigationButtons) {
+                window.chatAssistantAPI.updateNavigationButtons();
+            }
         }
         
         // Свернуть/Развернуть ПРАВУЮ панель
@@ -954,6 +1253,14 @@
                     }
                 }
             });
+
+            // Обработчик изменения размера окна для адаптивной сетки
+            window.addEventListener('resize', () => {
+                // Перерендериваем дашборд при изменении ориентации
+                if (!dashboardView.classList.contains('hidden')) {
+                    renderDashboardGrid();
+                }
+            });
         });
 
     </script>
@@ -1043,6 +1350,7 @@
             const [isLoading, setIsLoading] = useState(false);
             const [error, setError] = useState(null);
             const [isLeftSidebarExpanded, setIsLeftSidebarExpanded] = useState(false);
+            const [currentMessageIndex, setCurrentMessageIndex] = useState(-1); // Индекс текущего сообщения для навигации
             
             const messagesEndRef = useRef(null);
             const api = useRef(new ChatAPI());
@@ -1068,6 +1376,21 @@
                 scrollToBottom();
             }, [messages]);
 
+            // Update navigation buttons when messages change or sidebar state changes
+            useEffect(() => {
+                const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+                const currentIndex = currentMessageIndex === -1 ? assistantMessages.length - 1 : currentMessageIndex;
+                
+                if (window.updateMessageNavigationButtons) {
+                    window.updateMessageNavigationButtons(currentIndex, assistantMessages.length);
+                }
+                
+                // Если индекс не установлен и есть сообщения, показываем последнее
+                if (currentMessageIndex === -1 && assistantMessages.length > 0) {
+                    setCurrentMessageIndex(assistantMessages.length - 1);
+                }
+            }, [messages, currentMessageIndex, isLeftSidebarExpanded]);
+
             const scrollToBottom = () => {
                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             };
@@ -1088,6 +1411,7 @@
 
             const selectConversation = async (conversationId) => {
                 setCurrentConversation(conversationId);
+                setCurrentMessageIndex(-1); // Сбрасываем индекс при смене разговора
                 
                 try {
                     const msgs = await api.current.getMessages(conversationId);
@@ -1180,6 +1504,32 @@
                     setError(`Ошибка выполнения команды: ${err.message}`);
                 } finally {
                     setIsLoading(false);
+                }
+            };
+
+            const navigateMessages = (direction) => {
+                const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+                if (assistantMessages.length === 0) return;
+
+                let newIndex = currentMessageIndex;
+                
+                if (direction === 'prev') {
+                    newIndex = Math.max(0, currentMessageIndex - 1);
+                } else if (direction === 'next') {
+                    newIndex = Math.min(assistantMessages.length - 1, currentMessageIndex + 1);
+                }
+
+                if (newIndex !== currentMessageIndex) {
+                    setCurrentMessageIndex(newIndex);
+                }
+            };
+
+            const updateNavigationButtons = () => {
+                const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+                const currentIndex = currentMessageIndex === -1 ? assistantMessages.length - 1 : currentMessageIndex;
+                
+                if (window.updateMessageNavigationButtons) {
+                    window.updateMessageNavigationButtons(currentIndex, assistantMessages.length);
                 }
             };
 
@@ -1481,9 +1831,11 @@
                     createNewChat,
                     conversations,
                     currentConversation,
-                    selectConversation
+                    selectConversation,
+                    navigateMessages,
+                    updateNavigationButtons
                 };
-            }, [conversations, currentConversation]);
+            }, [conversations, currentConversation, navigateMessages, updateNavigationButtons]);
 
             if (!currentConversation) {
                 return React.createElement('div', {
@@ -1515,8 +1867,23 @@
                 ]);
             }
 
-            // Определяем, что показывать: диалог или только последнее сообщение
-            const messagesToShow = isLeftSidebarExpanded ? messages : messages.slice(-1);
+            // Определяем, что показывать: диалог или конкретное сообщение по индексу
+            const messagesToShow = (() => {
+                if (isLeftSidebarExpanded) {
+                    return messages; // Показываем все сообщения в развернутом режиме
+                } else {
+                    // В свернутом режиме показываем только сообщения ассистента
+                    const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+                    if (assistantMessages.length === 0) return [];
+                    
+                    // Показываем сообщение по currentMessageIndex или последнее
+                    const index = currentMessageIndex >= 0 && currentMessageIndex < assistantMessages.length 
+                        ? currentMessageIndex 
+                        : assistantMessages.length - 1;
+                    
+                    return [assistantMessages[index]];
+                }
+            })();
 
             return React.createElement('div', {
                 className: 'h-full flex flex-col bg-transparent'
@@ -1524,12 +1891,23 @@
                 // Messages area
                 React.createElement('div', {
                     key: 'messages-area',
-                    className: 'flex-1 overflow-y-auto px-4 py-4'
+                    className: `flex-1 overflow-y-auto px-4 ${!isLeftSidebarExpanded ? 'py-4' : 'py-4'}`
                 }, [
-                    ...messagesToShow.map(renderMessage),
+                    // В свернутом режиме оборачиваем в контейнер который центрирует только если контент меньше экрана
+                    !isLeftSidebarExpanded && messagesToShow.length === 1 
+                        ? React.createElement('div', {
+                            key: 'single-message-container',
+                            className: 'min-h-full flex flex-col justify-center'
+                        }, [
+                            React.createElement('div', {
+                                key: 'centered-message',
+                                className: 'w-full max-w-4xl mx-auto'
+                            }, messagesToShow.map(renderMessage))
+                        ])
+                        : messagesToShow.map(renderMessage),
                     isLoading && React.createElement('div', {
                         key: 'loading',
-                        className: 'flex justify-start mb-6'
+                        className: `flex ${!isLeftSidebarExpanded ? 'justify-center' : 'justify-start'} mb-6`
                     }, [
                         React.createElement('div', {
                             key: 'loading-bubble',
