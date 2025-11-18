@@ -366,9 +366,8 @@ const UIAnswerRenderer = ({ uiAnswer, executeCommand }) => {
     if (uiAnswer.intro_text) {
         elements.push(React.createElement('div', {
             key: 'intro-text',
-            className: 'backdrop-blur-lg rounded-3xl p-6 border shadow-2xl bg-white/10 border-white/20 text-white'
+            className: 'prose prose-invert max-w-none'
         }, React.createElement('div', {
-            className: 'prose prose-invert max-w-none',
             dangerouslySetInnerHTML: { __html: uiAnswer.intro_text.text }
         })));
     }
@@ -378,15 +377,11 @@ const UIAnswerRenderer = ({ uiAnswer, executeCommand }) => {
         const sortedItems = [...uiAnswer.items].sort((a, b) => a.order - b.order);
         
         sortedItems.forEach((item, index) => {
-            const spacingClass = getSpacingClass(item.spacing);
-            
-            elements.push(React.createElement('div', {
+            elements.push(React.createElement(AdvancedAnswerItemRenderer, {
                 key: `item-${index}`,
-                className: spacingClass
-            }, React.createElement(AdvancedAnswerItemRenderer, {
                 item,
                 executeCommand
-            })));
+            }));
         });
     }
 
@@ -394,21 +389,21 @@ const UIAnswerRenderer = ({ uiAnswer, executeCommand }) => {
     if (uiAnswer.quick_action_buttons?.buttons?.length > 0) {
         elements.push(React.createElement('div', {
             key: 'quick-actions',
-            className: 'flex flex-wrap gap-3 pt-4 border-t border-white/20 mt-6'
+            className: 'flex flex-wrap gap-3 pt-4 border-t border-white/20'
         }, uiAnswer.quick_action_buttons.buttons.map((button, index) =>
             React.createElement('button', {
                 key: index,
                 onClick: () => executeCommand('assistant_button', button.assistant_request),
-                className: `inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold hover:border-white/40 ${getButtonStyle(button.style)}`
+                className: `inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all duration-300 hover:scale-105 active:scale-95 ${getButtonStyle(button.style)}`
             }, [
-                button.icon ? renderIcon(button.icon) : null,
-                button.text
+                button.icon ? React.createElement('span', { key: 'icon', className: 'mr-2' }, button.icon) : null,
+                React.createElement('span', { key: 'text' }, button.text)
             ].filter(Boolean))
         )));
     }
 
     return elements.length > 0 ? React.createElement('div', {
-        className: 'mt-4 space-y-6'
+        className: 'space-y-6'
     }, elements) : null;
 };
 
