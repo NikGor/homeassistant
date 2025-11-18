@@ -176,3 +176,6 @@ cython_debug/
 
 # Dev tools
 .trunk
+
+# Docker Compose
+docker-compose.yml
