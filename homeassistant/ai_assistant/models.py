@@ -111,6 +111,8 @@ class Message(models.Model):
     
     def to_chat_message(self):
         """Convert Django model to Pydantic model"""
+        import json
+        
         llm_trace = None
         if self.input_tokens is not None and self.output_tokens is not None:
             llm_trace = LllmTrace(
@@ -123,10 +125,12 @@ class Message(models.Model):
                 total_cost=float(self.total_cost) if self.total_cost else 0.0
             )
         
+        # Parse JSON string from DB
+        content_dict = json.loads(self.content) if isinstance(self.content, str) else self.content
         return ChatMessage(
             message_id=str(self.message_id),
             role=self.role,
-            content=Content(**self.content) if isinstance(self.content, dict) else self.content,
+            content=Content(**content_dict),
             created_at=self.created_at,
             conversation_id=str(self.conversation.conversation_id),
             previous_message_id=str(self.previous_message_id) if self.previous_message_id else None,
