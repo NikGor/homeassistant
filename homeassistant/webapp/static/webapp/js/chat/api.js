@@ -1,0 +1,70 @@
+// ChatAPI class - simplified version of the original
+class ChatAPI {
+    constructor() {
+        this.baseUrl = '/ai-assistant/api';
+    }
+
+    async getConversations() {
+        try {
+            const response = await fetch(`${this.baseUrl}/conversations/`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to get conversations:', error);
+            return [];
+        }
+    }
+
+    async createConversation() {
+        try {
+            const response = await fetch(`${this.baseUrl}/conversations/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: `Новый чат ${Date.now()}` })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to create conversation:', error);
+            return null;
+        }
+    }
+
+    async getMessages(conversationId) {
+        try {
+            const response = await fetch(`${this.baseUrl}/conversations/${conversationId}/messages/`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to get messages:', error);
+            return [];
+        }
+    }
+
+    async sendMessage(messageData) {
+        try {
+            const response = await fetch(`${this.baseUrl}/messages/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(messageData)
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            throw error;
+        }
+    }
+
+    async deleteConversation(conversationId) {
+        try {
+            const response = await fetch(`${this.baseUrl}/conversations/${conversationId}/`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        } catch (error) {
+            console.error('Failed to delete conversation:', error);
+            throw error;
+        }
+    }
+}
