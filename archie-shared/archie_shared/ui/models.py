@@ -10,7 +10,7 @@ class Button(BaseModel):
         default="secondary",
         description="Visual prominence: 'primary' for main action, 'secondary' for alternatives, etc. Use all styles consistently within the context."
     )
-    icon: Optional[str] = Field(
+    icon: str = Field(
         default=None,
         description="Icon identifier for visual representation. Use Lucide icon names or emoji as fallback."
     )
