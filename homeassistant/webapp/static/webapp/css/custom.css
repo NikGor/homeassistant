@@ -1,0 +1,366 @@
+body, html {
+    font-family: 'Inter', sans-serif;
+    height: 100%;
+    overflow: hidden; /* Предотвращаем прокрутку body */
+    background: #000;
+}
+
+/* Стили для кастомной полосы прокрутки */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+    border-radius: 3px;
+}
+
+/* Анимация пульсации для шара */
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 25px 4px rgba(0, 191, 255, 0.4);
+        transform: translate(-50%, -50%) scale(0.98);
+    }
+    50% {
+        box-shadow: 0 0 50px 15px rgba(0, 191, 255, 0.7);
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.orb {
+    width: min(60vw, 60vh, 500px); /* Адаптивный размер: 60% от меньшей стороны экрана, максимум 500px */
+    height: min(60vw, 60vh, 500px);
+    background: #050505;
+    border-radius: 50%;
+    animation: pulse 4s infinite ease-in-out;
+    box-shadow: 0 0 25px 4px rgba(0, 191, 255, 0.4);
+    position: fixed; /* Фиксируем относительно viewport */
+    top: 50%;
+    left: 50%;
+    z-index: 1; /* Убеждаемся что он под контентом */
+}
+
+/* Стили для "Матового стекла" */
+.frosted-glass-card {
+    background-color: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 191, 255, 0.25);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+}
+
+.glass-tile {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+}
+
+.glass-button {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background 0.2s ease;
+}
+.glass-button:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Стили для всплывающих подсказок */
+.device-wrapper {
+    position: relative;
+    display: inline-block;
+}
+.device-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s, visibility 0.2s;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    position: absolute;
+    z-index: 50;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+.device-wrapper:hover .device-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Стили для боковых панелей (сайдбаров) */
+.sidebar {
+    background: rgba(10, 10, 10, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0.75rem; /* 12px */
+    transition: all 0.3s ease-in-out;
+    z-index: 40;
+}
+
+/* Стили для кнопок в сайдбарах */
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 56px; /* 14 * 4 */
+    width: 56px; /* 14 * 4 */
+    border-radius: 0.5rem; /* 8px */
+    transition: all 0.2s ease;
+}
+.sidebar-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.sidebar-item.active {
+    background: rgba(0, 191, 255, 0.2);
+    color: #00bfff; /* DeepSkyBlue */
+}
+.sidebar-item:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.sidebar-item:disabled:hover {
+    background: transparent;
+}
+
+/* Стили для развернутых кнопок */
+.sidebar-item-expanded {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 1rem; /* 16px */
+    height: 48px; /* 12 * 4 */
+    border-radius: 0.5rem; /* 8px */
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.sidebar-item-expanded:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.sidebar-item-expanded.active {
+    background: rgba(0, 191, 255, 0.2);
+    color: #00bfff;
+}
+.sidebar-text {
+    opacity: 0;
+    transition: opacity 0.2s ease 0.1s;
+}
+
+/* Контейнер для основного контента */
+#main-content-area {
+    position: relative;
+    flex: 1;
+    height: 100%;
+    overflow: hidden; /* Важно: скрываем overflow здесь */
+    z-index: 10;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Оба "экрана" (Чат и Дашборд) */
+.view-screen {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto; /* Прокрутка *внутри* каждого экрана */
+    padding: 1rem; /* Отступы для прокрутки */
+}
+
+/* AI Assistant integration styles */
+#chat-assistant-root {
+    /* Remove default padding from view-screen for full AI Assistant control */
+    margin: -1rem;
+    height: calc(100% + 2rem);
+}
+
+/* Override AI Assistant styles to match glassmorphism theme */
+#chat-assistant-root .backdrop-blur-lg {
+    background: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(0, 191, 255, 0.25) !important;
+}
+
+#chat-assistant-root .bg-white\/10 {
+    background: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Ensure scrollbars match the theme */
+#chat-assistant-root ::-webkit-scrollbar {
+    width: 6px;
+}
+#chat-assistant-root ::-webkit-scrollbar-track {
+    background: transparent;
+}
+#chat-assistant-root ::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+    border-radius: 3px;
+}
+
+/* Простые стили для чатов */
+.chat-item {
+    padding: 8px 12px;
+    margin: 2px 8px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.chat-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Responsive dashboard grid styles */
+.dashboard-grid-landscape {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 1.5rem;
+    aspect-ratio: 3/2;
+    height: calc(100vh - 200px); /* Подстраиваем под доступную высоту */
+}
+
+.dashboard-grid-portrait {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 1.5rem;
+    aspect-ratio: 2/3;
+    height: calc(100vh - 200px); /* Подстраиваем под доступную высоту */
+}
+
+.dashboard-tile {
+    aspect-ratio: 1; /* Квадратные плитки */
+    min-height: 0; /* Позволяем сжиматься */
+}
+
+/* Стили для планшетных альбомных разрешений */
+@media (max-height: 720px) and (orientation: landscape) {
+    .dashboard-compact {
+        height: calc(100vh - 80px) !important; /* Увеличиваем отступы для гармонии */
+    }
+    
+    .dashboard-tiles-compact {
+        gap: 1rem !important; /* Увеличиваем отступы между плитками */
+        margin-bottom: 1rem !important;
+    }
+    
+    .dashboard-tile-compact {
+        padding: 1rem !important; /* Комфортные внутренние отступы */
+        font-size: 0.875rem !important; /* Читаемый размер шрифта */
+        max-height: 280px !important; /* Ограничиваем высоту для планшетов */
+    }
+    
+    .dashboard-tile-compact h2 {
+        font-size: 1rem !important; /* Увеличиваем заголовки */
+        margin-bottom: 0.25rem !important;
+        line-height: 1.25 !important;
+    }
+    
+    .dashboard-tile-compact p {
+        font-size: 0.75rem !important; /* Читаемые подзаголовки */
+        line-height: 1.25 !important;
+    }
+    
+    .dashboard-tile-compact .device-icon {
+        width: 1.5rem !important; /* Увеличиваем иконки устройств */
+        height: 1.5rem !important;
+    }
+    
+    .dashboard-tile-compact i {
+        width: 1.25rem !important; /* Читаемые иконки */
+        height: 1.25rem !important;
+    }
+    
+    .quick-actions-compact {
+        gap: 0.75rem !important; /* Комфортные отступы между кнопками */
+        margin-bottom: 1rem !important;
+        height: 56px !important; /* Фиксированная высота для кнопок */
+    }
+    
+    .quick-action-btn-compact {
+        padding: 0.75rem 1.5rem !important; /* Крупные кнопки (large) */
+        font-size: 0.875rem !important;
+        font-weight: 500 !important;
+        height: 56px !important; /* Фиксированная высота */
+    }
+    
+    .quick-action-btn-compact i {
+        width: 1.125rem !important;
+        height: 1.125rem !important;
+    }
+    
+    /* Комфортные отступы */
+    .view-screen {
+        padding: 1rem !important;
+    }
+}
+
+/* Экстремальная оптимизация для очень низких экранов (600px и меньше) */
+@media (max-height: 600px) and (orientation: landscape) {
+    .dashboard-compact {
+        height: calc(100vh - 32px) !important; /* Точный расчет */
+    }
+    
+    .dashboard-tiles-compact {
+        gap: 0.75rem !important; /* 12px зазоры */
+        margin-bottom: 1rem !important; /* 16px под кнопки */
+        max-height: calc(100vh - 92px) !important; /* 600 - 32 (отступы) - 60 (кнопки) = 508px */
+    }
+    
+    .dashboard-tile-compact {
+        aspect-ratio: 1 !important; /* Строго квадратные */
+        padding: 0.5rem !important; /* 8px внутренние отступы */
+        max-height: 240px !important; /* Точный размер плитки */
+        min-height: 240px !important; /* Фиксированная высота */
+    }
+    
+    .dashboard-tile-compact h2 {
+        font-size: 0.75rem !important; /* 12px заголовки */
+        line-height: 1rem !important;
+        margin-bottom: 0.125rem !important; /* 2px */
+    }
+    
+    .dashboard-tile-compact p {
+        font-size: 0.625rem !important; /* 10px подзаголовки */
+        line-height: 0.75rem !important;
+    }
+    
+    .dashboard-tile-compact .device-icon {
+        width: 0.875rem !important; /* 14px иконки устройств */
+        height: 0.875rem !important;
+    }
+    
+    .dashboard-tile-compact i {
+        width: 0.875rem !important; /* 14px все иконки */
+        height: 0.875rem !important;
+    }
+    
+    .quick-actions-compact {
+        gap: 0.5rem !important; /* 8px зазоры между кнопками */
+        margin-bottom: 0 !important; /* Убираем лишние отступы */
+        height: 44px !important; /* Фиксированная высота для кнопок */
+    }
+    
+    .quick-action-btn-compact {
+        padding: 0.375rem 0.75rem !important; /* 6px/12px компактные кнопки */
+        font-size: 0.75rem !important; /* 12px текст */
+        font-weight: 500 !important;
+        height: 44px !important; /* Фиксированная высота */
+    }
+    
+    .quick-action-btn-compact i {
+        width: 0.875rem !important; /* 14px иконки кнопок */
+        height: 0.875rem !important;
+    }
+    
+    /* Точные отступы */
+    .view-screen {
+        padding: 1rem !important; /* 16px отступы */
+    }
+}
