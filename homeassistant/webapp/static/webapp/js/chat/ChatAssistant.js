@@ -122,11 +122,18 @@ const IntegratedChatAssistant = () => {
         setIsLoading(true);
 
         try {
+            const selectedModel = window.selectedAIModel || localStorage.getItem('selectedAIModel') || 'gpt-4.1-mini';
+            
             const result = await api.current.sendMessage({
                 response_format: 'ui_answer',
                 input: inputValue,
-                conversation_id: currentConversation
+                conversation_id: currentConversation,
+                model: selectedModel
             });
+
+            console.log('ChatAssistant: API result', result);
+            console.log('ChatAssistant: result.content', result.content);
+            console.log('ChatAssistant: result.ui_answer', result.ui_answer);
 
             const assistantMessage = {
                 message_id: result.message_id || `temp-assistant-${Date.now()}`,
@@ -137,6 +144,9 @@ const IntegratedChatAssistant = () => {
                 },
                 created_at: result.created_at || new Date().toISOString()
             };
+
+            console.log('ChatAssistant: assistantMessage', assistantMessage);
+            console.log('ChatAssistant: assistantMessage.content', assistantMessage.content);
 
             setMessages(prev => [...prev, assistantMessage]);
         } catch (err) {
@@ -152,10 +162,13 @@ const IntegratedChatAssistant = () => {
         setIsLoading(true);
 
         try {
+            const selectedModel = window.selectedAIModel || localStorage.getItem('selectedAIModel') || 'gpt-4.1-mini';
+            
             const result = await api.current.sendMessage({
                 response_format: 'ui_answer',
                 input: assistantRequest,
-                conversation_id: currentConversation
+                conversation_id: currentConversation,
+                model: selectedModel
             });
 
             const assistantMessage = {

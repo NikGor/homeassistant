@@ -112,6 +112,8 @@ class Message(models.Model):
     def to_chat_message(self):
         """Convert Django model to Pydantic model"""
         import json
+        import logging
+        logger = logging.getLogger(__name__)
         
         llm_trace = None
         if self.input_tokens is not None and self.output_tokens is not None:
@@ -127,13 +129,22 @@ class Message(models.Model):
         
         # Parse JSON string from DB
         content_dict = json.loads(self.content) if isinstance(self.content, str) else self.content
-        return ChatMessage(
+        logger.info(f"Message.to_chat_message: content_dict = {content_dict}")
+        
+        content_obj = Content(**content_dict)
+        logger.info(f"Message.to_chat_message: content_obj.content_format = {content_obj.content_format}")
+        logger.info(f"Message.to_chat_message: content_obj.ui_answer = {content_obj.ui_answer}")
+        
+        chat_message = ChatMessage(
             message_id=str(self.message_id),
             role=self.role,
-            content=Content(**content_dict),
+            content=content_obj,
             created_at=self.created_at,
             conversation_id=str(self.conversation.conversation_id),
             previous_message_id=str(self.previous_message_id) if self.previous_message_id else None,
             model=self.model,
             llm_trace=llm_trace
         )
+        
+        logger.info(f"Message.to_chat_message: returning ChatMessage with content type {type(chat_message.content)}")
+        return chat_message

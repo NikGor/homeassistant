@@ -107,12 +107,20 @@ function renderLeftSidebar() {
     settingsCollapsed.href = "#";
     settingsCollapsed.className = "sidebar-item text-gray-300";
     settingsCollapsed.title = "Настройки";
+    settingsCollapsed.onclick = (e) => {
+        e.preventDefault();
+        openModelSelectionModal();
+    };
     settingsCollapsed.innerHTML = `<i data-lucide="settings" class="w-6 h-6"></i>`;
     leftSidebarCollapsedIcons.appendChild(settingsCollapsed);
 
     const settingsExpanded = document.createElement('a');
     settingsExpanded.href = "#";
     settingsExpanded.className = "sidebar-item-expanded text-gray-300";
+    settingsExpanded.onclick = (e) => {
+        e.preventDefault();
+        openModelSelectionModal();
+    };
     settingsExpanded.innerHTML = `<i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Настройки</span>`;
     leftSidebarExpandedMenu.appendChild(settingsExpanded);
 }
@@ -386,3 +394,128 @@ function toggleRightSidebar(forceCollapse = false) {
         nodes: [rightSidebarToggleBtn]
     });
 }
+
+// Available AI models configuration
+const AI_MODELS = {
+    openai: [
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+        "gpt-5",
+        "gpt-5.1",
+        "gpt-5-mini",
+        "gpt-5-nano",
+    ],
+    gemini: [
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+    ],
+};
+
+// Get selected model from localStorage or default
+function getSelectedModel() {
+    return localStorage.getItem('selectedAIModel') || 'gpt-4.1-mini';
+}
+
+// Set selected model in localStorage
+function setSelectedModel(model) {
+    localStorage.setItem('selectedAIModel', model);
+    window.selectedAIModel = model;
+}
+
+// Open model selection modal
+function openModelSelectionModal() {
+    const currentModel = getSelectedModel();
+    
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 flex items-center justify-center z-50';
+    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    };
+    
+    const modalContent = document.createElement('div');
+    modalContent.className = 'bg-gray-900 rounded-2xl p-6 max-w-md w-full mx-4 border border-white/20';
+    modalContent.onclick = (e) => e.stopPropagation();
+    
+    const title = document.createElement('h2');
+    title.className = 'text-xl font-bold text-white mb-4';
+    title.textContent = 'Выбор модели AI';
+    modalContent.appendChild(title);
+    
+    const currentModelInfo = document.createElement('div');
+    currentModelInfo.className = 'mb-4 p-3 bg-white/10 rounded-lg';
+    currentModelInfo.innerHTML = `
+        <div class="text-sm text-gray-400 mb-1">Текущая модель:</div>
+        <div class="text-white font-medium">${currentModel}</div>
+    `;
+    modalContent.appendChild(currentModelInfo);
+    
+    // OpenAI models section
+    const openaiSection = document.createElement('div');
+    openaiSection.className = 'mb-4';
+    
+    const openaiTitle = document.createElement('h3');
+    openaiTitle.className = 'text-lg font-semibold text-white mb-2';
+    openaiTitle.textContent = 'OpenAI';
+    openaiSection.appendChild(openaiTitle);
+    
+    const openaiList = document.createElement('div');
+    openaiList.className = 'space-y-2';
+    AI_MODELS.openai.forEach(model => {
+        const modelItem = createModelItem(model, currentModel, modal);
+        openaiList.appendChild(modelItem);
+    });
+    openaiSection.appendChild(openaiList);
+    modalContent.appendChild(openaiSection);
+    
+    // Gemini models section
+    const geminiSection = document.createElement('div');
+    geminiSection.className = 'mb-4';
+    
+    const geminiTitle = document.createElement('h3');
+    geminiTitle.className = 'text-lg font-semibold text-white mb-2';
+    geminiTitle.textContent = 'Gemini';
+    geminiSection.appendChild(geminiTitle);
+    
+    const geminiList = document.createElement('div');
+    geminiList.className = 'space-y-2';
+    AI_MODELS.gemini.forEach(model => {
+        const modelItem = createModelItem(model, currentModel, modal);
+        geminiList.appendChild(modelItem);
+    });
+    geminiSection.appendChild(geminiList);
+    modalContent.appendChild(geminiSection);
+    
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'w-full mt-4 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors';
+    closeBtn.textContent = 'Закрыть';
+    closeBtn.onclick = () => document.body.removeChild(modal);
+    modalContent.appendChild(closeBtn);
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+}
+
+// Create model selection item
+function createModelItem(model, currentModel, modal) {
+    const item = document.createElement('button');
+    item.className = `w-full text-left px-4 py-2 rounded-lg transition-colors ${
+        model === currentModel 
+            ? 'bg-blue-600 text-white' 
+            : 'bg-white/5 hover:bg-white/10 text-gray-300'
+    }`;
+    item.textContent = model;
+    item.onclick = () => {
+        setSelectedModel(model);
+        document.body.removeChild(modal);
+        console.log(`Selected AI model: ${model}`);
+    };
+    return item;
+}
+
+// Initialize selected model on page load
+window.selectedAIModel = getSelectedModel();

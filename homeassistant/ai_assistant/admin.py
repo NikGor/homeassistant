@@ -37,7 +37,7 @@ class MessageInline(admin.TabularInline):
     
     def content_preview(self, obj):
         if obj.content:
-            content_str = json.dumps(obj.content) if isinstance(obj.content, dict) else str(obj.content)
+            content_str = json.dumps(obj.content, ensure_ascii=False) if isinstance(obj.content, dict) else str(obj.content)
             preview = content_str[:100]
             if len(content_str) > 100:
                 preview += '...'
@@ -155,7 +155,7 @@ class MessageAdmin(admin.ModelAdmin):
     
     def content_short(self, obj):
         if obj.content:
-            content_str = json.dumps(obj.content) if isinstance(obj.content, dict) else str(obj.content)
+            content_str = json.dumps(obj.content, ensure_ascii=False) if isinstance(obj.content, dict) else str(obj.content)
             preview = content_str[:50]
             if len(content_str) > 50:
                 preview += '...'
@@ -165,7 +165,7 @@ class MessageAdmin(admin.ModelAdmin):
     
     def content_formatted(self, obj):
         if obj.content:
-            content_str = json.dumps(obj.content, indent=2) if isinstance(obj.content, dict) else str(obj.content)
+            content_str = json.dumps(obj.content, indent=2, ensure_ascii=False) if isinstance(obj.content, dict) else str(obj.content)
             return format_html('<pre style="white-space: pre-wrap; word-wrap: break-word;">{}</pre>', content_str)
         return '-'
     content_formatted.short_description = 'Content'

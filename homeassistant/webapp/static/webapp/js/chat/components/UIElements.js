@@ -103,6 +103,263 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
                 className: 'text-xs text-white/60 mb-3'
             }, card.address));
         }
+        // Movie Card
+        else if (card.type === 'movie_card') {
+            card.title && elements.push(React.createElement('h3', {
+                key: 'title',
+                className: 'font-semibold text-white text-lg mb-2'
+            }, card.title));
+            
+            const metadata = [];
+            card.year && metadata.push(`${card.year}`);
+            card.director && metadata.push(`реж. ${card.director}`);
+            if (metadata.length > 0) {
+                elements.push(React.createElement('p', {
+                    key: 'metadata',
+                    className: 'text-sm text-white/70 mb-2'
+                }, metadata.join(' • ')));
+            }
+            
+            card.genre && elements.push(React.createElement('p', {
+                key: 'genre',
+                className: 'text-xs text-white/60 mb-2'
+            }, `🎬 ${card.genre}`));
+            
+            if (card.cast && card.cast.length > 0) {
+                elements.push(React.createElement('p', {
+                    key: 'cast',
+                    className: 'text-xs text-white/60 mb-2'
+                }, `⭐ ${card.cast.join(', ')}`));
+            }
+            
+            card.description && elements.push(React.createElement('p', {
+                key: 'description',
+                className: 'text-sm text-white/80 mb-3'
+            }, card.description));
+            
+            if (card.rating || card.duration) {
+                const extraInfo = [];
+                card.rating && extraInfo.push(card.rating);
+                card.duration && extraInfo.push(card.duration);
+                elements.push(React.createElement('p', {
+                    key: 'extra',
+                    className: 'text-xs text-white/50'
+                }, extraInfo.join(' • ')));
+            }
+        }
+        // Series Card
+        else if (card.type === 'series_card') {
+            card.title && elements.push(React.createElement('h3', {
+                key: 'title',
+                className: 'font-semibold text-white text-lg mb-2'
+            }, card.title));
+            
+            const metadata = [];
+            card.years && metadata.push(card.years);
+            card.status && metadata.push(card.status);
+            if (metadata.length > 0) {
+                elements.push(React.createElement('p', {
+                    key: 'metadata',
+                    className: 'text-sm text-white/70 mb-2'
+                }, metadata.join(' • ')));
+            }
+            
+            card.network && elements.push(React.createElement('p', {
+                key: 'network',
+                className: 'text-xs text-white/60 mb-2'
+            }, `📺 ${card.network}`));
+            
+            if (card.seasons || card.episodes) {
+                const seriesInfo = [];
+                card.seasons && seriesInfo.push(`${card.seasons} сезонов`);
+                card.episodes && seriesInfo.push(`${card.episodes} эпизодов`);
+                elements.push(React.createElement('p', {
+                    key: 'series-info',
+                    className: 'text-xs text-white/60 mb-2'
+                }, seriesInfo.join(', ')));
+            }
+            
+            card.genre && elements.push(React.createElement('p', {
+                key: 'genre',
+                className: 'text-xs text-white/60 mb-2'
+            }, `🎭 ${card.genre}`));
+            
+            card.description && elements.push(React.createElement('p', {
+                key: 'description',
+                className: 'text-sm text-white/80 mb-3'
+            }, card.description));
+            
+            card.rating && elements.push(React.createElement('p', {
+                key: 'rating',
+                className: 'text-xs text-white/50'
+            }, card.rating));
+        }
+        // Music Card
+        else if (card.type === 'music_card') {
+            card.track_title && elements.push(React.createElement('h3', {
+                key: 'title',
+                className: 'font-semibold text-white text-lg mb-1'
+            }, card.track_title));
+            
+            card.artist && elements.push(React.createElement('p', {
+                key: 'artist',
+                className: 'text-sm text-white/70 mb-2'
+            }, `🎤 ${card.artist}`));
+            
+            if (card.album_title) {
+                const albumInfo = [card.album_title];
+                card.album_year && albumInfo.push(`${card.album_year}`);
+                elements.push(React.createElement('p', {
+                    key: 'album',
+                    className: 'text-xs text-white/60 mb-2'
+                }, `💿 ${albumInfo.join(' • ')}`));
+            }
+            
+            const trackDetails = [];
+            card.genre && trackDetails.push(card.genre);
+            card.duration && trackDetails.push(card.duration);
+            if (trackDetails.length > 0) {
+                elements.push(React.createElement('p', {
+                    key: 'details',
+                    className: 'text-xs text-white/50'
+                }, trackDetails.join(' • ')));
+            }
+        }
+        // Article Card
+        else if (card.type === 'article_card') {
+            card.title && elements.push(React.createElement('h3', {
+                key: 'title',
+                className: 'font-semibold text-white text-lg mb-2'
+            }, card.title));
+            
+            const metadata = [];
+            card.source && metadata.push(card.source);
+            card.published_date && metadata.push(card.published_date);
+            if (metadata.length > 0) {
+                elements.push(React.createElement('p', {
+                    key: 'metadata',
+                    className: 'text-xs text-white/60 mb-2'
+                }, `📰 ${metadata.join(' • ')}`));
+            }
+            
+            card.summary && elements.push(React.createElement('p', {
+                key: 'summary',
+                className: 'text-sm text-white/80 mb-3'
+            }, card.summary));
+        }
+        // Shopping List Card
+        else if (card.type === 'shopping_list_card') {
+            card.title && elements.push(React.createElement('h3', {
+                key: 'title',
+                className: 'font-semibold text-white text-lg mb-3'
+            }, card.title));
+            
+            if (card.items_by_department) {
+                const deptElements = Object.entries(card.items_by_department).map(([dept, items], idx) => 
+                    React.createElement('div', {
+                        key: `dept-${idx}`,
+                        className: 'mb-3'
+                    }, [
+                        React.createElement('p', {
+                            key: 'dept-name',
+                            className: 'text-sm font-semibold text-white/90 mb-1'
+                        }, dept),
+                        React.createElement('ul', {
+                            key: 'items',
+                            className: 'text-sm text-white/70 ml-4 space-y-1'
+                        }, items.map((item, itemIdx) => 
+                            React.createElement('li', {
+                                key: `item-${itemIdx}`,
+                                className: 'list-disc'
+                            }, item)
+                        ))
+                    ])
+                );
+                elements.push(React.createElement('div', {
+                    key: 'departments',
+                    className: 'mb-3'
+                }, deptElements));
+            }
+            
+            card.total_cost && elements.push(React.createElement('p', {
+                key: 'total',
+                className: 'text-sm font-semibold text-white/90 pt-2 border-t border-white/20'
+            }, `💰 Общая стоимость: ~${card.total_cost}€`));
+        }
+        // Weather Card
+        else if (card.type === 'weather_card') {
+            card.location && elements.push(React.createElement('h3', {
+                key: 'location',
+                className: 'font-semibold text-white text-lg mb-3'
+            }, `📍 ${card.location}`));
+            
+            const tempDisplay = [];
+            card.current_temp && tempDisplay.push(card.current_temp);
+            card.feels_like && tempDisplay.push(`ощущается ${card.feels_like}`);
+            elements.push(React.createElement('p', {
+                key: 'temp',
+                className: 'text-2xl font-bold text-white mb-2'
+            }, tempDisplay.join(', ')));
+            
+            card.condition && elements.push(React.createElement('p', {
+                key: 'condition',
+                className: 'text-sm text-white/80 mb-3'
+            }, `${card.condition_icon ? '🌤️' : ''} ${card.condition}`));
+            
+            const details = [];
+            card.humidity && details.push(`💧 ${card.humidity}`);
+            card.wind && details.push(`💨 ${card.wind}`);
+            if (details.length > 0) {
+                elements.push(React.createElement('p', {
+                    key: 'details',
+                    className: 'text-xs text-white/60 mb-2'
+                }, details.join(' • ')));
+            }
+            
+            card.daily_forecast && elements.push(React.createElement('p', {
+                key: 'forecast',
+                className: 'text-sm text-white/70 mb-2'
+            }, card.daily_forecast));
+            
+            card.clothing_advice && elements.push(React.createElement('p', {
+                key: 'advice',
+                className: 'text-xs text-white/60 italic'
+            }, `👔 ${card.clothing_advice}`));
+        }
+        // Product Card
+        else if (card.type === 'product_card') {
+            card.title && elements.push(React.createElement('h3', {
+                key: 'title',
+                className: 'font-semibold text-white text-lg mb-1'
+            }, card.title));
+            
+            card.brand && elements.push(React.createElement('p', {
+                key: 'brand',
+                className: 'text-sm text-white/70 mb-2'
+            }, card.brand));
+            
+            const priceRating = [];
+            card.price && priceRating.push(`💰 ${card.price}`);
+            card.rating && priceRating.push(`⭐ ${card.rating}`);
+            if (priceRating.length > 0) {
+                elements.push(React.createElement('p', {
+                    key: 'price-rating',
+                    className: 'text-sm text-white/80 mb-3'
+                }, priceRating.join(' • ')));
+            }
+            
+            if (card.specifications && card.specifications.length > 0) {
+                elements.push(React.createElement('ul', {
+                    key: 'specs',
+                    className: 'text-xs text-white/70 mb-3 ml-4 space-y-1'
+                }, card.specifications.map((spec, idx) => 
+                    React.createElement('li', {
+                        key: `spec-${idx}`,
+                        className: 'list-disc'
+                    }, spec)
+                )));
+            }
+        }
         // Default: Generic Card
         else {
             card.title && elements.push(React.createElement('h3', {
@@ -192,6 +449,8 @@ const ChatTable = ({ table }) => {
 };
 
 const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
+    console.log('ChatAdvancedAnswerItem: Rendering item type', item.type, item);
+    
     switch (item.type) {
         case 'text_answer':
             const processedText = item.content.type === 'markdown' && typeof marked !== 'undefined'
@@ -204,6 +463,7 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
             });
         
         case 'card_grid':
+            console.log('ChatAdvancedAnswerItem: Rendering card_grid', item.content);
             return React.createElement(ChatCardGrid, {
                 cardGrid: item.content,
                 onExecute: onExecute
@@ -221,6 +481,7 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
             });
         
         default:
+            console.error('ChatAdvancedAnswerItem: Unsupported item type', item.type);
             return React.createElement('div', {
                 className: 'text-white/70 mb-4'
             }, `Неподдерживаемый тип элемента: ${item.type}`);
@@ -228,6 +489,9 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
 };
 
 const ChatUIAnswer = ({ uiAnswer, onExecute }) => {
+    console.log('ChatUIAnswer: Rendering ui_answer', uiAnswer);
+    console.log('ChatUIAnswer: items count', uiAnswer?.items?.length);
+    
     const processIntroText = (introText) => {
         if (!introText) return null;
         
@@ -242,6 +506,9 @@ const ChatUIAnswer = ({ uiAnswer, onExecute }) => {
         });
     };
 
+    const items = uiAnswer?.items || [];
+    console.log('ChatUIAnswer: Processing items', items);
+
     return React.createElement('div', {
         className: 'space-y-6'
     }, [
@@ -251,15 +518,16 @@ const ChatUIAnswer = ({ uiAnswer, onExecute }) => {
         // Items
         React.createElement('div', {
             key: 'items'
-        }, uiAnswer.items.sort((a, b) => a.order - b.order).map((item, index) => 
-            React.createElement('div', {
+        }, items.sort((a, b) => a.order - b.order).map((item, index) => {
+            console.log(`ChatUIAnswer: Rendering item ${index}`, item);
+            return React.createElement('div', {
                 key: `item-${index}`,
                 className: getSpacingClass(item.spacing)
             }, React.createElement(ChatAdvancedAnswerItem, {
                 item: item,
                 onExecute: onExecute
-            }))
-        )),
+            }));
+        })),
 
         // Quick action buttons
         uiAnswer.quick_action_buttons && React.createElement('div', {
@@ -276,6 +544,21 @@ const ChatUIAnswer = ({ uiAnswer, onExecute }) => {
 };
 
 const ChatContent = ({ content, onExecute }) => {
+    console.log('ChatContent: Rendering content', content);
+    console.log('ChatContent: content.text', content?.text);
+    console.log('ChatContent: content.ui_answer', content?.ui_answer);
+    console.log('ChatContent: content.content_format', content?.content_format);
+    
+    // Check for ui_answer first, regardless of content_format
+    if (content.ui_answer) {
+        console.log('ChatContent: Rendering ui_answer');
+        return React.createElement(ChatUIAnswer, {
+            uiAnswer: content.ui_answer,
+            onExecute: onExecute
+        });
+    }
+    
+    // Then check for text content
     if (content.text) {
         // Simple text content - check if it needs markdown processing
         const processedText = content.content_format === 'markdown' && typeof marked !== 'undefined'
@@ -288,13 +571,7 @@ const ChatContent = ({ content, onExecute }) => {
         });
     }
 
-    if (content.ui_answer) {
-        return React.createElement(ChatUIAnswer, {
-            uiAnswer: content.ui_answer,
-            onExecute: onExecute
-        });
-    }
-
+    console.error('ChatContent: Unsupported content format', content);
     return React.createElement('div', {
         className: 'text-white/70'
     }, 'Неподдерживаемый формат контента');

@@ -146,7 +146,12 @@ def proxy_conversation_messages(request, conversation_id):
         message_data = []
         for msg in messages:
             pydantic_msg = msg.to_chat_message()
-            message_data.append(pydantic_msg.model_dump())
+            msg_dict = pydantic_msg.model_dump()
+            logger.info(f"ai_assistant_011a: Message {msg.message_id} dict keys: {msg_dict.keys()}")
+            logger.info(f"ai_assistant_011b: Message content keys: {msg_dict.get('content', {}).keys() if isinstance(msg_dict.get('content'), dict) else 'NOT A DICT'}")
+            if msg_dict.get('content', {}).get('ui_answer'):
+                logger.info(f"ai_assistant_011c: Message has ui_answer with {len(msg_dict['content']['ui_answer'].get('items', []))} items")
+            message_data.append(msg_dict)
         
         logger.info(f"ai_assistant_011: Found {len(message_data)} messages for conversation {conversation_id}")
         json_response = JsonResponse(message_data, safe=False)
