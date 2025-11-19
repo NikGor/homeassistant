@@ -1436,6 +1436,10 @@
             // Scroll to bottom when messages change
             useEffect(() => {
                 scrollToBottom();
+                // Re-initialize Lucide icons after messages render
+                if (typeof lucide !== 'undefined') {
+                    setTimeout(() => lucide.createIcons(), 50);
+                }
             }, [messages]);
 
             // Update navigation buttons when messages change or sidebar state changes
@@ -1450,6 +1454,11 @@
                 // Если индекс не установлен и есть сообщения, показываем последнее
                 if (currentMessageIndex === -1 && assistantMessages.length > 0) {
                     setCurrentMessageIndex(assistantMessages.length - 1);
+                }
+                
+                // Re-initialize Lucide icons when navigation state changes
+                if (typeof lucide !== 'undefined') {
+                    setTimeout(() => lucide.createIcons(), 50);
                 }
             }, [messages, currentMessageIndex, isLeftSidebarExpanded]);
 
@@ -1696,10 +1705,11 @@
                     onClick: handleClick,
                     className: `px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${getButtonStyle(button.style)}`
                 }, [
-                    button.icon && React.createElement('span', {
+                    button.icon && React.createElement('i', {
                         key: 'icon',
-                        className: 'mr-2'
-                    }, button.icon),
+                        'data-lucide': button.icon,
+                        className: 'w-4 h-4 inline-block mr-2'
+                    }),
                     React.createElement('span', {
                         key: 'text'
                     }, button.text)
@@ -2032,10 +2042,11 @@
                             onClick: () => executeCommand(button.assistant_request),
                             className: `px-4 py-2 rounded-full font-semibold transition-all duration-300 ${getButtonStyle(button.style)}`
                         }, [
-                            button.icon && React.createElement('span', {
+                            button.icon && React.createElement('i', {
                                 key: 'icon',
-                                className: 'mr-2'
-                            }, button.icon),
+                                'data-lucide': button.icon,
+                                className: 'w-4 h-4 inline-block mr-2'
+                            }),
                             React.createElement('span', {
                                 key: 'text'
                             }, button.text)
