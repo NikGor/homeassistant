@@ -30,27 +30,99 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
         ? 'grid grid-cols-1 md:grid-cols-2 gap-4 mb-4' 
         : 'grid grid-cols-1 gap-4 mb-4';
 
-    return React.createElement('div', {
-        className: gridClass
-    }, cardGrid.cards.map((card, index) => 
-        React.createElement('div', {
-            key: `card-${index}`,
-            className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-4 border border-white/20 shadow-xl hover:border-white/40 transition-all duration-300'
-        }, [
-            card.title && React.createElement('h3', {
+    const getCardStyle = (type) => {
+        const baseStyle = 'backdrop-blur-lg bg-white/10 rounded-2xl p-4 shadow-xl transition-all duration-300';
+        
+        switch (type) {
+            case 'location_card': 
+                return `${baseStyle} border-2 border-emerald-500 hover:border-emerald-400 shadow-emerald-500/20`;
+            case 'product_card': 
+                return `${baseStyle} border-2 border-orange-500 hover:border-orange-400 shadow-orange-500/20`;
+            case 'movie_card': 
+            case 'series_card': 
+                return `${baseStyle} border-2 border-violet-500 hover:border-violet-400 shadow-violet-500/20`;
+            case 'music_card': 
+                return `${baseStyle} border-2 border-pink-500 hover:border-pink-400 shadow-pink-500/20`;
+            case 'article_card': 
+                return `${baseStyle} border-2 border-sky-500 hover:border-sky-400 shadow-sky-500/20`;
+            case 'shopping_list_card': 
+                return `${baseStyle} border-2 border-yellow-500 hover:border-yellow-400 shadow-yellow-500/20`;
+            case 'weather_card': 
+                return `${baseStyle} border-2 border-cyan-500 hover:border-cyan-400 shadow-cyan-500/20`;
+            case 'contact_card': 
+                return `${baseStyle} border-2 border-indigo-500 hover:border-indigo-400 shadow-indigo-500/20`;
+            case 'card':
+            default: 
+                return `${baseStyle} border border-white/20 hover:border-white/40`;
+        }
+    };
+
+    const renderCardContent = (card) => {
+        const elements = [];
+        
+        // Contact Card
+        if (card.type === 'contact_card') {
+            card.name && elements.push(React.createElement('h3', {
+                key: 'name',
+                className: 'font-semibold text-white mb-1'
+            }, card.name));
+            card.role && elements.push(React.createElement('p', {
+                key: 'role',
+                className: 'text-sm text-white/70 mb-1'
+            }, card.role));
+            card.company && elements.push(React.createElement('p', {
+                key: 'company',
+                className: 'text-xs text-white/60 mb-2'
+            }, card.company));
+            if (card.email || card.phone) {
+                elements.push(React.createElement('div', {
+                    key: 'contact-info',
+                    className: 'text-sm text-white/80 mb-2 space-y-1'
+                }, [
+                    card.email && React.createElement('div', { key: 'email' }, `📧 ${card.email}`),
+                    card.phone && React.createElement('div', { key: 'phone' }, `📞 ${card.phone}`)
+                ]));
+            }
+            card.availability && elements.push(React.createElement('p', {
+                key: 'availability',
+                className: 'text-xs text-white/60 mb-3'
+            }, card.availability));
+        }
+        // Location Card
+        else if (card.type === 'location_card') {
+            card.title && elements.push(React.createElement('h3', {
                 key: 'title',
                 className: 'font-semibold text-white mb-2'
-            }, card.title),
-            card.subtitle && React.createElement('p', {
+            }, card.title));
+            card.description && elements.push(React.createElement('p', {
+                key: 'description',
+                className: 'text-sm text-white/80 mb-2'
+            }, card.description));
+            card.address && elements.push(React.createElement('p', {
+                key: 'address',
+                className: 'text-xs text-white/60 mb-3'
+            }, card.address));
+        }
+        // Default: Generic Card
+        else {
+            card.title && elements.push(React.createElement('h3', {
+                key: 'title',
+                className: 'font-semibold text-white mb-2'
+            }, card.title));
+            card.subtitle && elements.push(React.createElement('p', {
                 key: 'subtitle',
                 className: 'text-sm text-white/70 mb-2'
-            }, card.subtitle),
-            card.text && React.createElement('div', {
+            }, card.subtitle));
+            card.text && elements.push(React.createElement('div', {
                 key: 'text',
                 className: 'text-white/80 text-sm mb-3',
                 dangerouslySetInnerHTML: { __html: card.text }
-            }),
-            card.buttons && card.buttons.length > 0 && React.createElement('div', {
+            }));
+        }
+        
+        // Buttons (common for all types)
+        if (card.buttons && card.buttons.length > 0) {
+            elements.push(React.createElement('div', {
                 key: 'buttons',
                 className: 'flex flex-wrap gap-2 mt-3'
             }, card.buttons.map((button, buttonIndex) => 
@@ -59,8 +131,19 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
                     button: button,
                     onExecute: onExecute
                 })
-            ))
-        ])
+            )));
+        }
+        
+        return elements;
+    };
+
+    return React.createElement('div', {
+        className: gridClass
+    }, cardGrid.cards.map((card, index) => 
+        React.createElement('div', {
+            key: `card-${index}`,
+            className: getCardStyle(card.type)
+        }, renderCardContent(card))
     ));
 };
 
@@ -111,9 +194,13 @@ const ChatTable = ({ table }) => {
 const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
     switch (item.type) {
         case 'text_answer':
+            const processedText = item.content.type === 'markdown' && typeof marked !== 'undefined'
+                ? marked.parse(item.content.text)
+                : item.content.text;
+            
             return React.createElement('div', {
                 className: 'prose prose-invert max-w-none mb-4',
-                dangerouslySetInnerHTML: { __html: item.content.text }
+                dangerouslySetInnerHTML: { __html: processedText }
             });
         
         case 'card_grid':
@@ -141,15 +228,25 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
 };
 
 const ChatUIAnswer = ({ uiAnswer, onExecute }) => {
+    const processIntroText = (introText) => {
+        if (!introText) return null;
+        
+        const processedText = introText.type === 'markdown' && typeof marked !== 'undefined'
+            ? marked.parse(introText.text)
+            : introText.text;
+        
+        return React.createElement('div', {
+            key: 'intro',
+            className: 'prose prose-invert max-w-none mb-4',
+            dangerouslySetInnerHTML: { __html: processedText }
+        });
+    };
+
     return React.createElement('div', {
         className: 'space-y-6'
     }, [
         // Intro text
-        uiAnswer.intro_text && React.createElement('div', {
-            key: 'intro',
-            className: 'prose prose-invert max-w-none mb-4',
-            dangerouslySetInnerHTML: { __html: uiAnswer.intro_text.text }
-        }),
+        processIntroText(uiAnswer.intro_text),
 
         // Items
         React.createElement('div', {
@@ -180,10 +277,14 @@ const ChatUIAnswer = ({ uiAnswer, onExecute }) => {
 
 const ChatContent = ({ content, onExecute }) => {
     if (content.text) {
-        // Simple text content
+        // Simple text content - check if it needs markdown processing
+        const processedText = content.content_format === 'markdown' && typeof marked !== 'undefined'
+            ? marked.parse(content.text)
+            : content.text;
+        
         return React.createElement('div', {
             className: 'prose prose-invert max-w-none',
-            dangerouslySetInnerHTML: { __html: content.text }
+            dangerouslySetInnerHTML: { __html: processedText }
         });
     }
 
