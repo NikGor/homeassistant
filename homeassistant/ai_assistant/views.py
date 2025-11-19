@@ -1,7 +1,7 @@
-from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.utils import timezone
 import requests
 import json
 import os
@@ -23,15 +23,6 @@ def add_cors_headers(response):
     response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
 
-
-def index(request):
-    """AI Assistant main page view."""
-    return render(request, 'ai_assistant/index.html')
-
-
-from django.utils import timezone
-
-# ... existing imports ...
 
 @csrf_exempt
 @require_http_methods(["GET", "POST", "OPTIONS"])
