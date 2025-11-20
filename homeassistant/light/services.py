@@ -134,20 +134,19 @@ class LightStateService:
             devices=devices
         )
     
-    def save_to_redis(self):
-        """Save light state to Redis"""
+    def save_to_redis(self, user_name: str = "Niko"):
+        """Save light state to user_state in Redis"""
         from homeassistant.redis_client import redis_client
         
         state = self.get_all_devices_state()
-        key = "smarthome_state:light"
         
         try:
-            redis_client.redis_client.set(
-                key,
-                state.model_dump_json(),
-                ex=60  # TTL 60 seconds
+            redis_client.update_user_state(
+                user_name,
+                {"smarthome_light": state.model_dump()},
+                ttl=None
             )
-            logger.info(f"light_services_008: Saved light state to Redis: {key}")
+            logger.info(f"light_services_008: Saved light state to user_state:name:{user_name}")
             return True
         except Exception as e:
             logger.error(f"light_services_error_001: Failed to save to Redis: {e}")

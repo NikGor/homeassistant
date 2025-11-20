@@ -20,29 +20,10 @@ class RedisClient:
             decode_responses=True
         )
 
-    def _get_user_key(self, user_id: str) -> str:
-        """Generates key for user state"""
-        return f"user_state:{user_id}"
-    
     def _get_user_key_by_name(self, user_name: str) -> str:
         """Generates key for user state by username"""
         return f"user_state:name:{user_name}"
 
-    def get_user_state(self, user_id: str) -> UserState | None:
-        """Gets user state from Redis"""
-        try:
-            key = self._get_user_key(user_id)
-            data = self.redis_client.get(key)
-
-            if data:
-                state_dict = json.loads(data)
-                return UserState(**state_dict)
-            return None
-
-        except Exception as e:
-            logger.error(f"redis_client_001: Error getting user state {user_id}: {e}")
-            return None
-    
     def get_user_state_by_name(self, user_name: str) -> UserState | None:
         """Gets user state from Redis by username"""
         try:
@@ -59,90 +40,85 @@ class RedisClient:
             return None
 
     def set_user_state(
-        self, user_id: str, state: UserState, ttl: int | None = None
+        self, user_name: str, state: UserState, ttl: int | None = None
     ) -> bool:
         """
         Saves user state to Redis
 
         Args:
-            user_id: User ID
+            user_name: User name
             state: User state
             ttl: Time to live in seconds (default: None)
         """
         try:
-            key = self._get_user_key(user_id)
-            key_by_name = self._get_user_key_by_name(state.user_name) if state.user_name else None
+            key = self._get_user_key_by_name(user_name)
             data = state.model_dump_json()
 
             if ttl:
                 self.redis_client.setex(key, ttl, data)
-                if key_by_name:
-                    self.redis_client.setex(key_by_name, ttl, data)
             else:
                 self.redis_client.set(key, data)
-                if key_by_name:
-                    self.redis_client.set(key_by_name, data)
 
             return True
 
         except Exception as e:
-            logger.error(f"redis_client_002: Error saving user state {user_id}: {e}")
+            logger.error(f"redis_client_002: Error saving user state {user_name}: {e}")
             return False
 
     def update_user_state(
-        self, user_id: str, updates: dict[str, Any], ttl: int | None = None
+        self, user_name: str, updates: dict[str, Any], ttl: int | None = None
     ) -> bool:
         """
         Partially updates user state
 
         Args:
-            user_id: User ID
+            user_name: User name
             updates: Dictionary with updates
             ttl: Record lifetime in seconds
         """
         try:
-            current_state = self.get_user_state(user_id)
+            current_state = self.get_user_state_by_name(user_name)
 
             if current_state is None:
-                # Create new state if it doesn't exist
-                current_state = UserState(user_id=user_id)
+                logger.error(f"redis_client_007: User state not found for {user_name}")
+                return False
 
             # Update fields
             state_dict = current_state.model_dump()
             state_dict.update(updates)
 
             updated_state = UserState(**state_dict)
-            return self.set_user_state(user_id, updated_state, ttl)
+            return self.set_user_state(user_name, updated_state, ttl)
 
         except Exception as e:
-            logger.error(f"redis_client_003: Error updating user state {user_id}: {e}")
+            logger.error(f"redis_client_003: Error updating user state {user_name}: {e}")
             return False
 
-    def delete_user_state(self, user_id: str) -> bool:
+    def delete_user_state(self, user_name: str) -> bool:
         """Deletes user state from Redis"""
         try:
-            key = self._get_user_key(user_id)
+            key = self._get_user_key_by_name(user_name)
             result = self.redis_client.delete(key)
             return result > 0
 
         except Exception as e:
-            logger.error(f"redis_client_004: Error deleting user state {user_id}: {e}")
+            logger.error(f"redis_client_004: Error deleting user state {user_name}: {e}")
             return False
 
-    def get_user_field(self, user_id: str, field: str) -> Any | None:
+    def get_user_field(self, user_name: str, field: str) -> Any | None:
         """Gets specific field from user state"""
-        state = self.get_user_state(user_id)
+        state = self.get_user_state_by_name(user_name)
         if state:
             return getattr(state, field, None)
         return None
 
     def set_user_field(
-        self, user_id: str, field: str, value: Any, ttl: int | None = None
+        self, user_name: str, field: str, value: Any, ttl: int | None = None
     ) -> bool:
         """Sets specific field in user state"""
-        return self.update_user_state(user_id, {field: value}, ttl)
+        return self.update_user_state(user_name, {field: value}, ttl)
 
-    def update_current_datetime(self, user_id: str) -> bool:
+    def update_current_datetime(self, user_name: str) -> bool:
         """Updates current date and time for user"""
         now = datetime.now()
         updates = {
@@ -150,7 +126,7 @@ class RedisClient:
             "current_time": now.strftime("%H:%M:%S"),
             "current_weekday": now.strftime("%A"),
         }
-        return self.update_user_state(user_id, updates)
+        return self.update_user_state(user_name, updates)
 
     def ping(self) -> bool:
         """Check Redis connection"""

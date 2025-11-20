@@ -581,6 +581,12 @@ class Dashboard(BaseModel):
         description="Global quick action buttons below tiles (2-3 buttons max)"
     )
 
+class Widget(BaseModel):
+    """Generic widget container for future extensions"""
+    widget_type: str = Field(description="Widget type identifier")
+    title: Optional[str] = Field(default=None, description="Widget title")
+    data: Optional[str] = Field(default=None, description="Widget-specific data")
+
 class Content(BaseModel):
     """Content of a chat message, can be text or structured data"""
     content_format: Literal[
@@ -593,4 +599,4 @@ class Content(BaseModel):
     text: Optional[str] = Field(default=None, description="Text content")
     ui_answer: Optional[UIAnswer] = Field(default=None, description="UI elements content")
     dashboard: Optional[Dashboard] = Field(default=None, description="Dashboard content with tiles and quick actions")
-    widget: Optional[Dict] = Field(default=None, description="Widget content as a dictionary")
+    widget: Optional[Widget] = Field(default=None, description="Generic widget content")

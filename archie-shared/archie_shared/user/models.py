@@ -1,3 +1,4 @@
+from typing import Any
 from pydantic import BaseModel
 
 
@@ -22,3 +23,5 @@ class UserState(BaseModel):
     current_date: str | None = None
     current_time: str | None = None
     current_weekday: str | None = None
+    smarthome_light: dict[str, Any] | None = None
+    smarthome_climate: dict[str, Any] | None = None
