@@ -575,11 +575,18 @@ class DashboardTile(BaseModel):
 class Dashboard(BaseModel):
     """Smart home dashboard with tiles and global quick actions"""
     type: Literal["dashboard"] = Field("dashboard", description="Type identifier for frontend rendering")
-    tiles: List[DashboardTile] = Field(description="List of dashboard tiles for smart home categories")
+    tiles: List[DashboardTile] = Field(
+        description="List of dashboard tiles. Must contain exactly 6 tiles in order: light, climate, music, documents, apps, settings"
+    )
     quick_actions: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None,
         description="Global quick action buttons below tiles (2-3 buttons max)"
     )
+    
+    def model_post_init(self, __context):
+        """Validate that dashboard has exactly 6 tiles"""
+        if len(self.tiles) != 6:
+            raise ValueError(f"Dashboard must have exactly 6 tiles, got {len(self.tiles)}")
 
 class Widget(BaseModel):
     """Generic widget container for future extensions"""
