@@ -6,6 +6,11 @@ function showChatView() {
     dashboardView.classList.add('hidden');
     leftSidebar.classList.remove('hidden'); // Показываем левый сайдбар в режиме чата
     updateSidebarActiveState('archie');
+    
+    // Stop dashboard polling when leaving dashboard
+    if (typeof stopDashboardPolling === 'function') {
+        stopDashboardPolling();
+    }
 }
 
 // Показать "Дашборд"
@@ -14,6 +19,11 @@ function showDashboardView() {
     dashboardView.classList.remove('hidden');
     leftSidebar.classList.add('hidden'); // Скрываем левый сайдбар в режиме дашборда
     updateSidebarActiveState('home');
+    
+    // Start dashboard polling when showing dashboard
+    if (typeof startDashboardPolling === 'function') {
+        startDashboardPolling(30000); // Poll every 30 seconds
+    }
 }
 
 // --- Инициализация и обработчики событий ---

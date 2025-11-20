@@ -1,7 +1,15 @@
 // Рендеринг плиток Дашборда
-function renderDashboardGrid() {
+function renderDashboardGrid(dashboardData = null) {
     globalQuickActionsContainer.innerHTML = '';
     dashboardTilesContainer.innerHTML = '';
+    
+    // Use provided data or fall back to static data from data.js
+    const data = dashboardData || window.dashboardData;
+    
+    if (!data || !data.tiles) {
+        console.error('No dashboard data available');
+        return;
+    }
     
     // Определяем ориентацию экрана и разрешение
     const isLandscape = window.innerWidth > window.innerHeight;
@@ -57,8 +65,8 @@ function renderDashboardGrid() {
     dashboardTilesContainer.className = containerClasses;
     globalQuickActionsContainer.className = quickActionsClasses;
     
-    if (dashboardData.smarthome_dashboard.quick_actions) {
-        dashboardData.smarthome_dashboard.quick_actions.forEach(action => {
+    if (data.quick_actions) {
+        data.quick_actions.forEach(action => {
             const button = document.createElement('button');
             let buttonClasses = ['glass-button', 'px-6', 'py-3', 'rounded-lg', 'text-white', 'flex', 'items-center', 'gap-3', 'text-lg', 'font-medium']; // Large button стили
             
@@ -80,7 +88,7 @@ function renderDashboardGrid() {
         });
     }
 
-    dashboardData.smarthome_dashboard.tiles.forEach(tile => {
+    data.tiles.forEach(tile => {
         const tileElement = document.createElement('div');
         tileElement.className = tilesClasses;
         tileElement.onclick = () => window.location.href = `/${tile.category}/`;

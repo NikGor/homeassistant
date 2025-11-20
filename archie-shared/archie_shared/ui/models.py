@@ -542,13 +542,55 @@ class UIAnswer(BaseModel):
     items: List[AdvancedAnswerItem] = Field(description="List of items in the generative UI answer")
     quick_action_buttons: Optional[QuickActionButtons] = Field(default=None, description="Quick action buttons for the UI")
 
+class DeviceIcon(BaseModel):
+    """Smart device icon representation within dashboard tiles"""
+    name: str = Field(description="Device name for tooltip display")
+    icon: str = Field(description="Lucide icon name representing the device")
+    color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = Field(
+        description="Icon color representing device state"
+    )
+    variant: Literal["solid", "outline"] = Field(
+        description="Icon style: 'solid' for active/on devices, 'outline' for inactive/off devices"
+    )
+    tooltip: str = Field(description="Device status details for hover display")
+
+class DashboardTile(BaseModel):
+    """Dashboard tile representing a smart home category or app"""
+    category: str = Field(description="Category identifier for routing (e.g., 'light', 'climate')")
+    title: str = Field(description="Tile title (e.g., 'Свет', 'Климат')")
+    subtitle: str = Field(description="Status summary (e.g., '2 из 3 включены', 'средняя 21.8°C')")
+    icon: str = Field(description="Lucide icon name for the tile")
+    status_color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = Field(
+        description="Color indicating overall tile status"
+    )
+    quick_actions: Optional[List[str]] = Field(
+        default=None,
+        description="Quick action button labels (e.g., ['Вечерний свет', 'Выключить все'])"
+    )
+    devices: Optional[List[DeviceIcon]] = Field(
+        default=None,
+        description="List of device icons to display within the tile"
+    )
+
+class Dashboard(BaseModel):
+    """Smart home dashboard with tiles and global quick actions"""
+    type: Literal["dashboard"] = Field("dashboard", description="Type identifier for frontend rendering")
+    tiles: List[DashboardTile] = Field(description="List of dashboard tiles for smart home categories")
+    quick_actions: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
+        default=None,
+        description="Global quick action buttons below tiles (2-3 buttons max)"
+    )
+
 class Content(BaseModel):
     """Content of a chat message, can be text or structured data"""
     content_format: Literal[
         "plain", "markdown", "html", "ssml", 
         "json", "csv", "xml", "yaml", "prompt",
         "python", "bash", "sql", "regex", 
-        "dockerfile", "makefile", "ui_answer"
+        "dockerfile", "makefile", "ui_answer",
+        "dashboard", "widget"
     ] = Field(default="plain", description="Format of the content")
     text: Optional[str] = Field(default=None, description="Text content")
     ui_answer: Optional[UIAnswer] = Field(default=None, description="UI elements content")
+    dashboard: Optional[Dashboard] = Field(default=None, description="Dashboard content with tiles and quick actions")
+    widget: Optional[Dict] = Field(default=None, description="Widget content as a dictionary")

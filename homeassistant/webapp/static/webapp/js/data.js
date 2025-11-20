@@ -1,10 +1,7 @@
-// Данные из JSON для дашборда
+// Данные из JSON для дашборда (fallback если API недоступен)
 const dashboardData = {
-    "type": "tool_call",
-    "voice_response": "Обновляю дашборд умного дома с актуальными данными.",
-    "smarthome_dashboard": {
-        "type": "smarthome_dashboard",
-        "tiles": [
+    "type": "dashboard",
+    "tiles": [
             { 
                 "category": "light", 
                 "title": "Свет", 
@@ -75,5 +72,4 @@ const dashboardData = {
             { "type": "assistant_button", "text": "Спланировать завтрашний день", "style": "secondary", "icon": "calendar-days", "assistant_request": "Помоги спланировать завтрашний день" },
             { "type": "assistant_button", "text": "Результаты футбола сегодня", "style": "secondary", "icon": "trophy", "assistant_request": "Покажи результаты футбольных матчей сегодня" }
         ]
-    }
 };

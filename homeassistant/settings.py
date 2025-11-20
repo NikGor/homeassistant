@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'homeassistant.api',
     'homeassistant.camera',
     'homeassistant.light',
+    'homeassistant.climate',
     'homeassistant.weather',
     'homeassistant.ai_assistant',
     'homeassistant.voice_assistant',

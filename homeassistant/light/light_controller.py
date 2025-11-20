@@ -108,7 +108,7 @@ class LightController:
         self.devices: Dict[str, YeelightDevice] = {}
         self.scanning = False
         self.scan_thread = None
-        self.auto_scan_enabled = True
+        self.auto_scan_enabled = False  # Автосканирование отключено
         self.scan_interval = 30  # Сканирование каждые 30 секунд
     
     def discover_devices(self, timeout: int = 5) -> List[YeelightDevice]:

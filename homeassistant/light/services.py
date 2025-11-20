@@ -87,3 +87,69 @@ class YeelightDevice(DeviceInterface):
         except Exception as e:
             logger.error(f"light_services_006: \033[31mError setting RGB \033[33m({red},{green},{blue})\033[31m for \033[36m{self.ip}\033[31m: {str(e)}\033[0m")
             raise
+
+
+class LightStateService:
+    """Service for retrieving aggregated light device states"""
+    
+    def get_all_devices_state(self):
+        """
+        Get current state of all light devices
+        TODO: Replace with real device polling
+        """
+        from .pydantic_models import LightStateAggregate, LightDeviceState
+        
+        # Mock data - replace with real device polling
+        logger.info("light_services_007: Fetching light devices state (mock data)")
+        
+        devices = [
+            LightDeviceState(
+                name="Торшер гостиная",
+                icon="lamp",
+                color="orange",
+                variant="solid",
+                tooltip="Вкл., 75%, 2700K"
+            ),
+            LightDeviceState(
+                name="Потолочная кухня",
+                icon="lightbulb",
+                color="orange",
+                variant="solid",
+                tooltip="Вкл., 60%, 3000K"
+            ),
+            LightDeviceState(
+                name="Спальня",
+                icon="bed",
+                color="gray",
+                variant="outline",
+                tooltip="Выкл."
+            )
+        ]
+        
+        on_count = sum(1 for d in devices if d.variant == "solid")
+        
+        return LightStateAggregate(
+            on_count=on_count,
+            total_count=len(devices),
+            devices=devices
+        )
+    
+    def save_to_redis(self):
+        """Save light state to Redis"""
+        from homeassistant.redis_client import redis_client
+        
+        state = self.get_all_devices_state()
+        key = "smarthome_state:light"
+        
+        try:
+            redis_client.redis_client.set(
+                key,
+                state.model_dump_json(),
+                ex=60  # TTL 60 seconds
+            )
+            logger.info(f"light_services_008: Saved light state to Redis: {key}")
+            return True
+        except Exception as e:
+            logger.error(f"light_services_error_001: Failed to save to Redis: {e}")
+            return False
+
