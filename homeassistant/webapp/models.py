@@ -7,8 +7,10 @@ class UserProfile(models.Model):
     
     PERSONA_CHOICES = [
         ("business", "Business"),
-        ("personal", "Personal"),
-        ("family", "Family"),
+        ("bro", "Bro"),
+        ("flirty", "Flirty"),
+        ("futurebot", "Futurebot"),
+        ("butler", "Butler"),
     ]
     
     LANGUAGE_CHOICES = [
