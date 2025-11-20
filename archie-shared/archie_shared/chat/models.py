@@ -70,7 +70,7 @@ class Conversation(BaseModel):
 
 class ChatRequest(BaseModel):
     """Request to send a chat message"""
-    user_id: str = Field(description="ID of the user sending the request")
+    user_name: str = Field(description="Name of the user sending the request")
     response_format: Literal[
         "plain", "markdown", "html", "ssml", 
         "json", "csv", "xml", "yaml", "prompt",

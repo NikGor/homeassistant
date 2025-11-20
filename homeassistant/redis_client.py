@@ -23,6 +23,10 @@ class RedisClient:
     def _get_user_key(self, user_id: str) -> str:
         """Generates key for user state"""
         return f"user_state:{user_id}"
+    
+    def _get_user_key_by_name(self, user_name: str) -> str:
+        """Generates key for user state by username"""
+        return f"user_state:name:{user_name}"
 
     def get_user_state(self, user_id: str) -> UserState | None:
         """Gets user state from Redis"""
@@ -38,6 +42,21 @@ class RedisClient:
         except Exception as e:
             logger.error(f"redis_client_001: Error getting user state {user_id}: {e}")
             return None
+    
+    def get_user_state_by_name(self, user_name: str) -> UserState | None:
+        """Gets user state from Redis by username"""
+        try:
+            key = self._get_user_key_by_name(user_name)
+            data = self.redis_client.get(key)
+
+            if data:
+                state_dict = json.loads(data)
+                return UserState(**state_dict)
+            return None
+
+        except Exception as e:
+            logger.error(f"redis_client_006: Error getting user state by name {user_name}: {e}")
+            return None
 
     def set_user_state(
         self, user_id: str, state: UserState, ttl: int | None = None
@@ -52,12 +71,17 @@ class RedisClient:
         """
         try:
             key = self._get_user_key(user_id)
+            key_by_name = self._get_user_key_by_name(state.user_name) if state.user_name else None
             data = state.model_dump_json()
 
             if ttl:
                 self.redis_client.setex(key, ttl, data)
+                if key_by_name:
+                    self.redis_client.setex(key_by_name, ttl, data)
             else:
                 self.redis_client.set(key, data)
+                if key_by_name:
+                    self.redis_client.set(key_by_name, data)
 
             return True
 
