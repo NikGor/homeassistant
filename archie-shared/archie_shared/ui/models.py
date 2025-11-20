@@ -572,21 +572,125 @@ class DashboardTile(BaseModel):
         description="List of device icons to display within the tile"
     )
 
+class LightTile(BaseModel):
+    """Light control dashboard tile"""
+    type: Literal["light"] = Field("light", description="Tile type identifier")
+    title: str = Field(default="Light", description="Tile title")
+    subtitle: str = Field(description="Status summary (e.g., '2 of 3 on')")
+    icon: str = Field(default="lightbulb", description="Lucide icon name")
+    status_color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = Field(
+        description="Color indicating overall status"
+    )
+    quick_actions: Optional[List[str]] = Field(
+        default=None,
+        description="Quick action labels (e.g., ['Evening light', 'Turn all off'])"
+    )
+    devices: List[DeviceIcon] = Field(description="List of light device icons")
+
+class ClimateTile(BaseModel):
+    """Climate control dashboard tile"""
+    type: Literal["climate"] = Field("climate", description="Tile type identifier")
+    title: str = Field(default="Climate", description="Tile title")
+    subtitle: str = Field(description="Status summary (e.g., 'average home 21.8°C')")
+    icon: str = Field(default="thermometer", description="Lucide icon name")
+    status_color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = Field(
+        description="Color indicating overall status"
+    )
+    quick_actions: Optional[List[str]] = Field(
+        default=None,
+        description="Quick action labels (e.g., ['Heat bedroom', 'Night mode'])"
+    )
+    devices: List[DeviceIcon] = Field(description="List of climate device icons")
+
+class MusicTile(BaseModel):
+    """Music player dashboard tile"""
+    type: Literal["music"] = Field("music", description="Tile type identifier")
+    title: str = Field(default="Music", description="Tile title")
+    subtitle: str = Field(description="Currently playing track and artist")
+    icon: str = Field(default="music", description="Lucide icon name")
+    status_color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = Field(
+        default="purple",
+        description="Color indicating player status"
+    )
+    quick_actions: Optional[List[str]] = Field(
+        default=None,
+        description="Quick action labels (e.g., ['Evening playlist', 'Album details'])"
+    )
+    devices: Optional[List[DeviceIcon]] = Field(
+        default=None,
+        description="Playback controls as device icons"
+    )
+
+class DocumentsTile(BaseModel):
+    """Documents dashboard tile"""
+    type: Literal["documents"] = Field("documents", description="Tile type identifier")
+    title: str = Field(default="Documents", description="Tile title")
+    subtitle: str = Field(description="Document status (e.g., 'new today: 2, source: Gmail')")
+    icon: str = Field(default="file-text", description="Lucide icon name")
+    status_color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = Field(
+        default="blue",
+        description="Color indicating document status"
+    )
+    quick_actions: Optional[List[str]] = Field(
+        default=None,
+        description="Quick action labels (e.g., ['Learn more', 'Find document'])"
+    )
+    devices: Optional[List[DeviceIcon]] = Field(
+        default=None,
+        description="Optional document source icons"
+    )
+
+class AppsTile(BaseModel):
+    """AI-powered apps dashboard tile"""
+    type: Literal["apps"] = Field("apps", description="Tile type identifier")
+    title: str = Field(default="Apps", description="Tile title")
+    subtitle: str = Field(description="Apps description (e.g., 'AI-generated utilities')")
+    icon: str = Field(default="grid-3x3", description="Lucide icon name")
+    status_color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = Field(
+        default="green",
+        description="Color indicating apps status"
+    )
+    quick_actions: Optional[List[str]] = Field(
+        default=None,
+        description="Quick action labels (e.g., ['Start pomodoro timer', 'Markdown render'])"
+    )
+    devices: Optional[List[DeviceIcon]] = Field(
+        default=None,
+        description="Optional app icons"
+    )
+
+class SettingsTile(BaseModel):
+    """Settings dashboard tile"""
+    type: Literal["settings"] = Field("settings", description="Tile type identifier")
+    title: str = Field(default="Settings", description="Tile title")
+    subtitle: str = Field(description="Settings summary (e.g., 'Configuration')")
+    icon: str = Field(default="settings", description="Lucide icon name")
+    status_color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = Field(
+        default="gray",
+        description="Color indicating settings status"
+    )
+    quick_actions: Optional[List[str]] = Field(
+        default=None,
+        description="Quick action labels (e.g., ['Open settings', 'Profile'])"
+    )
+    devices: Optional[List[DeviceIcon]] = Field(
+        default=None,
+        description="Optional settings icons"
+    )
+
 class Dashboard(BaseModel):
     """Smart home dashboard with tiles and global quick actions"""
     type: Literal["dashboard"] = Field("dashboard", description="Type identifier for frontend rendering")
-    tiles: List[DashboardTile] = Field(
-        description="List of dashboard tiles. Must contain exactly 6 tiles in order: light, climate, music, documents, apps, settings"
-    )
+    light: LightTile = Field(description="Light control tile")
+    climate: ClimateTile = Field(description="Climate control tile")
+    music: MusicTile = Field(description="Music player tile")
+    documents: DocumentsTile = Field(description="Documents tile")
+    apps: AppsTile = Field(description="AI apps tile")
+    settings: SettingsTile = Field(description="Settings tile")
     quick_actions: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None,
         description="Global quick action buttons below tiles (2-3 buttons max)"
     )
-    
-    def model_post_init(self, __context):
-        """Validate that dashboard has exactly 6 tiles"""
-        if len(self.tiles) != 6:
-            raise ValueError(f"Dashboard must have exactly 6 tiles, got {len(self.tiles)}")
 
 class Widget(BaseModel):
     """Generic widget container for future extensions"""
