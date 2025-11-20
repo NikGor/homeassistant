@@ -309,9 +309,6 @@ class LightController:
 # Глобальный экземпляр контроллера
 light_controller = LightController()
 
-# Запускаем автоматическое сканирование при импорте
-try:
-    light_controller.start_auto_scan()
-except Exception as e:
-    logger.error(f"light_ctrl_error_014: \033[31mAuto-scan startup failed: {str(e)}\033[0m")
+# Автоматическое сканирование отключено по умолчанию
+# Для включения вызовите light_controller.start_auto_scan() вручную
 
