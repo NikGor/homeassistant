@@ -119,6 +119,10 @@
 
 
     <!-- Scripts -->
+    <script>
+        // Global user_id from Django
+        window.CURRENT_USER_ID = "{{ user_id }}";
+    </script>
     <script src="{% static 'webapp/js/globals.js' %}"></script>
     <script src="{% static 'webapp/js/utils.js' %}"></script>
     <script src="{% static 'webapp/js/data.js' %}"></script>

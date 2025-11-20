@@ -1,5 +1,7 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class UserProfile(models.Model):
@@ -58,6 +60,41 @@ class UserProfile(models.Model):
     
     def __str__(self):
         return f"{self.user.username} Profile"
+    
+    def sync_to_redis(self):
+        """Syncs user profile to Redis cache"""
+        from homeassistant.redis_client import redis_client
+        from archie_shared.user.models import UserState
+        from datetime import datetime
+        
+        now = datetime.now()
+        state = UserState(
+            user_id=str(self.user.id),
+            user_name=self.user_name or self.user.username,
+            default_city=self.default_city,
+            default_country=self.default_country,
+            persona=self.persona,
+            user_timezone=self.user_timezone,
+            measurement_units=self.measurement_units,
+            language=self.language,
+            currency=self.currency,
+            date_format=self.date_format,
+            time_format=self.time_format,
+            commercial_holidays=self.commercial_holidays,
+            commercial_check_open_now=self.commercial_check_open_now,
+            transport_preferences=self.transport_preferences or [],
+            cuisine_preferences=self.cuisine_preferences or [],
+            current_date=now.strftime("%Y-%m-%d"),
+            current_time=now.strftime("%H:%M:%S"),
+            current_weekday=now.strftime("%A"),
+        )
+        return redis_client.set_user_state(str(self.user.id), state)
+
+
+@receiver(post_save, sender=UserProfile)
+def sync_user_profile_to_redis(sender, instance, **kwargs):
+    """Automatically sync user profile to Redis on save"""
+    instance.sync_to_redis()
 
 
 class EmptyModel(models.Model):

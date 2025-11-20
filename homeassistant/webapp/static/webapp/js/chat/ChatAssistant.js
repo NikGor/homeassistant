@@ -123,8 +123,10 @@ const IntegratedChatAssistant = () => {
 
         try {
             const selectedModel = window.selectedAIModel || localStorage.getItem('selectedAIModel') || 'gpt-4.1-mini';
+            const userId = window.CURRENT_USER_ID || "1";
             
             const result = await api.current.sendMessage({
+                user_id: userId,
                 response_format: 'ui_answer',
                 input: inputValue,
                 conversation_id: currentConversation,
@@ -163,8 +165,10 @@ const IntegratedChatAssistant = () => {
 
         try {
             const selectedModel = window.selectedAIModel || localStorage.getItem('selectedAIModel') || 'gpt-4.1-mini';
+            const userId = window.CURRENT_USER_ID || "1";
             
             const result = await api.current.sendMessage({
+                user_id: userId,
                 response_format: 'ui_answer',
                 input: assistantRequest,
                 conversation_id: currentConversation,

@@ -21,6 +21,7 @@ yeelight = "^0.7.16"
 opencv-python-headless = "^4.12.0.88"
 psycopg2-binary = "^2.9.9"
 numpy = "^2.0.0"
+redis = "^5.0.1"
 
 [tool.poetry.group.voice]
 optional = true
