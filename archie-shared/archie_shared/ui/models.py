@@ -581,11 +581,14 @@ class LightTile(BaseModel):
     status_color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = Field(
         description="Color indicating overall status"
     )
-    quick_actions: Optional[List[str]] = Field(
+    quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action labels (e.g., ['Evening light', 'Turn all off'])"
+        description="Quick action buttons for immediate light control (e.g., 'Evening light', 'Turn all off')"
     )
-    devices: List[DeviceIcon] = Field(description="List of light device icons")
+    devices: Optional[List[DeviceIcon]] = Field(
+        default=None,
+        description="List of light device icons"
+    )
 
 class ClimateTile(BaseModel):
     """Climate control dashboard tile"""
@@ -596,11 +599,14 @@ class ClimateTile(BaseModel):
     status_color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = Field(
         description="Color indicating overall status"
     )
-    quick_actions: Optional[List[str]] = Field(
+    quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action labels (e.g., ['Heat bedroom', 'Night mode'])"
+        description="Quick action buttons for immediate climate control (e.g., 'Heat bedroom', 'Night mode')"
     )
-    devices: List[DeviceIcon] = Field(description="List of climate device icons")
+    devices: Optional[List[DeviceIcon]] = Field(
+        default=None,
+        description="List of climate device icons"
+    )
 
 class MusicTile(BaseModel):
     """Music player dashboard tile"""
@@ -612,9 +618,9 @@ class MusicTile(BaseModel):
         default="purple",
         description="Color indicating player status"
     )
-    quick_actions: Optional[List[str]] = Field(
+    quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action labels (e.g., ['Evening playlist', 'Album details'])"
+        description="Quick action buttons for music control (e.g., 'Evening playlist', 'Album details')"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -631,9 +637,9 @@ class DocumentsTile(BaseModel):
         default="blue",
         description="Color indicating document status"
     )
-    quick_actions: Optional[List[str]] = Field(
+    quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action labels (e.g., ['Learn more', 'Find document'])"
+        description="Quick action buttons for document management (e.g., 'Learn more', 'Find document')"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -650,9 +656,9 @@ class AppsTile(BaseModel):
         default="green",
         description="Color indicating apps status"
     )
-    quick_actions: Optional[List[str]] = Field(
+    quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action labels (e.g., ['Start pomodoro timer', 'Markdown render'])"
+        description="Quick action buttons for launching apps (e.g., 'Start pomodoro timer', 'Markdown render')"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -669,9 +675,9 @@ class SettingsTile(BaseModel):
         default="gray",
         description="Color indicating settings status"
     )
-    quick_actions: Optional[List[str]] = Field(
+    quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action labels (e.g., ['Open settings', 'Profile'])"
+        description="Quick action buttons for settings access (e.g., 'Open settings', 'Profile')"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -679,17 +685,21 @@ class SettingsTile(BaseModel):
     )
 
 class Dashboard(BaseModel):
-    """Smart home dashboard with tiles and global quick actions"""
+    """
+    Smart home dashboard - a button-driven AI interface without text input.
+    User interacts with AI by clicking AssistantButton elements within tiles or global quick_actions.
+    Each button triggers AI agent processing, which returns updated Dashboard state that replaces the entire UI.
+    """
     type: Literal["dashboard"] = Field("dashboard", description="Type identifier for frontend rendering")
-    light: LightTile = Field(description="Light control tile")
-    climate: ClimateTile = Field(description="Climate control tile")
-    music: MusicTile = Field(description="Music player tile")
-    documents: DocumentsTile = Field(description="Documents tile")
-    apps: AppsTile = Field(description="AI apps tile")
-    settings: SettingsTile = Field(description="Settings tile")
-    quick_actions: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
+    light: LightTile = Field(description="Light control tile with device states and quick actions")
+    climate: ClimateTile = Field(description="Climate control tile with temperature states and quick actions")
+    music: MusicTile = Field(description="Music player tile with playback state and quick actions")
+    documents: DocumentsTile = Field(description="Documents tile with sync status and quick actions")
+    apps: AppsTile = Field(description="AI apps tile with available utilities and quick actions")
+    settings: SettingsTile = Field(description="Settings tile with configuration access and quick actions")
+    quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Global quick action buttons below tiles (2-3 buttons max)"
+        description="Global quick action buttons below tiles for common tasks (2-3 buttons max)"
     )
 
 class Widget(BaseModel):
