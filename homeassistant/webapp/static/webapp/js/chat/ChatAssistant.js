@@ -123,11 +123,12 @@ const IntegratedChatAssistant = () => {
 
         try {
             const selectedModel = window.selectedAIModel || localStorage.getItem('selectedAIModel') || 'gpt-4.1-mini';
+            const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
             const userName = window.CURRENT_USER_NAME || "guest";
             
             const result = await api.current.sendMessage({
                 user_name: userName,
-                response_format: 'ui_answer',
+                response_format: selectedFormat,
                 input: inputValue,
                 conversation_id: currentConversation,
                 model: selectedModel
@@ -165,11 +166,12 @@ const IntegratedChatAssistant = () => {
 
         try {
             const selectedModel = window.selectedAIModel || localStorage.getItem('selectedAIModel') || 'gpt-4.1-mini';
+            const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
             const userName = window.CURRENT_USER_NAME || "guest";
             
             const result = await api.current.sendMessage({
                 user_name: userName,
-                response_format: 'ui_answer',
+                response_format: selectedFormat,
                 input: assistantRequest,
                 conversation_id: currentConversation,
                 model: selectedModel
