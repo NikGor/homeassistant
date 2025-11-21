@@ -154,8 +154,10 @@ function renderDashboardGrid(dashboardData = null) {
         if (tile.quick_actions && tile.quick_actions.length > 0) {
             quickActionsHtml = `<div class="mt-6 grid grid-cols-2 gap-2">
                 ${tile.quick_actions.map(action => {
-                    const text = action.text || action;
-                    return `<button class="glass-button text-xs px-3 py-1.5 rounded-lg text-white">${text}</button>`;
+                    // AssistantButton has text, icon, style, assistant_request
+                    const text = action.text;
+                    const icon = action.icon ? `<i data-lucide="${action.icon}" class="w-3 h-3 mr-1"></i>` : '';
+                    return `<button class="glass-button text-xs px-3 py-1.5 rounded-lg text-white flex items-center justify-center">${icon}${text}</button>`;
                 }).join('')}
             </div>`;
         }

@@ -565,7 +565,7 @@ class DashboardTile(BaseModel):
     )
     quick_actions: Optional[List[str]] = Field(
         default=None,
-        description="Quick action button labels (e.g., ['Вечерний свет', 'Выключить все'])"
+        description="Quick action button labels"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -583,7 +583,7 @@ class LightTile(BaseModel):
     )
     quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action buttons for immediate light control (e.g., 'Evening light', 'Turn all off')"
+        description="2 quick action buttons for immediate light control"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -601,7 +601,7 @@ class ClimateTile(BaseModel):
     )
     quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action buttons for immediate climate control (e.g., 'Heat bedroom', 'Night mode')"
+        description="2 quick action buttons for immediate climate control"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -620,7 +620,7 @@ class MusicTile(BaseModel):
     )
     quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action buttons for music control (e.g., 'Evening playlist', 'Album details')"
+        description="2 quick action buttons for music control"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -639,7 +639,7 @@ class DocumentsTile(BaseModel):
     )
     quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action buttons for document management (e.g., 'Learn more', 'Find document')"
+        description="2 quick action buttons for document management"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -658,7 +658,7 @@ class AppsTile(BaseModel):
     )
     quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action buttons for launching apps (e.g., 'Start pomodoro timer', 'Markdown render')"
+        description="2 quick action buttons for launching apps"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -677,7 +677,7 @@ class SettingsTile(BaseModel):
     )
     quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Quick action buttons for settings access (e.g., 'Open settings', 'Profile')"
+        description="2 quick action buttons for settings access"
     )
     devices: Optional[List[DeviceIcon]] = Field(
         default=None,
@@ -699,7 +699,7 @@ class Dashboard(BaseModel):
     settings: SettingsTile = Field(description="Settings tile with configuration access and quick actions")
     quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="Global quick action buttons below tiles for common tasks (2-3 buttons max)"
+        description="3 Global quick action buttons below tiles for common tasks"
     )
 
 class Widget(BaseModel):

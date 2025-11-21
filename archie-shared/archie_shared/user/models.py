@@ -25,3 +25,4 @@ class UserState(BaseModel):
     current_weekday: str | None = None
     smarthome_light: dict[str, Any] | None = None
     smarthome_climate: dict[str, Any] | None = None
+    smarthome_dashboard: dict[str, Any] | None = None
