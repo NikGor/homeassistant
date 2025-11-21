@@ -6,15 +6,25 @@ function renderDashboardGrid(dashboardData = null) {
     // Use provided data or fall back to static data from data.js
     const data = dashboardData || window.dashboardData;
     
-    if (!data || !data.tiles) {
+    if (!data) {
         console.error('No dashboard data available');
         return;
     }
     
+    // Convert new Dashboard structure (light, climate, music, etc.) to tiles array
+    const tiles = [
+        { ...data.light, category: 'light' },
+        { ...data.climate, category: 'climate' },
+        { ...data.music, category: 'music' },
+        { ...data.documents, category: 'documents' },
+        { ...data.apps, category: 'apps' },
+        { ...data.settings, category: 'settings' }
+    ];
+    
     // Определяем ориентацию экрана и разрешение
     const isLandscape = window.innerWidth > window.innerHeight;
     const isTabletLandscape = isLandscape && window.innerHeight <= 720;
-    const isVeryLowScreen = isLandscape && window.innerHeight <= 600; // Для экстремально низких экранов
+    const isVeryLowScreen = isLandscape && window.innerHeight <= 600;
     
     // Устанавливаем CSS Grid классы в зависимости от ориентации
     let containerClasses = 'grid gap-6 mb-6';
@@ -22,40 +32,32 @@ function renderDashboardGrid(dashboardData = null) {
     let quickActionsClasses = 'flex flex-wrap gap-3';
     
     if (isLandscape) {
-        // Альбомная ориентация: 3x2 (3 колонки, 2 ряда)
         containerClasses += ' grid-cols-3 grid-rows-2 max-w-5xl mx-auto';
         quickActionsClasses += ' max-w-5xl mx-auto';
     } else {
-        // Портретная ориентация: 2x3 (2 колонки, 3 ряда)
         containerClasses += ' grid-cols-2 grid-rows-3 max-w-2xl mx-auto';
         quickActionsClasses += ' max-w-2xl mx-auto';
     }
     
-    // Добавляем компактные стили для планшетов в альбомной ориентации
     if (isVeryLowScreen) {
-        // Экстремально компактные стили для очень низких экранов (600px и меньше)
         containerClasses += ' dashboard-tiles-compact';
         tilesClasses += ' dashboard-tile-compact';
         quickActionsClasses += ' quick-actions-compact';
         
-        // Применяем компактную высоту к контейнеру дашборда
         const dashboardContainer = dashboardTilesContainer.parentElement.parentElement;
         if (dashboardContainer) {
             dashboardContainer.classList.add('dashboard-compact');
         }
     } else if (isTabletLandscape) {
-        // Обычные компактные стили для планшетов (до 720px)
         containerClasses += ' dashboard-tiles-compact';
         tilesClasses += ' dashboard-tile-compact';
         quickActionsClasses += ' quick-actions-compact';
         
-        // Применяем компактную высоту к контейнеру дашборда
         const dashboardContainer = dashboardTilesContainer.parentElement.parentElement;
         if (dashboardContainer) {
             dashboardContainer.classList.add('dashboard-compact');
         }
     } else {
-        // Убираем компактные классы если они были применены ранее
         const dashboardContainer = dashboardTilesContainer.parentElement.parentElement;
         if (dashboardContainer) {
             dashboardContainer.classList.remove('dashboard-compact');
@@ -65,33 +67,69 @@ function renderDashboardGrid(dashboardData = null) {
     dashboardTilesContainer.className = containerClasses;
     globalQuickActionsContainer.className = quickActionsClasses;
     
+    // Render quick action buttons (AssistantButton) - switch to chat mode
     if (data.quick_actions) {
         data.quick_actions.forEach(action => {
             const button = document.createElement('button');
-            let buttonClasses = ['glass-button', 'px-6', 'py-3', 'rounded-lg', 'text-white', 'flex', 'items-center', 'gap-3', 'text-lg', 'font-medium']; // Large button стили
+            let buttonClasses = ['glass-button', 'px-6', 'py-3', 'rounded-lg', 'text-white', 'flex', 'items-center', 'gap-3', 'text-lg', 'font-medium'];
             
-            // Добавляем компактный класс для планшетов
             if (isVeryLowScreen) {
-                // Экстремально компактные кнопки для очень низких экранов
                 buttonClasses.push('quick-action-btn-compact');
             } else if (isTabletLandscape) {
-                // Обычные компактные кнопки для планшетов
                 buttonClasses.push('quick-action-btn-compact');
             }
             
             if (action.style === 'primary') buttonClasses.push('btn-primary');
             else if (action.style === 'secondary') buttonClasses.push('btn-secondary');
             button.className = buttonClasses.join(' ');
-            button.innerHTML = `<i data-lucide="${action.icon}" class="w-6 h-6"></i><span>${action.text}</span>`; // Крупные иконки
-            button.onclick = () => alert(`Запрос: "${action.assistant_request}"`);
+            button.innerHTML = `<i data-lucide="${action.icon}" class="w-6 h-6"></i><span>${action.text}</span>`;
+            
+            // Global quick actions open chat and send message
+            button.onclick = () => {
+                // Switch to chat view
+                if (typeof showChatView === 'function') {
+                    showChatView();
+                }
+                
+                // Send message to chat assistant
+                if (window.chatAssistantAPI) {
+                    // Get current conversation or create new one
+                    const currentConversationId = window.chatAssistantAPI.getCurrentConversationId?.();
+                    
+                    if (currentConversationId) {
+                        // Send to existing conversation
+                        window.chatAssistantAPI.sendMessage(action.assistant_request);
+                    } else {
+                        // Create new conversation and send message
+                        fetch('/ai-assistant/api/conversations/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({})
+                        })
+                        .then(response => response.json())
+                        .then(newChat => {
+                            window.chatAssistantAPI.selectConversation(newChat.conversation_id);
+                            // Send message after conversation is selected
+                            setTimeout(() => {
+                                window.chatAssistantAPI.sendMessage(action.assistant_request);
+                            }, 100);
+                        })
+                        .catch(error => console.error('Error creating new chat:', error));
+                    }
+                }
+            };
+            
             globalQuickActionsContainer.appendChild(button);
         });
     }
 
-    data.tiles.forEach(tile => {
+    tiles.forEach(tile => {
         const tileElement = document.createElement('div');
         tileElement.className = tilesClasses;
-        tileElement.onclick = () => window.location.href = `/${tile.category}/`;
+        
+        // Tiles themselves don't trigger AI - they just show data
+        tileElement.style.cursor = 'default';
+        
         const statusIconColorClass = getTailwindColorClass(tile.status_color);
 
         let devicesHtml = '';
@@ -115,9 +153,10 @@ function renderDashboardGrid(dashboardData = null) {
         let quickActionsHtml = '';
         if (tile.quick_actions && tile.quick_actions.length > 0) {
             quickActionsHtml = `<div class="mt-6 grid grid-cols-2 gap-2">
-                ${tile.quick_actions.map(action => `
-                    <button class="glass-button text-xs px-3 py-1.5 rounded-lg text-white">${action}</button>
-                `).join('')}
+                ${tile.quick_actions.map(action => {
+                    const text = action.text || action;
+                    return `<button class="glass-button text-xs px-3 py-1.5 rounded-lg text-white">${text}</button>`;
+                }).join('')}
             </div>`;
         }
 
@@ -132,6 +171,48 @@ function renderDashboardGrid(dashboardData = null) {
             </div>
             ${quickActionsHtml}
         `;
+        
+        // Add event listeners for tile quick_actions if they exist
+        if (tile.quick_actions && tile.quick_actions.length > 0) {
+            setTimeout(() => {
+                const actionButtons = tileElement.querySelectorAll('.glass-button');
+                actionButtons.forEach((btn, index) => {
+                    const action = tile.quick_actions[index];
+                    btn.onclick = async (e) => {
+                        e.stopPropagation();
+                        
+                        // Check if it's AssistantButton with assistant_request
+                        if (action.assistant_request) {
+                            try {
+                                const response = await fetch('/api/dashboard/action/', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        user_name: 'Niko',
+                                        assistant_request: action.assistant_request
+                                    })
+                                });
+                                
+                                if (!response.ok) {
+                                    throw new Error(`HTTP error! status: ${response.status}`);
+                                }
+                                
+                                const updatedDashboard = await response.json();
+                                console.log('Dashboard updated from tile quick action:', updatedDashboard);
+                                
+                                renderDashboardGrid(updatedDashboard);
+                                lucide.createIcons();
+                                
+                            } catch (error) {
+                                console.error('Failed to execute tile quick action:', error);
+                                alert('Ошибка при выполнении запроса');
+                            }
+                        }
+                    };
+                });
+            }, 0);
+        }
+        
         dashboardTilesContainer.appendChild(tileElement);
     });
 }

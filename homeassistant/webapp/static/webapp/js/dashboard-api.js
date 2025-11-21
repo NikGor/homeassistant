@@ -27,16 +27,33 @@ async function fetchDashboard() {
 }
 
 /**
- * Update dashboard with fresh data
+ * Update dashboard with fresh data from Redis (not AI agent)
  */
 async function updateDashboard() {
     try {
         const data = await fetchDashboard();
         currentDashboardData = data;
         
+        // Update global dashboardData for sidebar
+        if (typeof window !== 'undefined') {
+            window.dashboardData = data;
+        }
+        
         // Trigger dashboard re-render
         if (typeof renderDashboardGrid === 'function') {
             renderDashboardGrid(data);
+            // Re-initialize Lucide icons after render
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
+        }
+        
+        // Update sidebar if needed
+        if (typeof renderRightSidebar === 'function') {
+            renderRightSidebar();
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
         }
         
     } catch (error) {

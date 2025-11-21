@@ -253,22 +253,46 @@ function renderRightSidebar() {
     rightSidebarCollapsedIcons.innerHTML += '<hr class="border-t border-white/10 my-2">';
     rightSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
 
-    dashboardData.smarthome_dashboard.tiles.forEach(tile => {
+    // Convert dashboard structure to array for rendering
+    const tiles = [
+        { ...dashboardData.light, category: 'light' },
+        { ...dashboardData.climate, category: 'climate' },
+        { ...dashboardData.music, category: 'music' },
+        { ...dashboardData.documents, category: 'documents' },
+        { ...dashboardData.apps, category: 'apps' },
+        { ...dashboardData.settings, category: 'settings' }
+    ];
+
+    tiles.forEach(tile => {
         const iconColorClass = getTailwindColorClass(tile.status_color);
         
         const collapsedItem = document.createElement('a');
-        collapsedItem.href = `/${tile.category}/`;
+        collapsedItem.href = "#";
         collapsedItem.className = `sidebar-item ${iconColorClass}`;
         collapsedItem.dataset.appCategory = tile.category;
         collapsedItem.title = tile.title;
         collapsedItem.innerHTML = `<i data-lucide="${tile.icon}" class="w-6 h-6"></i>`;
+        
+        // Reserved for future widgets - do nothing on click
+        collapsedItem.onclick = (e) => {
+            e.preventDefault();
+            console.log('Tile icon clicked (reserved for future):', tile.category);
+        };
+        
         rightSidebarCollapsedIcons.appendChild(collapsedItem);
 
         const expandedItem = document.createElement('a');
-        expandedItem.href = `/${tile.category}/`;
-        expandedItem.className = `sidebar-item-expanded text-gray-300`; // Текст всегда светлый
+        expandedItem.href = "#";
+        expandedItem.className = `sidebar-item-expanded text-gray-300`;
         expandedItem.dataset.appCategory = tile.category;
         expandedItem.innerHTML = `<i data-lucide="${tile.icon}" class="w-5 h-5 flex-shrink-0 ${iconColorClass}"></i><span class="sidebar-text ml-4 font-medium">${tile.title}</span>`;
+        
+        // Reserved for future widgets - do nothing on click
+        expandedItem.onclick = (e) => {
+            e.preventDefault();
+            console.log('Tile icon clicked (reserved for future):', tile.category);
+        };
+        
         rightSidebarExpandedMenu.appendChild(expandedItem);
     });
 
@@ -812,4 +836,3 @@ function getCookie(name) {
     }
     return cookieValue;
 }
-

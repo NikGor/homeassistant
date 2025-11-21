@@ -229,7 +229,22 @@ const IntegratedChatAssistant = () => {
             currentConversation,
             selectConversation,
             navigateMessages,
-            updateNavigationButtons
+            updateNavigationButtons,
+            getCurrentConversationId: () => currentConversation?.conversation_id || null,
+            sendMessage: (message) => {
+                if (currentConversation) {
+                    // Trigger sending message to current conversation
+                    const inputElement = document.querySelector('textarea[placeholder*="Напишите сообщение"]');
+                    if (inputElement) {
+                        inputElement.value = message;
+                        // Trigger form submission
+                        const form = inputElement.closest('form');
+                        if (form) {
+                            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                        }
+                    }
+                }
+            }
         };
     }, [conversations, currentConversation, navigateMessages, updateNavigationButtons]);
 
