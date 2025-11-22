@@ -58,7 +58,7 @@ class Card(BaseModel):
     )
     image: Optional[str] = Field(
         default=None,
-        description="Base64-encoded image string (with data:image format prefix). Optimal size: 800x600px or 16:9 aspect ratio for best mobile display."
+        description="An image to improve the visual appeal. Base64-encoded image string (with data:image format prefix). 1:1 aspect ratio."
     )
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None, 
@@ -516,8 +516,8 @@ class Chart(BaseModel):
 
 class Image(BaseModel):
     """Standalone image component for visual content display"""
-    image: str = Field(
-        description="Base64-encoded image string (with data:image format prefix). Optimal size: 800x600px or 16:9 aspect ratio for best mobile display."
+    image: Optional[str] = Field(
+        description="Base64-encoded image string (with data:image format prefix). Optimal size: 2k, 16:9 aspect ratio."
     )
     alt: Optional[str] = Field(
         default=None,
