@@ -56,6 +56,10 @@ class Card(BaseModel):
         default=None, 
         description="Concise body content (1-3 sentences max). Focus on essential information user needs to act."
     )
+    image: Optional[str] = Field(
+        default=None,
+        description="Base64-encoded image string (with data:image format prefix). Optimal size: 800x600px or 16:9 aspect ratio for best mobile display."
+    )
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None, 
         description="Action buttons ordered by importance. Always include at least 1 primary action. Max 3 buttons per card."
@@ -510,15 +514,33 @@ class Chart(BaseModel):
         description="Chart height in pixels, optimized for mobile viewing (200-400px recommended)"
     )
 
+class Image(BaseModel):
+    """Standalone image component for visual content display"""
+    image: str = Field(
+        description="Base64-encoded image string (with data:image format prefix). Optimal size: 800x600px or 16:9 aspect ratio for best mobile display."
+    )
+    alt: Optional[str] = Field(
+        default=None,
+        description="Alternative text for accessibility and SEO. Describe the image content clearly."
+    )
+    caption: Optional[str] = Field(
+        default=None,
+        description="Optional caption displayed below the image (1-2 sentences max)"
+    )
+    width: Optional[Literal["full", "half", "third"]] = Field(
+        default="full",
+        description="Image width: 'full' for full-width, 'half' for 50%, 'third' for 33%"
+    )
+
 class AdvancedAnswerItem(BaseModel):
     """Strategic UI component with clear hierarchy and user flow optimization"""
     order: int = Field(
         description="Visual sequence (1-based). Lower numbers appear first. Use 10, 20, 30 for easy reordering."
     )
-    type: Literal["text_answer", "card_grid", "table", "chart"] = Field(
-        description="Component type - choose based on user intent: 'card' for actions, 'table' for comparison, 'text_answer' for explanation, 'chart' for data visualization"
+    type: Literal["text_answer", "card_grid", "table", "chart", "image"] = Field(
+        description="Component type - choose based on user intent: 'card' for actions, 'table' for comparison, 'text_answer' for explanation, 'chart' for data visualization, 'image' for visual content"
     )
-    content: Union[TextAnswer, CardGrid, Table, Chart] = Field(
+    content: Union[TextAnswer, CardGrid, Table, Chart, Image] = Field(
         description="Component payload - ensure content matches type and supports user's immediate next action"
     )
     layout_hint: Optional[Literal["full_width", "half_width", "inline", "emphasis"]] = Field(
