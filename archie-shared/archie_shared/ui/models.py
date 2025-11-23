@@ -58,7 +58,7 @@ class Card(BaseModel):
     )
     image: Optional[str] = Field(
         default=None,
-        description="An image to improve the visual appeal. Base64-encoded image string (with data:image format prefix). 1:1 aspect ratio."
+        description="A generation prompt for an image to accompany the card content. Keep it relevant and engaging."
     )
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None, 
@@ -517,21 +517,9 @@ class Chart(BaseModel):
 class Image(BaseModel):
     """Standalone image component for visual content display"""
     image: Optional[str] = Field(
-        description="Base64-encoded image string (with data:image format prefix). Optimal size: 2k, 16:9 aspect ratio."
+        description="A generation prompt for an image to be displayed. It can be a 4K photo, an illustration, a diagram, or an instruction in pictures. Keep it relevant to the context."
     )
-    alt: Optional[str] = Field(
-        default=None,
-        description="Alternative text for accessibility and SEO. Describe the image content clearly."
-    )
-    caption: Optional[str] = Field(
-        default=None,
-        description="Optional caption displayed below the image (1-2 sentences max)"
-    )
-    width: Optional[Literal["full", "half", "third"]] = Field(
-        default="full",
-        description="Image width: 'full' for full-width, 'half' for 50%, 'third' for 33%"
-    )
-
+    
 class AdvancedAnswerItem(BaseModel):
     """Strategic UI component with clear hierarchy and user flow optimization"""
     order: int = Field(
