@@ -131,7 +131,7 @@ def dashboard_action(request):
             "user_name": user_name,
             "response_format": "dashboard",
             "input": assistant_request,
-            "model": "gpt-4o",
+            "model": "gpt-4.1",
             "conversation_id": None,
             "previous_message_id": None
         }
