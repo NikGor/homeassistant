@@ -56,8 +56,7 @@ class Card(BaseModel):
         default=None, 
         description="Concise body content (1-3 sentences max). Focus on essential information user needs to act."
     )
-    image_prompt: Optional[str] = Field(
-        default=None,
+    image_prompt: str = Field(
         description="AI prompt for generating card image (will be processed server-side and replaced with base64 image)"
     )
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
@@ -516,8 +515,7 @@ class Chart(BaseModel):
 
 class Image(BaseModel):
     """Standalone image component for visual content display"""
-    image_prompt: Optional[str] = Field(
-        default=None,
+    image_prompt: str = Field(
         description="AI prompt for generating image (will be processed server-side and replaced with base64 image)"
     )
 
