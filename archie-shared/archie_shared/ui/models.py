@@ -56,10 +56,6 @@ class Card(BaseModel):
         default=None, 
         description="Concise body content (1-3 sentences max). Focus on essential information user needs to act."
     )
-    image: Optional[str] = Field(
-        default=None,
-        description="An image to improve the visual appeal. Base64-encoded image string (with data:image format prefix). 1:1 aspect ratio."
-    )
     image_prompt: Optional[str] = Field(
         default=None,
         description="AI prompt for generating card image (will be processed server-side and replaced with base64 image)"
@@ -520,25 +516,9 @@ class Chart(BaseModel):
 
 class Image(BaseModel):
     """Standalone image component for visual content display"""
-    image: Optional[str] = Field(
-        default=None,
-        description="Base64-encoded image string (with data:image format prefix). Optimal size: 2k, 16:9 aspect ratio."
-    )
     image_prompt: Optional[str] = Field(
         default=None,
         description="AI prompt for generating image (will be processed server-side and replaced with base64 image)"
-    )
-    alt: Optional[str] = Field(
-        default=None,
-        description="Alternative text for accessibility and SEO. Describe the image content clearly."
-    )
-    caption: Optional[str] = Field(
-        default=None,
-        description="Optional caption displayed below the image (1-2 sentences max)"
-    )
-    width: Optional[Literal["full", "half", "third"]] = Field(
-        default="full",
-        description="Image width: 'full' for full-width, 'half' for 50%, 'third' for 33%"
     )
 
 class AdvancedAnswerItem(BaseModel):
