@@ -7,7 +7,10 @@ import json
 import os
 import uuid
 import logging
+import asyncio
+from asgiref.sync import async_to_sync
 from .models import Conversation, Message
+from .image_processor import process_images_in_ui_answer
 
 # AI Agent URL - keep for AI functionality
 AI_AGENT_URL = os.getenv('AI_AGENT_URL', 'http://archie-ai-agent:8005')
@@ -213,10 +216,21 @@ def proxy_send_message(request):
         ai_response.raise_for_status()
         ai_data = ai_response.json()
         
+        # 3.5 Process images if ui_answer exists
+        assistant_content = ai_data.get('content', {})
+        if assistant_content.get('content_format') == 'ui_answer' and assistant_content.get('ui_answer'):
+            logger.info("ai_assistant_015a: Processing images in ui_answer")
+            try:
+                ui_answer = assistant_content['ui_answer']
+                processed_ui_answer = async_to_sync(process_images_in_ui_answer)(ui_answer)
+                assistant_content['ui_answer'] = processed_ui_answer
+                ai_data['content'] = assistant_content
+            except Exception as img_error:
+                logger.error(f"ai_assistant_error_006: Image processing failed: {img_error}")
+        
         # 4. Save Assistant Message
         # AI Agent returns a Message object structure
         assistant_message_id = ai_data.get('message_id', str(uuid.uuid4()))
-        assistant_content = ai_data.get('content', {})
         assistant_llm_trace = ai_data.get('llm_trace', {})
         
         # Extract token usage if available

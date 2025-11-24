@@ -360,7 +360,7 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
                 )));
             }
         }
-        // Default: Generic Card
+        // Generic Card
         else {
             card.title && elements.push(React.createElement('h3', {
                 key: 'title',
@@ -370,6 +370,18 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
                 key: 'subtitle',
                 className: 'text-sm text-white/70 mb-2'
             }, card.subtitle));
+            
+            // Render image from image_prompt (base64)
+            if (card.image_prompt) {
+                elements.push(React.createElement('img', {
+                    key: 'image',
+                    src: `data:image/png;base64,${card.image_prompt}`,
+                    alt: card.title || 'Card image',
+                    className: 'w-full h-auto rounded-lg mb-3 object-cover',
+                    style: { maxHeight: '300px' }
+                }));
+            }
+            
             card.text && elements.push(React.createElement('div', {
                 key: 'text',
                 className: 'text-white/80 text-sm mb-3',
@@ -449,8 +461,6 @@ const ChatTable = ({ table }) => {
 };
 
 const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
-    console.log('ChatAdvancedAnswerItem: Rendering item type', item.type, item);
-    
     switch (item.type) {
         case 'text_answer':
             const processedText = item.content.type === 'markdown' && typeof marked !== 'undefined'
@@ -463,7 +473,6 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
             });
         
         case 'card_grid':
-            console.log('ChatAdvancedAnswerItem: Rendering card_grid', item.content);
             return React.createElement(ChatCardGrid, {
                 cardGrid: item.content,
                 onExecute: onExecute
@@ -480,8 +489,28 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
                 order: item.order
             });
         
+        case 'image':
+            const imagePrompt = item.content?.image_prompt;
+            
+            if (!imagePrompt || imagePrompt.length < 100) {
+                return React.createElement('div', {
+                    className: 'text-white/70 mb-4'
+                }, 'Изображение не загружено');
+            }
+            
+            const widthClass = item.layout_hint === 'half_width' ? 'w-full md:w-1/2' :
+                               item.layout_hint === 'inline' ? 'w-full md:w-1/3' :
+                               'w-full';
+            
+            return React.createElement('div', {
+                className: `${widthClass} mx-auto mb-4`
+            }, React.createElement('img', {
+                src: `data:image/png;base64,${imagePrompt}`,
+                alt: item.content.alt || 'Generated image',
+                className: 'w-full h-auto rounded-xl shadow-2xl'
+            }));
+        
         default:
-            console.error('ChatAdvancedAnswerItem: Unsupported item type', item.type);
             return React.createElement('div', {
                 className: 'text-white/70 mb-4'
             }, `Неподдерживаемый тип элемента: ${item.type}`);

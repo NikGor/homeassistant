@@ -103,6 +103,11 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 #     BASE_DIR / 'static',
 # ]
 
+# Use ManifestStaticFilesStorage for cache-busting in production
+# В режиме DEBUG используется стандартный storage без хэшей
+if not DEBUG:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Allow iframe embedding for same origin
