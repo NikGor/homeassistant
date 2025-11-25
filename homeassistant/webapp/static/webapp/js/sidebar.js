@@ -487,6 +487,91 @@ const AI_MODELS = {
     ],
 };
 
+// Gen UI Level configuration
+const GEN_UI_LEVELS = {
+    1: {
+        name: "Level 1",
+        description: "Basic - All models, plain text only",
+        modelProviders: ["openai", "openrouter"],
+        showCommandModel: false,
+        showFinalOutputModel: true,
+        responseFormats: ["plain"],
+        fixedFormat: "plain",
+        defaults: {
+            commandModel: "gpt-4.1-mini",
+            finalOutputModel: "gpt-4.1"
+        }
+    },
+    2: {
+        name: "Level 2",
+        description: "Standard - OpenAI models, plain & markdown",
+        modelProviders: ["openai"],
+        showCommandModel: true,
+        showFinalOutputModel: true,
+        responseFormats: ["plain", "markdown"],
+        fixedFormat: null,
+        defaults: {
+            commandModel: "gpt-4.1-mini",
+            finalOutputModel: "gpt-4.1"
+        }
+    },
+    3: {
+        name: "Level 3",
+        description: "Enhanced - OpenAI models, markdown only",
+        modelProviders: ["openai"],
+        showCommandModel: true,
+        showFinalOutputModel: true,
+        responseFormats: ["markdown"],
+        fixedFormat: "markdown",
+        defaults: {
+            commandModel: "gpt-4.1-mini",
+            finalOutputModel: "gpt-4.1"
+        }
+    },
+    4: {
+        name: "Level 4",
+        description: "Advanced - OpenAI models, UI Answer",
+        modelProviders: ["openai"],
+        showCommandModel: true,
+        showFinalOutputModel: true,
+        responseFormats: ["ui_answer"],
+        fixedFormat: "ui_answer",
+        defaults: {
+            commandModel: "gpt-4.1-mini",
+            finalOutputModel: "gpt-4.1"
+        }
+    },
+    5: {
+        name: "Level 5",
+        description: "Coming soon ;)",
+        modelProviders: ["openai"],
+        showCommandModel: true,
+        showFinalOutputModel: true,
+        responseFormats: ["ui_answer"],
+        fixedFormat: "ui_answer",
+        comingSoon: true,
+        defaults: {
+            commandModel: "gpt-4.1-mini",
+            finalOutputModel: "gpt-4.1"
+        }
+    }
+};
+
+// Get selected Gen UI level from localStorage or default
+function getSelectedGenUILevel() {
+    return parseInt(localStorage.getItem('selectedGenUILevel')) || 4;
+}
+
+// Set selected Gen UI level in localStorage
+function setSelectedGenUILevel(level) {
+    localStorage.setItem('selectedGenUILevel', level);
+    window.selectedGenUILevel = level;
+    const config = GEN_UI_LEVELS[level];
+    if (config && config.fixedFormat) {
+        setSelectedResponseFormat(config.fixedFormat);
+    }
+}
+
 // Available response formats
 const RESPONSE_FORMATS = [
     { value: "plain", label: "Plain Text" },
@@ -542,9 +627,12 @@ function setSelectedResponseFormat(format) {
 
 // Open chat settings modal
 function openChatSettingsModal() {
+    const currentLevel = getSelectedGenUILevel();
     const currentCommandModel = getSelectedCommandModel();
     const currentFinalOutputModel = getSelectedFinalOutputModel();
     const currentFormat = getSelectedResponseFormat();
+    
+    let selectedLevel = currentLevel;
     
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 flex items-center justify-center z-50';
@@ -564,6 +652,37 @@ function openChatSettingsModal() {
     title.textContent = 'Настройки чата';
     modalContent.appendChild(title);
     
+    // Gen UI Level selection section
+    const levelSection = document.createElement('div');
+    levelSection.className = 'mb-6';
+    
+    const levelLabel = document.createElement('label');
+    levelLabel.className = 'block text-sm font-medium text-gray-300 mb-2';
+    levelLabel.textContent = 'Gen UI Level';
+    levelSection.appendChild(levelLabel);
+    
+    const levelSelect = document.createElement('select');
+    levelSelect.className = 'w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none';
+    levelSelect.style.color = 'white';
+    levelSelect.style.backgroundColor = '#1f2937';
+    
+    Object.entries(GEN_UI_LEVELS).forEach(([level, config]) => {
+        const option = document.createElement('option');
+        option.value = level;
+        option.textContent = `${config.name} - ${config.description}`;
+        option.selected = parseInt(level) === currentLevel;
+        option.style.backgroundColor = '#1f2937';
+        option.style.color = 'white';
+        if (config.comingSoon) {
+            option.disabled = true;
+            option.style.color = '#6b7280';
+        }
+        levelSelect.appendChild(option);
+    });
+    
+    levelSection.appendChild(levelSelect);
+    modalContent.appendChild(levelSection);
+    
     // Command Model selection section
     const commandModelSection = document.createElement('div');
     commandModelSection.className = 'mb-6';
@@ -577,38 +696,6 @@ function openChatSettingsModal() {
     commandModelSelect.className = 'w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none';
     commandModelSelect.style.color = 'white';
     commandModelSelect.style.backgroundColor = '#1f2937';
-    
-    // Add OpenAI models
-    const openaiGroup1 = document.createElement('optgroup');
-    openaiGroup1.label = 'OpenAI';
-    openaiGroup1.style.backgroundColor = '#374151';
-    openaiGroup1.style.color = 'white';
-    AI_MODELS.openai.forEach(model => {
-        const option = document.createElement('option');
-        option.value = model;
-        option.textContent = model;
-        option.selected = model === currentCommandModel;
-        option.style.backgroundColor = '#1f2937';
-        option.style.color = 'white';
-        openaiGroup1.appendChild(option);
-    });
-    commandModelSelect.appendChild(openaiGroup1);
-    
-    // Add OpenRouter models
-    const openrouterGroup1 = document.createElement('optgroup');
-    openrouterGroup1.label = 'OpenRouter';
-    openrouterGroup1.style.backgroundColor = '#374151';
-    openrouterGroup1.style.color = 'white';
-    AI_MODELS.openrouter.forEach(model => {
-        const option = document.createElement('option');
-        option.value = model;
-        option.textContent = model;
-        option.selected = model === currentCommandModel;
-        option.style.backgroundColor = '#1f2937';
-        option.style.color = 'white';
-        openrouterGroup1.appendChild(option);
-    });
-    commandModelSelect.appendChild(openrouterGroup1);
     
     commandModelSection.appendChild(commandModelSelect);
     modalContent.appendChild(commandModelSection);
@@ -627,38 +714,6 @@ function openChatSettingsModal() {
     finalOutputModelSelect.style.color = 'white';
     finalOutputModelSelect.style.backgroundColor = '#1f2937';
     
-    // Add OpenAI models
-    const openaiGroup2 = document.createElement('optgroup');
-    openaiGroup2.label = 'OpenAI';
-    openaiGroup2.style.backgroundColor = '#374151';
-    openaiGroup2.style.color = 'white';
-    AI_MODELS.openai.forEach(model => {
-        const option = document.createElement('option');
-        option.value = model;
-        option.textContent = model;
-        option.selected = model === currentFinalOutputModel;
-        option.style.backgroundColor = '#1f2937';
-        option.style.color = 'white';
-        openaiGroup2.appendChild(option);
-    });
-    finalOutputModelSelect.appendChild(openaiGroup2);
-    
-    // Add OpenRouter models
-    const openrouterGroup2 = document.createElement('optgroup');
-    openrouterGroup2.label = 'OpenRouter';
-    openrouterGroup2.style.backgroundColor = '#374151';
-    openrouterGroup2.style.color = 'white';
-    AI_MODELS.openrouter.forEach(model => {
-        const option = document.createElement('option');
-        option.value = model;
-        option.textContent = model;
-        option.selected = model === currentFinalOutputModel;
-        option.style.backgroundColor = '#1f2937';
-        option.style.color = 'white';
-        openrouterGroup2.appendChild(option);
-    });
-    finalOutputModelSelect.appendChild(openrouterGroup2);
-    
     finalOutputModelSection.appendChild(finalOutputModelSelect);
     modalContent.appendChild(finalOutputModelSection);
     
@@ -676,24 +731,94 @@ function openChatSettingsModal() {
     formatSelect.style.color = 'white';
     formatSelect.style.backgroundColor = '#1f2937';
     
-    RESPONSE_FORMATS.forEach(format => {
-        const option = document.createElement('option');
-        option.value = format.value;
-        option.textContent = format.label;
-        option.selected = format.value === currentFormat;
-        option.style.backgroundColor = '#1f2937';
-        option.style.color = 'white';
-        formatSelect.appendChild(option);
-    });
-    
     formatSection.appendChild(formatSelect);
     modalContent.appendChild(formatSection);
+    
+    // Function to populate model selects based on level
+    function populateModelSelects(level) {
+        const config = GEN_UI_LEVELS[level];
+        
+        // Clear and populate command model select
+        commandModelSelect.innerHTML = '';
+        config.modelProviders.forEach(provider => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = provider === 'openai' ? 'OpenAI' : 'OpenRouter';
+            optgroup.style.backgroundColor = '#374151';
+            optgroup.style.color = 'white';
+            AI_MODELS[provider].forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                option.selected = model === currentCommandModel;
+                option.style.backgroundColor = '#1f2937';
+                option.style.color = 'white';
+                optgroup.appendChild(option);
+            });
+            commandModelSelect.appendChild(optgroup);
+        });
+        
+        // Clear and populate final output model select
+        finalOutputModelSelect.innerHTML = '';
+        config.modelProviders.forEach(provider => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = provider === 'openai' ? 'OpenAI' : 'OpenRouter';
+            optgroup.style.backgroundColor = '#374151';
+            optgroup.style.color = 'white';
+            AI_MODELS[provider].forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                option.selected = model === currentFinalOutputModel;
+                option.style.backgroundColor = '#1f2937';
+                option.style.color = 'white';
+                optgroup.appendChild(option);
+            });
+            finalOutputModelSelect.appendChild(optgroup);
+        });
+        
+        // Show/hide command model section
+        commandModelSection.style.display = config.showCommandModel ? 'block' : 'none';
+        
+        // Populate format select
+        formatSelect.innerHTML = '';
+        const availableFormats = RESPONSE_FORMATS.filter(f => config.responseFormats.includes(f.value));
+        availableFormats.forEach(format => {
+            const option = document.createElement('option');
+            option.value = format.value;
+            option.textContent = format.label;
+            option.selected = format.value === (config.fixedFormat || currentFormat);
+            option.style.backgroundColor = '#1f2937';
+            option.style.color = 'white';
+            formatSelect.appendChild(option);
+        });
+        
+        // Disable format select if fixed
+        if (config.fixedFormat) {
+            formatSelect.disabled = true;
+            formatSelect.style.opacity = '0.6';
+            formatSelect.style.cursor = 'not-allowed';
+        } else {
+            formatSelect.disabled = false;
+            formatSelect.style.opacity = '1';
+            formatSelect.style.cursor = 'pointer';
+        }
+    }
+    
+    // Initialize with current level
+    populateModelSelects(currentLevel);
+    
+    // Update selects when level changes
+    levelSelect.onchange = () => {
+        selectedLevel = parseInt(levelSelect.value);
+        populateModelSelects(selectedLevel);
+    };
     
     // Current settings info
     const currentInfo = document.createElement('div');
     currentInfo.className = 'mb-4 p-3 bg-white/10 rounded-lg text-sm';
     currentInfo.innerHTML = `
         <div class="text-gray-400 mb-1">Текущие настройки:</div>
+        <div class="text-white">Level: <span class="font-medium">${GEN_UI_LEVELS[currentLevel].name}</span></div>
         <div class="text-white">Команды: <span class="font-medium">${currentCommandModel}</span></div>
         <div class="text-white">Финальный ответ: <span class="font-medium">${currentFinalOutputModel}</span></div>
         <div class="text-white">Формат: <span class="font-medium">${RESPONSE_FORMATS.find(f => f.value === currentFormat)?.label || currentFormat}</span></div>
@@ -709,15 +834,14 @@ function openChatSettingsModal() {
     saveBtn.className = 'flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors font-medium';
     saveBtn.textContent = 'Сохранить';
     saveBtn.onclick = () => {
-        const selectedCommandModel = commandModelSelect.value;
-        const selectedFinalOutputModel = finalOutputModelSelect.value;
-        const selectedFormat = formatSelect.value;
+        const levelConfig = GEN_UI_LEVELS[selectedLevel];
         
-        setSelectedCommandModel(selectedCommandModel);
-        setSelectedFinalOutputModel(selectedFinalOutputModel);
-        setSelectedResponseFormat(selectedFormat);
+        setSelectedGenUILevel(selectedLevel);
+        setSelectedCommandModel(commandModelSelect.value);
+        setSelectedFinalOutputModel(finalOutputModelSelect.value);
+        setSelectedResponseFormat(levelConfig.fixedFormat || formatSelect.value);
         
-        console.log(`Settings saved - Command Model: ${selectedCommandModel}, Final Output Model: ${selectedFinalOutputModel}, Format: ${selectedFormat}`);
+        console.log(`Settings saved - Level: ${selectedLevel}, Command Model: ${commandModelSelect.value}, Final Output Model: ${finalOutputModelSelect.value}, Format: ${levelConfig.fixedFormat || formatSelect.value}`);
         document.body.removeChild(modal);
     };
     buttonsContainer.appendChild(saveBtn);
@@ -735,7 +859,8 @@ function openChatSettingsModal() {
     document.body.appendChild(modal);
 }
 
-// Initialize selected models and response format on page load
+// Initialize selected models, response format, and Gen UI level on page load
+window.selectedGenUILevel = getSelectedGenUILevel();
 window.selectedCommandModel = getSelectedCommandModel();
 window.selectedFinalOutputModel = getSelectedFinalOutputModel();
 window.selectedResponseFormat = getSelectedResponseFormat();
