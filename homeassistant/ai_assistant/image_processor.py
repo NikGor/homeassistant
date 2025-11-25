@@ -82,13 +82,13 @@ async def process_images_in_ui_answer(ui_answer: dict[str, Any]) -> dict[str, An
         
         for prompt_info, result in zip(fast_prompts, fast_results):
             if isinstance(result, Exception):
-                logger.error(f"image_proc_error_001: Fast generation failed")
+                logger.error("image_proc_error_001: Fast generation failed")
                 continue
             
-            if result.get("success") and result.get("images"):
-                base64_img = result["images"][0]["base64"]
+            if result.get("success") and result.get("image"):
+                base64_img = result["image"]["base64"]
                 prompt_info["card"]["image_prompt"] = base64_img
-                logger.info(f"image_proc_006: Replaced fast card prompt")
+                logger.info("image_proc_006: Replaced fast card prompt")
             else:
                 logger.warning("image_proc_warning_001: Fast generation unsuccessful")
     

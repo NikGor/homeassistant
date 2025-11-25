@@ -1,12 +1,11 @@
 import base64
 import logging
+import mimetypes
 import os
 from typing import Any, Literal
-from io import BytesIO
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -15,27 +14,22 @@ load_dotenv()
 async def fast_image_generation_tool(
     prompt: str,
     aspect_ratio: Literal["1:1", "3:4", "4:3", "9:16", "16:9"] = "1:1",
-    image_size: Literal["256", "512", "1K", "2K"] = "1K",
-    number_of_images: int = 1,
 ) -> dict[str, Any]:
     """
-    Fast image generation using Imagen 4 model for quick, high-quality images.
-    Supports flexible image sizes for various use cases.
+    Fast image generation using Gemini 2.5 Flash Image model for quick, high-quality images with streaming.
 
     Args:
         prompt: Text description of the image to generate
         aspect_ratio: Image aspect ratio (1:1, 3:4, 4:3, 9:16, 16:9)
-        image_size: Image size (256, 512, 1K, 2K)
-        number_of_images: Number of images to generate (1-4)
 
     Returns:
-        Dict with generated images as base64 strings and metadata
+        Dict with generated image as base64 string and metadata
     """
     logger.info(
         f"fast_image_gen_001: Fast generation requested for: \033[36m{prompt[:50]}...\033[0m"
     )
     logger.info(
-        f"fast_image_gen_002: Parameters - ratio: \033[33m{aspect_ratio}\033[0m, count: \033[33m{number_of_images}\033[0m"
+        f"fast_image_gen_002: Parameters - ratio: \033[33m{aspect_ratio}\033[0m"
     )
 
     try:
@@ -50,89 +44,87 @@ async def fast_image_generation_tool(
                 "prompt": prompt,
             }
 
-        if number_of_images < 1 or number_of_images > 4:
-            logger.warning(
-                f"fast_image_gen_warning_001: Invalid count \033[33m{number_of_images}\033[0m, using 1"
-            )
-            number_of_images = 1
         client = genai.Client(api_key=api_key)
-        enhanced_prompt = f"{prompt}. NEVER include any text, letters, words, or captions in the image."
-        config = types.GenerateImagesConfig(
-            number_of_images=number_of_images,
-            aspect_ratio=aspect_ratio,
-            image_size=image_size,
-            person_generation="allow_adult",
-            output_mime_type="image/jpeg",
+
+        system_instruction = "Ensure the image has perfect composition and correct geometry. High fidelity, sharp details, no artifacts. If text is present, it must be legible, correctly spelled, and naturally integrated into the surface. High aesthetic quality."
+
+        contents = [
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part.from_text(text=prompt),
+                ],
+            ),
+        ]
+
+        generate_content_config = types.GenerateContentConfig(
+            response_modalities=["IMAGE", "TEXT"],
+            image_config=types.ImageConfig(
+                aspect_ratio=aspect_ratio,
+            ),
+            system_instruction=[
+                types.Part.from_text(text=system_instruction),
+            ],
         )
 
-        logger.info("fast_image_gen_003: Calling \033[36mImagen 4\033[0m")
-        response = client.models.generate_images(
-            model="models/imagen-4.0-generate-001",
-            prompt=enhanced_prompt,
-            config=config,
-        )
+        logger.info("fast_image_gen_003: Calling \033[36mGemini 2.5 Flash Image\033[0m")
 
-        if not response or not response.generated_images:
-            logger.warning("fast_image_gen_warning_002: Empty response from API")
-            return {
-                "success": False,
-                "message": "No images generated",
-                "prompt": prompt,
-            }
+        image_data = None
+        image_mime_type = None
+        text_response = ""
 
-        images_data = []
-        for idx, generated_image in enumerate(response.generated_images):
-            try:
-                image_obj = generated_image.image._pil_image
-                img_byte_arr = BytesIO()
-                image_obj.save(img_byte_arr, format="PNG")
-                img_byte_arr.seek(0)
-                image_bytes = img_byte_arr.read()
-
-                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-
-                images_data.append(
-                    {
-                        "index": idx + 1,
-                        "base64": image_base64,
-                        "format": "PNG",
-                        "size": {
-                            "width": image_obj.width,
-                            "height": image_obj.height,
-                        },
-                    }
-                )
-
-                logger.info(
-                    f"fast_image_gen_004: Image {idx + 1} - \033[33m{image_obj.width}x{image_obj.height}\033[0m"
-                )
-
-            except Exception as img_error:
-                logger.error(
-                    f"fast_image_gen_error_003: Failed to process image {idx + 1}: \033[31m{img_error!s}\033[0m"
-                )
+        for chunk in client.models.generate_content_stream(
+            model="gemini-2.5-flash-image",
+            contents=contents,
+            config=generate_content_config,
+        ):
+            if (
+                chunk.candidates is None
+                or chunk.candidates[0].content is None
+                or chunk.candidates[0].content.parts is None
+            ):
                 continue
 
-        if not images_data:
+            part = chunk.candidates[0].content.parts[0]
+
+            if part.inline_data and part.inline_data.data:
+                inline_data = part.inline_data
+                image_data = inline_data.data
+                image_mime_type = inline_data.mime_type
+                logger.info(
+                    f"fast_image_gen_004: Received image data - mime: \033[33m{image_mime_type}\033[0m"
+                )
+            elif hasattr(chunk, "text") and chunk.text:
+                text_response += chunk.text
+
+        if not image_data:
+            logger.warning("fast_image_gen_warning_002: No image data received")
             return {
                 "success": False,
-                "message": "Failed to process generated images",
+                "message": "No image generated",
                 "prompt": prompt,
+                "text_response": text_response,
             }
 
+        image_base64 = base64.b64encode(image_data).decode("utf-8")
+        file_extension = mimetypes.guess_extension(image_mime_type) or ".bin"
+
         logger.info(
-            f"fast_image_gen_005: Successfully generated \033[33m{len(images_data)}\033[0m images"
+            f"fast_image_gen_005: Successfully generated image with extension \033[33m{file_extension}\033[0m"
         )
 
         return {
             "success": True,
             "prompt": prompt,
-            "images": images_data,
-            "count": len(images_data),
+            "image": {
+                "base64": image_base64,
+                "mime_type": image_mime_type,
+                "extension": file_extension,
+            },
             "aspect_ratio": aspect_ratio,
-            "image_size": image_size,
-            "model": "imagen-4.0",
-            "message": f"Successfully generated {len(images_data)} image(s) using Imagen 4",
+            "model": "gemini-2.5-flash-image",
+            "text_response": text_response,
+            "message": "Successfully generated image using Gemini 2.5 Flash Image",
         }
 
     except Exception as e:
