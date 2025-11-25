@@ -552,8 +552,34 @@ class QuickActionButtons(BaseModel):
         description="2-3 action buttons representing most likely next steps. Order by user priority, include 1 primary action."
     )
 
+class Widget(BaseModel):
+    """Generic widget container for future extensions"""
+    widget_type: str = Field(description="Widget type identifier")
+    title: Optional[str] = Field(default=None, description="Widget title")
+    data: Optional[str] = Field(default=None, description="Widget-specific data")
+
+class Level2Answer(BaseModel):
+    """Level 2 response: text with quick action buttons"""
+    text: TextAnswer = Field(description="Main text content (plain or markdown)")
+    quick_action_buttons: Optional[QuickActionButtons] = Field(
+        default=None,
+        description="Quick action buttons for follow-up actions"
+    )
+
+class Level3Answer(BaseModel):
+    """Level 3 response: text with inline widgets and quick action buttons"""
+    text: TextAnswer = Field(description="Main text content (markdown)")
+    widgets: Optional[List[Widget]] = Field(
+        default=None,
+        description="Inline widgets embedded in the response"
+    )
+    quick_action_buttons: Optional[QuickActionButtons] = Field(
+        default=None,
+        description="Quick action buttons for follow-up actions"
+    )
+
 class UIAnswer(BaseModel):
-    """Generative UI answer content"""
+    """Level 4 response: full generative UI with all components except Dashboard"""
     intro_text: TextAnswer = Field(default=None, description="Introductory paragraph")
     items: List[AdvancedAnswerItem] = Field(description="List of items in the generative UI answer")
     quick_action_buttons: Optional[QuickActionButtons] = Field(default=None, description="Quick action buttons for the UI")
@@ -718,11 +744,7 @@ class Dashboard(BaseModel):
         description="3 Global quick action buttons below tiles for common tasks"
     )
 
-class Widget(BaseModel):
-    """Generic widget container for future extensions"""
-    widget_type: str = Field(description="Widget type identifier")
-    title: Optional[str] = Field(default=None, description="Widget title")
-    data: Optional[str] = Field(default=None, description="Widget-specific data")
+
 
 class Content(BaseModel):
     """Content of a chat message, can be text or structured data"""
@@ -730,10 +752,13 @@ class Content(BaseModel):
         "plain", "markdown", "html", "ssml", 
         "json", "csv", "xml", "yaml", "prompt",
         "python", "bash", "sql", "regex", 
-        "dockerfile", "makefile", "ui_answer",
+        "dockerfile", "makefile", 
+        "level2_answer", "level3_answer", "ui_answer",
         "dashboard", "widget"
     ] = Field(default="plain", description="Format of the content")
-    text: Optional[str] = Field(default=None, description="Text content")
-    ui_answer: Optional[UIAnswer] = Field(default=None, description="UI elements content")
+    text: Optional[str] = Field(default=None, description="Level 1: Plain text content")
+    level2_answer: Optional[Level2Answer] = Field(default=None, description="Level 2: Text with quick action buttons")
+    level3_answer: Optional[Level3Answer] = Field(default=None, description="Level 3: Text with widgets and quick actions")
+    ui_answer: Optional[UIAnswer] = Field(default=None, description="Level 4: Full UI elements content")
     dashboard: Optional[Dashboard] = Field(default=None, description="Dashboard content with tiles and quick actions")
     widget: Optional[Widget] = Field(default=None, description="Generic widget content")
