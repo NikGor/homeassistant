@@ -28,11 +28,16 @@ class FrontendButton(Button):
         "export_to_notes", 
         "export_to_calendar", 
         "open_on_youtube_video", 
-        "open_on_youtube_music", 
+        "open_on_youtube_music",
+        "url_to", 
         "check_amazon"
         ] = Field(
         description="Predefined command for frontend routing: for general actions"
     )
+    url: Optional[str] = Field(
+        default=None,
+        description="URL for 'url_to' button"
+    )   
 
 class AssistantButton(Button):
     """Assistant-specific button with tailored behavior and context"""
@@ -87,7 +92,7 @@ class LocationCard(BaseModel):
         default=None,
         description="""
         Action buttons specific to the location
-        Use the frontend button "open_map"
+        Always use the frontend button "open_map"
         Add 1-2 assistant buttons for another relevant quick action
         Maximum 3 buttons per location
         """
@@ -324,7 +329,7 @@ class ArticleCard(BaseModel):
         default=None,
         description="""
         Action buttons specific to the article
-        Always include: frontend button "export_to_notes" for saving
+        Always include: frontend button "url_to" for the most relevant link.
         Add assistant button for summarizing or sharing
         Maximum 3 buttons per article
         """
