@@ -21,6 +21,7 @@ var rightSidebarToggleBtn;
 var mainContentArea;
 var chatView;
 var dashboardView;
+var widgetView;
 
 // --- Элементы Дашборда ---
 var globalQuickActionsContainer;

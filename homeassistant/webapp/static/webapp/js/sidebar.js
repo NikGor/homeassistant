@@ -273,10 +273,16 @@ function renderRightSidebar() {
         collapsedItem.title = tile.title;
         collapsedItem.innerHTML = `<i data-lucide="${tile.icon}" class="w-6 h-6"></i>`;
         
-        // Reserved for future widgets - do nothing on click
+        // Handle widget clicks for light and climate
         collapsedItem.onclick = (e) => {
             e.preventDefault();
-            console.log('Tile icon clicked (reserved for future):', tile.category);
+            if (tile.category === 'light' || tile.category === 'climate') {
+                if (typeof showWidgetView === 'function') {
+                    showWidgetView(tile.category);
+                }
+            } else {
+                console.log('Tile icon clicked (reserved for future):', tile.category);
+            }
         };
         
         rightSidebarCollapsedIcons.appendChild(collapsedItem);
@@ -287,10 +293,16 @@ function renderRightSidebar() {
         expandedItem.dataset.appCategory = tile.category;
         expandedItem.innerHTML = `<i data-lucide="${tile.icon}" class="w-5 h-5 flex-shrink-0 ${iconColorClass}"></i><span class="sidebar-text ml-4 font-medium">${tile.title}</span>`;
         
-        // Reserved for future widgets - do nothing on click
+        // Handle widget clicks for light and climate
         expandedItem.onclick = (e) => {
             e.preventDefault();
-            console.log('Tile icon clicked (reserved for future):', tile.category);
+            if (tile.category === 'light' || tile.category === 'climate') {
+                if (typeof showWidgetView === 'function') {
+                    showWidgetView(tile.category);
+                }
+            } else {
+                console.log('Tile icon clicked (reserved for future):', tile.category);
+            }
         };
         
         rightSidebarExpandedMenu.appendChild(expandedItem);

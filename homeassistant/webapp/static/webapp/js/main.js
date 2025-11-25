@@ -4,6 +4,7 @@
 function showChatView() {
     chatView.classList.remove('hidden');
     dashboardView.classList.add('hidden');
+    widgetView.classList.add('hidden');
     leftSidebar.classList.remove('hidden'); // Показываем левый сайдбар в режиме чата
     updateSidebarActiveState('archie');
     
@@ -17,6 +18,7 @@ function showChatView() {
 function showDashboardView() {
     chatView.classList.add('hidden');
     dashboardView.classList.remove('hidden');
+    widgetView.classList.add('hidden');
     leftSidebar.classList.add('hidden'); // Скрываем левый сайдбар в режиме дашборда
     updateSidebarActiveState('home');
     
@@ -25,6 +27,10 @@ function showDashboardView() {
         startDashboardPolling(30000); // Poll every 30 seconds
     }
 }
+
+// Export view functions globally
+window.showChatView = showChatView;
+window.showDashboardView = showDashboardView;
 
 // --- Инициализация и обработчики событий ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -42,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mainContentArea = document.getElementById('main-content-area');
     chatView = document.getElementById('chat-view');
     dashboardView = document.getElementById('dashboard-view');
+    widgetView = document.getElementById('widget-view');
     
     globalQuickActionsContainer = document.getElementById('global-quick-actions');
     dashboardTilesContainer = document.getElementById('dashboard-tiles');
@@ -128,8 +135,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Failed to update dashboard from AI:', error);
                 alert('Ошибка при обновлении дашборда');
             }
+        } else if (category === 'light' || category === 'climate' || category === 'music' || category === 'documents') {
+            e.preventDefault();
+            console.log('Widget icon clicked:', category);
+            if (typeof showWidgetView === 'function') {
+                showWidgetView(category);
+            }
         }
-        // For other categories (light, climate, etc.) - do nothing (reserved for future widgets)
 
         // Сворачиваем, если была развернута
         if (isRightSidebarExpanded) {
