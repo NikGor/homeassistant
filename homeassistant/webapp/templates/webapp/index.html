@@ -90,6 +90,37 @@
             </div>
         </div>
 
+        <!-- 
+          ЭКРАН 3: ВИДЖЕТ (z-10, скрыт)
+        -->
+        <div id="widget-view" class="view-screen z-10 hidden">
+            <div class="w-full h-full flex flex-col">
+                <!-- Widget content area -->
+                <div class="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+                    <div id="widget-container" class="w-full max-w-2xl">
+                        <!-- Виджет будет генерироваться здесь JS -->
+                    </div>
+                </div>
+                
+                <!-- Input bar for widget view -->
+                <div id="widget-input-area" class="p-4">
+                    <div class="relative max-w-4xl mx-auto">
+                        <div class="absolute inset-0 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl"></div>
+                        <form id="widget-input-form" class="relative flex items-center p-2">
+                            <input id="widget-input-field"
+                                   type="text"
+                                   placeholder="Напишите что-нибудь..."
+                                   class="flex-1 bg-transparent text-white placeholder-gray-400 border-none outline-none focus:ring-0 p-3">
+                            <button type="submit"
+                                    class="p-3 text-gray-400 hover:text-white transition-colors rounded-lg">
+                                <i data-lucide="send" class="w-6 h-6"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
     
     <!-- 
@@ -129,6 +160,7 @@
     <script src="{% static 'webapp/js/sidebar.js' %}"></script>
     <script src="{% static 'webapp/js/dashboard-api.js' %}"></script>
     <script src="{% static 'webapp/js/dashboard.js' %}"></script>
+    <script src="{% static 'webapp/js/widget.js' %}"></script>
     
     <!-- React Components -->
     <script src="{% static 'webapp/js/chat/utils.js' %}"></script>
