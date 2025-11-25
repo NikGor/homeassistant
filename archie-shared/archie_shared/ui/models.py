@@ -58,7 +58,7 @@ class Card(BaseModel):
     )
     image_prompt: Optional[str] = Field(
         default=None,
-        description="A prompt describing the image to be generated and displayed in the card. It can be a 4K photo or a rendered illustration with a white background."
+        description="A prompt for card's title image illustration. Can be: photo, illustration, drawing, painting, render on white background, logo, or other art style. Describe objects, background, lighting, and other important visual details."
     )
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None, 
@@ -517,7 +517,13 @@ class Chart(BaseModel):
 class Image(BaseModel):
     """Standalone image component for visual content display"""
     image_prompt: str= Field(
-        description="A prompt describing the image to be generated and displayed. It can be a 4K photo, an illustration, a diagram, or an instruction in pictures"
+    description="""
+        Insert a short, clear prompt for generating a high-value visual asset that meaningfully enhances the content. 
+        Choose among: realistic photo, detailed illustration, artistic drawing, painting, 3D product render on a clean background, conceptual illustration, scene depiction or a schematic map. 
+        The image must express the core idea or scenario and provide visual depth, not a simple icon or logo. 
+        Avoid minimalistic symbols, icons, logos or data charts. 
+        Use realistic or fully illustrated visuals when describing objects, environments, scenarios, concepts, locations or mechanisms. 
+    """
     )
 
 class AdvancedAnswerItem(BaseModel):
