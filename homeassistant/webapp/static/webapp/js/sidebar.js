@@ -448,17 +448,42 @@ function toggleRightSidebar(forceCollapse = false) {
 // Available AI models configuration
 const AI_MODELS = {
     openai: [
+        "gpt-4o",
+        "gpt-4o-mini",
         "gpt-4.1",
         "gpt-4.1-mini",
         "gpt-4.1-nano",
         "gpt-5",
-        "gpt-5.1",
         "gpt-5-mini",
         "gpt-5-nano",
+        "gpt-5-pro",
+        "gpt-5.1",
+        "o1",
+        "o1-pro",
+        "o3",
+        "o3-mini",
+        "o3-pro",
     ],
-    gemini: [
-        "gemini-2.5-flash",
-        "gemini-2.5-pro",
+    openrouter: [
+        // Google Gemini
+        "google/gemini-3-pro-preview",
+        "google/gemini-2.5-pro",
+        "google/gemini-2.5-flash",
+        "google/gemini-2.5-flash-lite",
+        // Anthropic Claude
+        "anthropic/claude-opus-4.5",
+        "anthropic/claude-sonnet-4.5",
+        "anthropic/claude-sonnet-4",
+        "anthropic/claude-haiku-4.5",
+        // xAI Grok
+        "x-ai/grok-4",
+        "x-ai/grok-4-fast",
+        "x-ai/grok-4.1-fast",
+        // DeepSeek
+        "deepseek/deepseek-v3.2-exp",
+        // Meta Llama
+        "meta-llama/llama-4-maverick",
+        "meta-llama/llama-4-scout",
     ],
 };
 
@@ -482,15 +507,26 @@ const RESPONSE_FORMATS = [
     { value: "ui_answer", label: "UI Answer" },
 ];
 
-// Get selected model from localStorage or default
-function getSelectedModel() {
-    return localStorage.getItem('selectedAIModel') || 'gpt-4.1-mini';
+// Get selected command model from localStorage or default
+function getSelectedCommandModel() {
+    return localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
 }
 
-// Set selected model in localStorage
-function setSelectedModel(model) {
-    localStorage.setItem('selectedAIModel', model);
-    window.selectedAIModel = model;
+// Set selected command model in localStorage
+function setSelectedCommandModel(model) {
+    localStorage.setItem('selectedCommandModel', model);
+    window.selectedCommandModel = model;
+}
+
+// Get selected final output model from localStorage or default
+function getSelectedFinalOutputModel() {
+    return localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
+}
+
+// Set selected final output model in localStorage
+function setSelectedFinalOutputModel(model) {
+    localStorage.setItem('selectedFinalOutputModel', model);
+    window.selectedFinalOutputModel = model;
 }
 
 // Get selected response format from localStorage or default
@@ -506,7 +542,8 @@ function setSelectedResponseFormat(format) {
 
 // Open chat settings modal
 function openChatSettingsModal() {
-    const currentModel = getSelectedModel();
+    const currentCommandModel = getSelectedCommandModel();
+    const currentFinalOutputModel = getSelectedFinalOutputModel();
     const currentFormat = getSelectedResponseFormat();
     
     const modal = document.createElement('div');
@@ -527,54 +564,103 @@ function openChatSettingsModal() {
     title.textContent = 'Настройки чата';
     modalContent.appendChild(title);
     
-    // Model selection section
-    const modelSection = document.createElement('div');
-    modelSection.className = 'mb-6';
+    // Command Model selection section
+    const commandModelSection = document.createElement('div');
+    commandModelSection.className = 'mb-6';
     
-    const modelLabel = document.createElement('label');
-    modelLabel.className = 'block text-sm font-medium text-gray-300 mb-2';
-    modelLabel.textContent = 'Модель AI';
-    modelSection.appendChild(modelLabel);
+    const commandModelLabel = document.createElement('label');
+    commandModelLabel.className = 'block text-sm font-medium text-gray-300 mb-2';
+    commandModelLabel.textContent = 'Модель для команд';
+    commandModelSection.appendChild(commandModelLabel);
     
-    const modelSelect = document.createElement('select');
-    modelSelect.className = 'w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none';
-    modelSelect.style.color = 'white';
-    modelSelect.style.backgroundColor = '#1f2937';
+    const commandModelSelect = document.createElement('select');
+    commandModelSelect.className = 'w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none';
+    commandModelSelect.style.color = 'white';
+    commandModelSelect.style.backgroundColor = '#1f2937';
     
     // Add OpenAI models
-    const openaiGroup = document.createElement('optgroup');
-    openaiGroup.label = 'OpenAI';
-    openaiGroup.style.backgroundColor = '#374151';
-    openaiGroup.style.color = 'white';
+    const openaiGroup1 = document.createElement('optgroup');
+    openaiGroup1.label = 'OpenAI';
+    openaiGroup1.style.backgroundColor = '#374151';
+    openaiGroup1.style.color = 'white';
     AI_MODELS.openai.forEach(model => {
         const option = document.createElement('option');
         option.value = model;
         option.textContent = model;
-        option.selected = model === currentModel;
+        option.selected = model === currentCommandModel;
         option.style.backgroundColor = '#1f2937';
         option.style.color = 'white';
-        openaiGroup.appendChild(option);
+        openaiGroup1.appendChild(option);
     });
-    modelSelect.appendChild(openaiGroup);
+    commandModelSelect.appendChild(openaiGroup1);
     
-    // Add Gemini models
-    const geminiGroup = document.createElement('optgroup');
-    geminiGroup.label = 'Gemini';
-    geminiGroup.style.backgroundColor = '#374151';
-    geminiGroup.style.color = 'white';
-    AI_MODELS.gemini.forEach(model => {
+    // Add OpenRouter models
+    const openrouterGroup1 = document.createElement('optgroup');
+    openrouterGroup1.label = 'OpenRouter';
+    openrouterGroup1.style.backgroundColor = '#374151';
+    openrouterGroup1.style.color = 'white';
+    AI_MODELS.openrouter.forEach(model => {
         const option = document.createElement('option');
         option.value = model;
         option.textContent = model;
-        option.selected = model === currentModel;
+        option.selected = model === currentCommandModel;
         option.style.backgroundColor = '#1f2937';
         option.style.color = 'white';
-        geminiGroup.appendChild(option);
+        openrouterGroup1.appendChild(option);
     });
-    modelSelect.appendChild(geminiGroup);
+    commandModelSelect.appendChild(openrouterGroup1);
     
-    modelSection.appendChild(modelSelect);
-    modalContent.appendChild(modelSection);
+    commandModelSection.appendChild(commandModelSelect);
+    modalContent.appendChild(commandModelSection);
+    
+    // Final Output Model selection section
+    const finalOutputModelSection = document.createElement('div');
+    finalOutputModelSection.className = 'mb-6';
+    
+    const finalOutputModelLabel = document.createElement('label');
+    finalOutputModelLabel.className = 'block text-sm font-medium text-gray-300 mb-2';
+    finalOutputModelLabel.textContent = 'Модель для финального ответа';
+    finalOutputModelSection.appendChild(finalOutputModelLabel);
+    
+    const finalOutputModelSelect = document.createElement('select');
+    finalOutputModelSelect.className = 'w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none';
+    finalOutputModelSelect.style.color = 'white';
+    finalOutputModelSelect.style.backgroundColor = '#1f2937';
+    
+    // Add OpenAI models
+    const openaiGroup2 = document.createElement('optgroup');
+    openaiGroup2.label = 'OpenAI';
+    openaiGroup2.style.backgroundColor = '#374151';
+    openaiGroup2.style.color = 'white';
+    AI_MODELS.openai.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        option.selected = model === currentFinalOutputModel;
+        option.style.backgroundColor = '#1f2937';
+        option.style.color = 'white';
+        openaiGroup2.appendChild(option);
+    });
+    finalOutputModelSelect.appendChild(openaiGroup2);
+    
+    // Add OpenRouter models
+    const openrouterGroup2 = document.createElement('optgroup');
+    openrouterGroup2.label = 'OpenRouter';
+    openrouterGroup2.style.backgroundColor = '#374151';
+    openrouterGroup2.style.color = 'white';
+    AI_MODELS.openrouter.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        option.selected = model === currentFinalOutputModel;
+        option.style.backgroundColor = '#1f2937';
+        option.style.color = 'white';
+        openrouterGroup2.appendChild(option);
+    });
+    finalOutputModelSelect.appendChild(openrouterGroup2);
+    
+    finalOutputModelSection.appendChild(finalOutputModelSelect);
+    modalContent.appendChild(finalOutputModelSection);
     
     // Response format selection section
     const formatSection = document.createElement('div');
@@ -608,7 +694,8 @@ function openChatSettingsModal() {
     currentInfo.className = 'mb-4 p-3 bg-white/10 rounded-lg text-sm';
     currentInfo.innerHTML = `
         <div class="text-gray-400 mb-1">Текущие настройки:</div>
-        <div class="text-white">Модель: <span class="font-medium">${currentModel}</span></div>
+        <div class="text-white">Команды: <span class="font-medium">${currentCommandModel}</span></div>
+        <div class="text-white">Финальный ответ: <span class="font-medium">${currentFinalOutputModel}</span></div>
         <div class="text-white">Формат: <span class="font-medium">${RESPONSE_FORMATS.find(f => f.value === currentFormat)?.label || currentFormat}</span></div>
     `;
     modalContent.appendChild(currentInfo);
@@ -622,13 +709,15 @@ function openChatSettingsModal() {
     saveBtn.className = 'flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors font-medium';
     saveBtn.textContent = 'Сохранить';
     saveBtn.onclick = () => {
-        const selectedModel = modelSelect.value;
+        const selectedCommandModel = commandModelSelect.value;
+        const selectedFinalOutputModel = finalOutputModelSelect.value;
         const selectedFormat = formatSelect.value;
         
-        setSelectedModel(selectedModel);
+        setSelectedCommandModel(selectedCommandModel);
+        setSelectedFinalOutputModel(selectedFinalOutputModel);
         setSelectedResponseFormat(selectedFormat);
         
-        console.log(`Settings saved - Model: ${selectedModel}, Format: ${selectedFormat}`);
+        console.log(`Settings saved - Command Model: ${selectedCommandModel}, Final Output Model: ${selectedFinalOutputModel}, Format: ${selectedFormat}`);
         document.body.removeChild(modal);
     };
     buttonsContainer.appendChild(saveBtn);
@@ -646,8 +735,9 @@ function openChatSettingsModal() {
     document.body.appendChild(modal);
 }
 
-// Initialize selected model and response format on page load
-window.selectedAIModel = getSelectedModel();
+// Initialize selected models and response format on page load
+window.selectedCommandModel = getSelectedCommandModel();
+window.selectedFinalOutputModel = getSelectedFinalOutputModel();
 window.selectedResponseFormat = getSelectedResponseFormat();
 
 // Open user profile settings modal

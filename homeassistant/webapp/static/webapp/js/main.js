@@ -139,24 +139,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 7. Обработчики для сворачивания панелей (Escape и Клик)
     
-    // Клик на центральный контент
+    // Клик на центральный контент - сворачиваем только ПРАВЫЙ сайдбар
     mainContentArea.addEventListener('click', () => {
-        // Сворачиваем левый сайдбар только если он видим (режим чата)
-        if (isLeftSidebarExpanded && !leftSidebar.classList.contains('hidden')) {
-            toggleLeftSidebar(true); // force collapse
-        }
         if (isRightSidebarExpanded) {
             toggleRightSidebar(true); // force collapse
         }
     });
 
-    // Нажатие Escape
+    // Нажатие Escape - сворачиваем только ПРАВЫЙ сайдбар
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            // Сворачиваем левый сайдбар только если он видим (режим чата)
-            if (isLeftSidebarExpanded && !leftSidebar.classList.contains('hidden')) {
-                toggleLeftSidebar(true); // force collapse
-            }
             if (isRightSidebarExpanded) {
                 toggleRightSidebar(true); // force collapse
             }

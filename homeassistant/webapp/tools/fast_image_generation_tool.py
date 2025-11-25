@@ -15,15 +15,17 @@ load_dotenv()
 async def fast_image_generation_tool(
     prompt: str,
     aspect_ratio: Literal["1:1", "3:4", "4:3", "9:16", "16:9"] = "1:1",
+    image_size: Literal["256", "512", "1K", "2K"] = "1K",
     number_of_images: int = 1,
 ) -> dict[str, Any]:
     """
-    Fast image generation using Imagen 4 Fast model for quick, simple images.
-    Optimized for speed with smaller image sizes. Best for icons, simple graphics, quick previews.
+    Fast image generation using Imagen 4 model for quick, high-quality images.
+    Supports flexible image sizes for various use cases.
 
     Args:
         prompt: Text description of the image to generate
         aspect_ratio: Image aspect ratio (1:1, 3:4, 4:3, 9:16, 16:9)
+        image_size: Image size (256, 512, 1K, 2K)
         number_of_images: Number of images to generate (1-4)
 
     Returns:
@@ -53,19 +55,20 @@ async def fast_image_generation_tool(
                 f"fast_image_gen_warning_001: Invalid count \033[33m{number_of_images}\033[0m, using 1"
             )
             number_of_images = 1
-
         client = genai.Client(api_key=api_key)
-
+        enhanced_prompt = f"{prompt}. NEVER include any text, letters, words, or captions in the image."
         config = types.GenerateImagesConfig(
             number_of_images=number_of_images,
             aspect_ratio=aspect_ratio,
+            image_size=image_size,
             person_generation="allow_adult",
+            output_mime_type="image/jpeg",
         )
 
-        logger.info("fast_image_gen_003: Calling \033[36mImagen 4 Fast\033[0m")
+        logger.info("fast_image_gen_003: Calling \033[36mImagen 4\033[0m")
         response = client.models.generate_images(
-            model="imagen-4.0-fast-generate-001",
-            prompt=prompt,
+            model="models/imagen-4.0-generate-001",
+            prompt=enhanced_prompt,
             config=config,
         )
 
@@ -127,8 +130,9 @@ async def fast_image_generation_tool(
             "images": images_data,
             "count": len(images_data),
             "aspect_ratio": aspect_ratio,
-            "model": "imagen-4.0-fast",
-            "message": f"Successfully generated {len(images_data)} image(s) using fast model",
+            "image_size": image_size,
+            "model": "imagen-4.0",
+            "message": f"Successfully generated {len(images_data)} image(s) using Imagen 4",
         }
 
     except Exception as e:

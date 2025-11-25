@@ -122,16 +122,23 @@ const IntegratedChatAssistant = () => {
         setIsLoading(true);
 
         try {
-            const selectedModel = window.selectedAIModel || localStorage.getItem('selectedAIModel') || 'gpt-4.1-mini';
+            const selectedCommandModel = window.selectedCommandModel || localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
+            const selectedFinalOutputModel = window.selectedFinalOutputModel || localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
             const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
             const userName = window.CURRENT_USER_NAME || "guest";
+            
+            // Find last assistant message for threading
+            const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+            const lastAssistantMessage = assistantMessages.length > 0 ? assistantMessages[assistantMessages.length - 1] : null;
             
             const result = await api.current.sendMessage({
                 user_name: userName,
                 response_format: selectedFormat,
                 input: inputValue,
                 conversation_id: currentConversation,
-                model: selectedModel
+                command_model: selectedCommandModel,
+                final_output_model: selectedFinalOutputModel,
+                previous_message_id: lastAssistantMessage?.message_id || null
             });
 
             console.log('ChatAssistant: API result', result);
@@ -165,16 +172,23 @@ const IntegratedChatAssistant = () => {
         setIsLoading(true);
 
         try {
-            const selectedModel = window.selectedAIModel || localStorage.getItem('selectedAIModel') || 'gpt-4.1-mini';
+            const selectedCommandModel = window.selectedCommandModel || localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
+            const selectedFinalOutputModel = window.selectedFinalOutputModel || localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
             const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
             const userName = window.CURRENT_USER_NAME || "guest";
+            
+            // Find last assistant message for threading
+            const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+            const lastAssistantMessage = assistantMessages.length > 0 ? assistantMessages[assistantMessages.length - 1] : null;
             
             const result = await api.current.sendMessage({
                 user_name: userName,
                 response_format: selectedFormat,
                 input: assistantRequest,
                 conversation_id: currentConversation,
-                model: selectedModel
+                command_model: selectedCommandModel,
+                final_output_model: selectedFinalOutputModel,
+                previous_message_id: lastAssistantMessage?.message_id || null
             });
 
             const assistantMessage = {

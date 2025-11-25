@@ -82,15 +82,15 @@ async def process_images_in_ui_answer(ui_answer: dict[str, Any]) -> dict[str, An
         
         for prompt_info, result in zip(fast_prompts, fast_results):
             if isinstance(result, Exception):
-                logger.error(f"image_proc_error_001: Fast generation failed: \033[31m{result!s}\033[0m")
+                logger.error(f"image_proc_error_001: Fast generation failed")
                 continue
             
             if result.get("success") and result.get("images"):
                 base64_img = result["images"][0]["base64"]
                 prompt_info["card"]["image_prompt"] = base64_img
-                logger.info(f"image_proc_006: Replaced fast card prompt with \033[33m{len(base64_img)}\033[0m chars base64")
+                logger.info(f"image_proc_006: Replaced fast card prompt")
             else:
-                logger.warning(f"image_proc_warning_001: Fast generation unsuccessful: {result.get('message')}")
+                logger.warning("image_proc_warning_001: Fast generation unsuccessful")
     
     if profi_prompts:
         logger.info("image_proc_007: Starting sequential profi image generation")
@@ -105,11 +105,11 @@ async def process_images_in_ui_answer(ui_answer: dict[str, Any]) -> dict[str, An
                 if result.get("success") and result.get("images"):
                     base64_img = result["images"][0]["base64"]
                     prompt_info["content"]["image_prompt"] = base64_img
-                    logger.info(f"image_proc_008: Replaced profi image prompt with \033[33m{len(base64_img)}\033[0m chars base64")
+                    logger.info("image_proc_008: Replaced profi image prompt")
                 else:
-                    logger.warning(f"image_proc_warning_002: Profi generation unsuccessful: {result.get('message')}")
+                    logger.warning("image_proc_warning_002: Profi generation unsuccessful")
             except Exception as e:
-                logger.error(f"image_proc_error_002: Profi generation failed: \033[31m{e!s}\033[0m")
+                logger.error("image_proc_error_002: Profi generation failed")
     
     logger.info("image_proc_009: Image generation complete")
     return ui_answer
