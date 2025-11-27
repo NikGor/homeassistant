@@ -1,12 +1,76 @@
 // UI Elements Components
 
-const ChatButton = ({ button, onExecute }) => {
+// Custom marked renderer for pill-style links
+const createCustomMarkedRenderer = () => {
+    if (typeof marked === 'undefined') return null;
+    const renderer = new marked.Renderer();
+    renderer.link = (linkData) => {
+        // marked v5+ passes object: { href, title, text }
+        // older versions pass (href, title, text) separately
+        const href = typeof linkData === 'object' ? linkData.href : linkData;
+        const title = typeof linkData === 'object' ? linkData.title : arguments[1];
+        const text = typeof linkData === 'object' ? linkData.text : arguments[2];
+        
+        const pillClass = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all duration-200 cursor-pointer no-underline';
+        const titleAttr = title ? ` title="${title}"` : '';
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="${pillClass}"${titleAttr}><span class="mr-1">🔗</span>${text}</a>`;
+    };
+    return renderer;
+};
+
+// Parse markdown with custom link styling
+const parseMarkdownWithPillLinks = (text) => {
+    if (typeof marked === 'undefined') return text;
+    const renderer = createCustomMarkedRenderer();
+    return marked.parse(text, { renderer });
+};
+
+// Frontend button command handlers
+const handleFrontendCommand = (command, cardData, button) => {
+    switch (command) {
+        case 'open_map': {
+            const address = cardData.address || cardData.title || '';
+            const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+            window.open(url, '_blank');
+            break;
+        }
+        case 'open_on_youtube_video': {
+            const query = cardData.title || '';
+            const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+            window.open(url, '_blank');
+            break;
+        }
+        case 'open_on_youtube_music': {
+            const query = cardData.track_title 
+                ? `${cardData.track_title} ${cardData.artist || ''}`.trim()
+                : cardData.title || '';
+            const url = `https://music.youtube.com/search?q=${encodeURIComponent(query)}`;
+            window.open(url, '_blank');
+            break;
+        }
+        case 'check_amazon': {
+            const query = cardData.title || '';
+            const url = `https://www.amazon.de/s?k=${encodeURIComponent(query)}`;
+            window.open(url, '_blank');
+            break;
+        }
+        case 'url_to': {
+            if (button.url) {
+                window.open(button.url, '_blank');
+            }
+            break;
+        }
+        default:
+            console.log('Unhandled frontend command:', command);
+    }
+};
+
+const ChatButton = ({ button, onExecute, cardData }) => {
     const handleClick = () => {
         if (button.type === 'assistant_button') {
             onExecute(button.assistant_request);
-        } else {
-            // Handle frontend commands
-            console.log('Frontend command:', button.command);
+        } else if (button.type === 'frontend_button') {
+            handleFrontendCommand(button.command, cardData || {}, button);
         }
     };
 
@@ -398,7 +462,8 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
                 React.createElement(ChatButton, {
                     key: `button-${buttonIndex}`,
                     button: button,
-                    onExecute: onExecute
+                    onExecute: onExecute,
+                    cardData: card
                 })
             )));
         }
@@ -464,7 +529,7 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
     switch (item.type) {
         case 'text_answer':
             const processedText = item.content.type === 'markdown' && typeof marked !== 'undefined'
-                ? marked.parse(item.content.text)
+                ? parseMarkdownWithPillLinks(item.content.text)
                 : item.content.text;
             
             return React.createElement('div', {
@@ -525,7 +590,7 @@ const ChatUIAnswer = ({ uiAnswer, onExecute }) => {
         if (!introText) return null;
         
         const processedText = introText.type === 'markdown' && typeof marked !== 'undefined'
-            ? marked.parse(introText.text)
+            ? parseMarkdownWithPillLinks(introText.text)
             : introText.text;
         
         return React.createElement('div', {
@@ -591,7 +656,7 @@ const ChatContent = ({ content, onExecute }) => {
     if (content.text) {
         // Simple text content - check if it needs markdown processing
         const processedText = content.content_format === 'markdown' && typeof marked !== 'undefined'
-            ? marked.parse(content.text)
+            ? parseMarkdownWithPillLinks(content.text)
             : content.text;
         
         return React.createElement('div', {
