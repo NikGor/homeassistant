@@ -98,40 +98,74 @@ class LightStateService:
         TODO: Replace with real device polling
         """
         from .pydantic_models import LightStateAggregate, LightDeviceState
+        from archie_shared.ui.models import AssistantButton
         
-        # Mock data - replace with real device polling
         logger.info("light_services_007: Fetching light devices state (mock data)")
         
         devices = [
             LightDeviceState(
+                device_id="light_001",
                 name="Торшер гостиная",
+                room="Гостиная",
+                is_on=True,
+                brightness=75,
+                color_mode="temperature",
+                color_temp=2700,
+                rgb_color=None,
                 icon="lamp",
-                color="orange",
-                variant="solid",
-                tooltip="Вкл., 75%, 2700K"
+                color="yellow"
             ),
             LightDeviceState(
+                device_id="light_002",
                 name="Потолочная кухня",
+                room="Кухня",
+                is_on=True,
+                brightness=60,
+                color_mode="temperature",
+                color_temp=3000,
+                rgb_color=None,
                 icon="lightbulb",
-                color="orange",
-                variant="solid",
-                tooltip="Вкл., 60%, 3000K"
+                color="yellow"
             ),
             LightDeviceState(
+                device_id="light_003",
                 name="Спальня",
+                room="Спальня",
+                is_on=False,
+                brightness=50,
+                color_mode="temperature",
+                color_temp=2700,
+                rgb_color=None,
                 icon="bed",
-                color="gray",
-                variant="outline",
-                tooltip="Выкл."
+                color="gray"
             )
         ]
         
-        on_count = sum(1 for d in devices if d.variant == "solid")
+        on_count = sum(1 for d in devices if d.is_on)
+        
+        quick_actions = [
+            AssistantButton(
+                text="Включить все",
+                style="primary",
+                icon="power",
+                assistant_request="Включи все лампы"
+            ),
+            AssistantButton(
+                text="Выключить все",
+                style="secondary",
+                icon="power-off",
+                assistant_request="Выключи все лампы"
+            )
+        ]
         
         return LightStateAggregate(
+            type="light_widget",
+            title="Свет",
+            subtitle=f"{on_count} из {len(devices)} включены",
             on_count=on_count,
             total_count=len(devices),
-            devices=devices
+            devices=devices,
+            quick_actions=quick_actions
         )
     
     def save_to_redis(self, user_name: str = "Niko"):

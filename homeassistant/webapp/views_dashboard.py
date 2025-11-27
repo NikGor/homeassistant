@@ -232,12 +232,13 @@ def _update_dashboard_devices(dashboard: dict, user_state: dict) -> dict:
     if light_aggregate and 'devices' in light_aggregate:
         light_devices = []
         for device in light_aggregate.get('devices', []):
+            is_on = device.get("is_on", False)
             light_devices.append({
                 "name": device.get("name"),
                 "icon": device.get("icon", "lightbulb"),
-                "color": device.get("color", "gray"),
-                "variant": device.get("variant", "outline"),
-                "tooltip": device.get("tooltip", "")
+                "color": "yellow" if is_on else "gray",
+                "variant": "solid" if is_on else "outline",
+                "tooltip": _build_light_tooltip(device)
             })
         dashboard['light']['devices'] = light_devices if light_devices else None
         dashboard['light']['subtitle'] = f"{light_aggregate.get('on_count', 0)} of {light_aggregate.get('total_count', 0)} on"
@@ -261,6 +262,20 @@ def _update_dashboard_devices(dashboard: dict, user_state: dict) -> dict:
     return dashboard
 
 
+def _build_light_tooltip(device: dict) -> str:
+    """Build tooltip string from light device state"""
+    if not device.get("is_on", False):
+        return "Выкл."
+    parts = ["Вкл."]
+    brightness = device.get("brightness")
+    if brightness:
+        parts.append(f"{brightness}%")
+    color_temp = device.get("color_temp")
+    if color_temp:
+        parts.append(f"{color_temp}K")
+    return ", ".join(parts)
+
+
 def _build_dashboard_from_devices(user_state: dict) -> dict:
     """Build default dashboard structure from device states"""
     light_aggregate = user_state.get('smarthome_light', {})
@@ -270,12 +285,13 @@ def _build_dashboard_from_devices(user_state: dict) -> dict:
     light_devices = []
     if light_aggregate and 'devices' in light_aggregate:
         for device in light_aggregate.get('devices', []):
+            is_on = device.get("is_on", False)
             light_devices.append({
                 "name": device.get("name"),
                 "icon": device.get("icon", "lightbulb"),
-                "color": device.get("color", "gray"),
-                "variant": device.get("variant", "outline"),
-                "tooltip": device.get("tooltip", "")
+                "color": "yellow" if is_on else "gray",
+                "variant": "solid" if is_on else "outline",
+                "tooltip": _build_light_tooltip(device)
             })
     
     light_on_count = light_aggregate.get('on_count', 0)
