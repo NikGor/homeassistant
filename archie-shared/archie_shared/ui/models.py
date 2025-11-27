@@ -1019,20 +1019,18 @@ class DocumentsWidget(BaseModel):
 class Level2Answer(BaseModel):
     """Level 2 response: text with quick action buttons"""
     text: TextAnswer = Field(description="Main text content (markdown)")
-    quick_action_buttons: Optional[QuickActionButtons] = Field(
-        default=None,
+    quick_action_buttons: QuickActionButtons = Field(
         description="Quick action buttons for follow-up actions"
     )
 
 class Level3Answer(BaseModel):
     """Level 3 response: text with inline widgets and quick action buttons"""
     text: TextAnswer = Field(description="Main text content (markdown)")
-    widget: Union[Widget, LightWidget, ClimateWidget, FootballWidget, MusicWidget, DocumentsWidget] = Field(
+    widget: Optional[Union[Widget, LightWidget, ClimateWidget, FootballWidget, MusicWidget, DocumentsWidget]] = Field(
         default=None,
         description="Inline widget embedded in the response"
     )
-    quick_action_buttons: Optional[QuickActionButtons] = Field(
-        default=None,
+    quick_action_buttons: QuickActionButtons = Field(
         description="Quick action buttons for follow-up actions"
     )
 
