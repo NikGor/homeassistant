@@ -525,7 +525,8 @@ class Image(BaseModel):
     description="""
         Insert a short, clear prompt for generating a high-value visual asset that meaningfully enhances the content. 
         Choose among: realistic photo, detailed illustration, artistic drawing, painting, 3D product render on a clean background, conceptual illustration, scene depiction or a schematic map. 
-        The image must express the core idea or scenario and provide visual depth, not a simple icon or logo. 
+        In all relevant cases, prefer infographics or schemes.
+        The image must express the core idea or scenario and provide visual depth.
         Avoid minimalistic symbols, icons, logos or data charts. 
         Use realistic or fully illustrated visuals when describing objects, environments, scenarios, concepts, locations or mechanisms. 
     """
