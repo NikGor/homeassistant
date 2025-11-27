@@ -67,4 +67,35 @@ class ChatAPI {
             throw error;
         }
     }
+
+    async updateConversationTitle(conversationId, title) {
+        try {
+            const response = await fetch(`${this.baseUrl}/conversations/${conversationId}/`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to update conversation title:', error);
+            throw error;
+        }
+    }
+
+    async generateTitle(userMessage) {
+        try {
+            const response = await fetch(`${this.baseUrl}/generate-title/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userMessage })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            return result.title || null;
+        } catch (error) {
+            console.error('Failed to generate title:', error);
+            return null;
+        }
+    }
 }

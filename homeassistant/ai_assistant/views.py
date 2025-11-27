@@ -40,14 +40,20 @@ def proxy_conversations(request):
     try:
         if request.method == 'GET':
             logger.info("ai_assistant_002: Fetching conversations from Django DB")
-            # Get all conversations from Django models
+            # Get all conversations from Django models (metadata only, no messages)
             conversations = Conversation.objects.all().order_by('-created_at')
             
-            # Convert to Pydantic models for API compatibility
+            # Return lightweight data without messages
             conversation_data = []
             for conv in conversations:
-                pydantic_conv = conv.to_conversation_model()
-                conversation_data.append(pydantic_conv.model_dump())
+                conversation_data.append({
+                    "conversation_id": conv.conversation_id,
+                    "title": conv.title,
+                    "created_at": conv.created_at.isoformat(),
+                    "updated_at": conv.updated_at.isoformat() if conv.updated_at else conv.created_at.isoformat(),
+                    "total_tokens": conv.total_tokens,
+                    "total_cost": float(conv.total_cost) if conv.total_cost else 0.0,
+                })
             
             logger.info(f"ai_assistant_003: Found {len(conversation_data)} conversations")
             json_response = JsonResponse(conversation_data, safe=False)
@@ -87,9 +93,9 @@ def proxy_conversations(request):
 
 
 @csrf_exempt 
-@require_http_methods(["GET", "DELETE", "OPTIONS"])
+@require_http_methods(["GET", "DELETE", "PATCH", "OPTIONS"])
 def proxy_conversation_detail(request, conversation_id):
-    """Get or delete conversation details from Django DB."""
+    """Get, update or delete conversation details from Django DB."""
     logger.info(f"ai_assistant_006: Processing conversation {conversation_id} detail request")
     
     if request.method == 'OPTIONS':
@@ -104,6 +110,19 @@ def proxy_conversation_detail(request, conversation_id):
             conversation = Conversation.objects.get(conversation_id=conversation_id)
             
             # Convert to Pydantic model for API compatibility
+            pydantic_conv = conversation.to_conversation_model()
+            json_response = JsonResponse(pydantic_conv.model_dump())
+            
+        elif request.method == 'PATCH':
+            logger.info(f"ai_assistant_007b: Updating conversation {conversation_id}")
+            
+            data = json.loads(request.body)
+            conversation = Conversation.objects.get(conversation_id=conversation_id)
+            
+            if 'title' in data:
+                conversation.title = data['title']
+                conversation.save()
+            
             pydantic_conv = conversation.to_conversation_model()
             json_response = JsonResponse(pydantic_conv.model_dump())
             
@@ -290,6 +309,102 @@ def proxy_chat(request):
         json_response = JsonResponse(response.json(), safe=False)
         return add_cors_headers(json_response)
     except Exception as e:
+        error_response = JsonResponse({'error': str(e)}, status=500)
+        return add_cors_headers(error_response)
+
+
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def generate_title(request):
+    """Generate a short title for a conversation based on user message."""
+    logger.info("ai_assistant_020: Processing generate title request")
+    
+    if request.method == 'OPTIONS':
+        response = HttpResponse()
+        return add_cors_headers(response)
+    
+    try:
+        data = json.loads(request.body)
+        user_message = data.get('message', '')
+        
+        if not user_message:
+            error_response = JsonResponse({'error': 'Message is required'}, status=400)
+            return add_cors_headers(error_response)
+        
+        # Call AI Agent to generate title
+        ai_request = {
+            "user_name": "system",
+            "response_format": "plain",
+            "input": f"Generate a short title (3-5 words, no quotes, no emoji) for a conversation that starts with: \"{user_message}\"",
+        }
+        
+        response = requests.post(f'{AI_AGENT_URL}/chat', json=ai_request, timeout=30)
+        
+        if response.status_code == 200:
+            ai_data = response.json()
+            title = ai_data.get('content', {}).get('text', '').strip()
+            # Clean up title
+            title = title.strip('"\'')
+            if len(title) > 50:
+                title = title[:47] + '...'
+            
+            logger.info(f"ai_assistant_021: Generated title: {title}")
+            json_response = JsonResponse({'title': title})
+            return add_cors_headers(json_response)
+        else:
+            logger.error(f"ai_assistant_error_020: AI Agent returned {response.status_code}")
+            error_response = JsonResponse({'error': 'Failed to generate title'}, status=500)
+            return add_cors_headers(error_response)
+            
+    except Exception as e:
+        logger.error(f"ai_assistant_error_021: Failed to generate title: {e}")
+        error_response = JsonResponse({'error': str(e)}, status=500)
+        return add_cors_headers(error_response)
+
+
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def regenerate_title(request, conversation_id):
+    """Regenerate title for existing conversation based on chat history."""
+    logger.info(f"ai_assistant_030: Processing regenerate title request for {conversation_id}")
+    
+    if request.method == 'OPTIONS':
+        response = HttpResponse()
+        return add_cors_headers(response)
+    
+    try:
+        conversation = Conversation.objects.get(conversation_id=conversation_id)
+        chat_history = conversation.get_chat_history_yaml()
+        if not chat_history:
+            error_response = JsonResponse({'error': 'No chat history found'}, status=400)
+            return add_cors_headers(error_response)
+        history_preview = chat_history[:1000] if len(chat_history) > 1000 else chat_history
+        ai_request = {
+            "user_name": "system",
+            "response_format": "plain",
+            "input": f"Generate a short title (3-5 words, no quotes, no emoji) for this conversation:\n\n{history_preview}",
+        }
+        response = requests.post(f'{AI_AGENT_URL}/chat', json=ai_request, timeout=30)
+        if response.status_code == 200:
+            ai_data = response.json()
+            title = ai_data.get('content', {}).get('text', '').strip()
+            title = title.strip('"\'')
+            if len(title) > 50:
+                title = title[:47] + '...'
+            conversation.title = title
+            conversation.save()
+            logger.info(f"ai_assistant_031: Regenerated title: {title}")
+            json_response = JsonResponse({'title': title, 'conversation_id': conversation_id})
+            return add_cors_headers(json_response)
+        logger.error(f"ai_assistant_error_030: AI Agent returned {response.status_code}")
+        error_response = JsonResponse({'error': 'Failed to regenerate title'}, status=500)
+        return add_cors_headers(error_response)
+    except Conversation.DoesNotExist:
+        logger.error(f"ai_assistant_error_031: Conversation {conversation_id} not found")
+        error_response = JsonResponse({'error': 'Conversation not found'}, status=404)
+        return add_cors_headers(error_response)
+    except Exception as e:
+        logger.error(f"ai_assistant_error_032: Failed to regenerate title: {e}")
         error_response = JsonResponse({'error': str(e)}, status=500)
         return add_cors_headers(error_response)
 

@@ -652,6 +652,73 @@ const ChatContent = ({ content, onExecute }) => {
         });
     }
     
+    // Check for level3_answer (text + widget + quick actions)
+    if (content.level3_answer) {
+        console.log('ChatContent: Rendering level3_answer');
+        const l3 = content.level3_answer;
+        return React.createElement('div', {
+            className: 'space-y-6'
+        }, [
+            // Text
+            l3.text && React.createElement('div', {
+                key: 'text',
+                className: 'prose prose-invert max-w-none',
+                dangerouslySetInnerHTML: { 
+                    __html: l3.text.type === 'markdown' && typeof marked !== 'undefined'
+                        ? parseMarkdownWithPillLinks(l3.text.text)
+                        : l3.text.text
+                }
+            }),
+            // Widget placeholder (TODO: render actual widget)
+            l3.widget && React.createElement('div', {
+                key: 'widget',
+                className: 'text-white/50 text-sm'
+            }, `[Widget: ${l3.widget.type || l3.widget.widget_type}]`),
+            // Quick action buttons
+            l3.quick_action_buttons && React.createElement('div', {
+                key: 'quick-actions',
+                className: 'flex flex-wrap gap-3 pt-4 border-t border-white/20'
+            }, l3.quick_action_buttons.buttons.map((button, index) =>
+                React.createElement(ChatButton, {
+                    key: `quick-${index}`,
+                    button: button,
+                    onExecute: onExecute
+                })
+            ))
+        ]);
+    }
+    
+    // Check for level2_answer (text + quick actions)
+    if (content.level2_answer) {
+        console.log('ChatContent: Rendering level2_answer');
+        const l2 = content.level2_answer;
+        return React.createElement('div', {
+            className: 'space-y-6'
+        }, [
+            // Text
+            l2.text && React.createElement('div', {
+                key: 'text',
+                className: 'prose prose-invert max-w-none',
+                dangerouslySetInnerHTML: { 
+                    __html: l2.text.type === 'markdown' && typeof marked !== 'undefined'
+                        ? parseMarkdownWithPillLinks(l2.text.text)
+                        : l2.text.text
+                }
+            }),
+            // Quick action buttons
+            l2.quick_action_buttons && React.createElement('div', {
+                key: 'quick-actions',
+                className: 'flex flex-wrap gap-3 pt-4 border-t border-white/20'
+            }, l2.quick_action_buttons.buttons.map((button, index) =>
+                React.createElement(ChatButton, {
+                    key: `quick-${index}`,
+                    button: button,
+                    onExecute: onExecute
+                })
+            ))
+        ]);
+    }
+    
     // Then check for text content
     if (content.text) {
         // Simple text content - check if it needs markdown processing

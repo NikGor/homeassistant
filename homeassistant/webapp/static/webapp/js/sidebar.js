@@ -516,12 +516,12 @@ const GEN_UI_LEVELS = {
     },
     2: {
         name: "Level 2",
-        description: "Standard - OpenAI models, plain & markdown",
+        description: "Standard - Text + Quick Actions",
         modelProviders: ["openai"],
         showCommandModel: true,
         showFinalOutputModel: true,
-        responseFormats: ["plain", "markdown"],
-        fixedFormat: null,
+        responseFormats: [],
+        fixedFormat: "level2_answer",
         defaults: {
             commandModel: "gpt-4.1-mini",
             finalOutputModel: "gpt-4.1"
@@ -529,12 +529,12 @@ const GEN_UI_LEVELS = {
     },
     3: {
         name: "Level 3",
-        description: "Enhanced - OpenAI models, markdown only",
+        description: "Enhanced - Text + Widget + Actions",
         modelProviders: ["openai"],
         showCommandModel: true,
         showFinalOutputModel: true,
-        responseFormats: ["markdown"],
-        fixedFormat: "markdown",
+        responseFormats: [],
+        fixedFormat: "level3_answer",
         defaults: {
             commandModel: "gpt-4.1-mini",
             finalOutputModel: "gpt-4.1"
@@ -601,7 +601,11 @@ const RESPONSE_FORMATS = [
     { value: "regex", label: "Regex" },
     { value: "dockerfile", label: "Dockerfile" },
     { value: "makefile", label: "Makefile" },
+    { value: "level2_answer", label: "Level 2 (Text + Buttons)" },
+    { value: "level3_answer", label: "Level 3 (Text + Widget)" },
     { value: "ui_answer", label: "UI Answer" },
+    { value: "dashboard", label: "Dashboard" },
+    { value: "widget", label: "Widget" },
 ];
 
 // Get selected command model from localStorage or default
@@ -791,18 +795,25 @@ function openChatSettingsModal() {
         // Show/hide command model section
         commandModelSection.style.display = config.showCommandModel ? 'block' : 'none';
         
-        // Populate format select
+        // Populate format select and show/hide section
         formatSelect.innerHTML = '';
         const availableFormats = RESPONSE_FORMATS.filter(f => config.responseFormats.includes(f.value));
-        availableFormats.forEach(format => {
-            const option = document.createElement('option');
-            option.value = format.value;
-            option.textContent = format.label;
-            option.selected = format.value === (config.fixedFormat || currentFormat);
-            option.style.backgroundColor = '#1f2937';
-            option.style.color = 'white';
-            formatSelect.appendChild(option);
-        });
+        
+        // Hide format section if no selectable formats (fixed format with empty responseFormats)
+        if (availableFormats.length === 0 && config.fixedFormat) {
+            formatSection.style.display = 'none';
+        } else {
+            formatSection.style.display = 'block';
+            availableFormats.forEach(format => {
+                const option = document.createElement('option');
+                option.value = format.value;
+                option.textContent = format.label;
+                option.selected = format.value === (config.fixedFormat || currentFormat);
+                option.style.backgroundColor = '#1f2937';
+                option.style.color = 'white';
+                formatSelect.appendChild(option);
+            });
+        }
         
         // Disable format select if fixed
         if (config.fixedFormat) {

@@ -1,3 +1,4 @@
+from typing import Optional
 from django.db import models
 from django.utils import timezone
 from archie_shared.chat.models import (
@@ -66,6 +67,99 @@ class Conversation(models.Model):
                 total_cost=float(self.total_cost)
             ) if self.total_tokens > 0 else None
         )
+
+    def get_chat_history_yaml(self) -> str:
+        """
+        Get chat history in YAML format.
+        Extracts text content only, skipping buttons and images.
+        Format: User: ... / Assistant: ...
+        """
+        lines = []
+        for msg in self.messages.all().order_by('created_at'):
+            role_label = "User" if msg.role == "user" else "Assistant"
+            text_content = self._extract_text_from_content(msg.content)
+            if text_content:
+                lines.append(f"{role_label}: {text_content}")
+        return "\n".join(lines)
+
+    def _extract_text_from_content(
+        self,
+        content: dict
+    ) -> Optional[str]:
+        """Extract text from Content, skipping buttons and images."""
+        if isinstance(content, str):
+            import json
+            content = json.loads(content)
+        content_format = content.get("content_format", "plain")
+        if content_format == "plain" or content_format == "markdown":
+            return content.get("text", "")
+        if content_format == "level2_answer":
+            level2 = content.get("level2_answer", {})
+            text_answer = level2.get("text", {})
+            return text_answer.get("text", "")
+        if content_format == "level3_answer":
+            level3 = content.get("level3_answer", {})
+            text_answer = level3.get("text", {})
+            return text_answer.get("text", "")
+        if content_format == "ui_answer":
+            return self._extract_text_from_ui_answer(content.get("ui_answer", {}))
+        return content.get("text", "")
+
+    def _extract_text_from_ui_answer(
+        self,
+        ui_answer: dict
+    ) -> str:
+        """Extract text from UIAnswer, skipping buttons and images."""
+        texts = []
+        intro = ui_answer.get("intro_text", {})
+        if intro and intro.get("text"):
+            texts.append(intro["text"])
+        for item in ui_answer.get("items", []):
+            item_type = item.get("type")
+            item_content = item.get("content", {})
+            if item_type == "text_answer":
+                if item_content.get("text"):
+                    texts.append(item_content["text"])
+            elif item_type == "card_grid":
+                texts.append(self._extract_text_from_card_grid(item_content))
+            elif item_type == "table":
+                texts.append(self._extract_text_from_table(item_content))
+        return "\n".join(filter(None, texts))
+
+    def _extract_text_from_card_grid(
+        self,
+        card_grid: dict
+    ) -> str:
+        """Extract text from CardGrid, skipping buttons and image_prompt."""
+        texts = []
+        for card in card_grid.get("cards", []):
+            card_texts = []
+            if card.get("title"):
+                card_texts.append(card["title"])
+            if card.get("subtitle"):
+                card_texts.append(card["subtitle"])
+            if card.get("text"):
+                card_texts.append(card["text"])
+            if card.get("description"):
+                card_texts.append(card["description"])
+            if card_texts:
+                texts.append(" - ".join(card_texts))
+        return "\n".join(texts)
+
+    def _extract_text_from_table(
+        self,
+        table: dict
+    ) -> str:
+        """Extract text from Table."""
+        lines = []
+        if table.get("title"):
+            lines.append(table["title"])
+        headers = table.get("headers", [])
+        if headers:
+            lines.append(" | ".join(headers))
+        for row in table.get("rows", []):
+            lines.append(" | ".join(row))
+        return "\n".join(lines)
 
 
 class Message(models.Model):

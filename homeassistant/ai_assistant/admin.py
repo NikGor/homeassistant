@@ -1,7 +1,12 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.contrib import messages
 import json
+import requests
+import os
 from .models import Conversation, Message
+
+AI_AGENT_URL = os.getenv('AI_AGENT_URL', 'http://archie-ai-agent:8005')
 
 
 class MessageInline(admin.TabularInline):
@@ -72,14 +77,20 @@ class ConversationAdmin(admin.ModelAdmin):
         'total_output_reasoning_tokens',
         'total_tokens',
         'total_cost',
-        'messages_count'
+        'messages_count',
+        'chat_history_yaml'
     )
     ordering = ('-created_at',)
     inlines = [MessageInline]
+    actions = ['regenerate_titles']
     
     fieldsets = (
         ('Basic Information', {
             'fields': ('conversation_id', 'title', 'messages_count', 'created_at', 'updated_at')
+        }),
+        ('Chat History (YAML)', {
+            'fields': ('chat_history_yaml',),
+            'classes': ('collapse',)
         }),
         ('LLM Trace', {
             'fields': (
@@ -96,6 +107,53 @@ class ConversationAdmin(admin.ModelAdmin):
     def messages_count(self, obj):
         return obj.messages.count()
     messages_count.short_description = 'Messages'
+
+    def chat_history_yaml(self, obj):
+        yaml_content = obj.get_chat_history_yaml()
+        if yaml_content:
+            return format_html(
+                '<pre style="white-space: pre-wrap; word-wrap: break-word; '
+                'background: #1e1e1e; color: #d4d4d4; padding: 10px; border-radius: 4px; '
+                'max-height: 400px; overflow-y: auto; font-family: monospace;">{}</pre>',
+                yaml_content
+            )
+        return '-'
+    chat_history_yaml.short_description = 'Chat History'
+
+    @admin.action(description='Regenerate titles using AI')
+    def regenerate_titles(self, request, queryset):
+        success_count = 0
+        error_count = 0
+        for conversation in queryset:
+            chat_history = conversation.get_chat_history_yaml()
+            if not chat_history:
+                error_count += 1
+                continue
+            history_preview = chat_history[:1000] if len(chat_history) > 1000 else chat_history
+            ai_request = {
+                "user_name": "system",
+                "response_format": "plain",
+                "input": f"Generate a short title (3-5 words, no quotes, no emoji) for this conversation:\n\n{history_preview}",
+            }
+            try:
+                response = requests.post(f'{AI_AGENT_URL}/chat', json=ai_request, timeout=30)
+                if response.status_code == 200:
+                    ai_data = response.json()
+                    title = ai_data.get('content', {}).get('text', '').strip()
+                    title = title.strip('"\'')
+                    if len(title) > 50:
+                        title = title[:47] + '...'
+                    conversation.title = title
+                    conversation.save()
+                    success_count += 1
+                else:
+                    error_count += 1
+            except Exception:
+                error_count += 1
+        if success_count:
+            self.message_user(request, f"Regenerated {success_count} title(s)", messages.SUCCESS)
+        if error_count:
+            self.message_user(request, f"Failed to regenerate {error_count} title(s)", messages.ERROR)
 
 
 @admin.register(Message)

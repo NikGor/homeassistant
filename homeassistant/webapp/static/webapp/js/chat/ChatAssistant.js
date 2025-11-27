@@ -107,12 +107,14 @@ const IntegratedChatAssistant = () => {
         e.preventDefault();
         if (!inputValue.trim() || !currentConversation || isLoading) return;
 
+        const messageText = inputValue.trim();
+        const isFirstMessage = messages.length === 0;
         const userMessage = {
             message_id: `temp-user-${Date.now()}`,
             role: 'user',
             content: {
                 content_format: 'plain',
-                text: inputValue
+                text: messageText
             },
             created_at: new Date().toISOString()
         };
@@ -127,6 +129,11 @@ const IntegratedChatAssistant = () => {
             const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
             const userName = window.CURRENT_USER_NAME || "guest";
             
+            // Start title generation in parallel (but don't await yet)
+            const titlePromise = isFirstMessage 
+                ? api.current.generateTitle(messageText) 
+                : Promise.resolve(null);
+            
             // Find last assistant message for threading
             const assistantMessages = messages.filter(msg => msg.role === 'assistant');
             const lastAssistantMessage = assistantMessages.length > 0 ? assistantMessages[assistantMessages.length - 1] : null;
@@ -134,7 +141,7 @@ const IntegratedChatAssistant = () => {
             const result = await api.current.sendMessage({
                 user_name: userName,
                 response_format: selectedFormat,
-                input: inputValue,
+                input: messageText,
                 conversation_id: currentConversation,
                 command_model: selectedCommandModel,
                 final_output_model: selectedFinalOutputModel,
@@ -159,6 +166,21 @@ const IntegratedChatAssistant = () => {
             console.log('ChatAssistant: assistantMessage.content', assistantMessage.content);
 
             setMessages(prev => [...prev, assistantMessage]);
+            
+            // Now that conversation exists in DB, update title if generated
+            const title = await titlePromise;
+            if (title) {
+                try {
+                    await api.current.updateConversationTitle(currentConversation, title);
+                    setConversations(prev => prev.map(c => 
+                        c.conversation_id === currentConversation 
+                            ? { ...c, title } 
+                            : c
+                    ));
+                } catch (e) {
+                    console.error('Failed to update title:', e);
+                }
+            }
         } catch (err) {
             setError(`Не удалось отправить сообщение: ${err.message}`);
         } finally {
@@ -167,8 +189,20 @@ const IntegratedChatAssistant = () => {
     };
 
     const executeCommand = async (assistantRequest) => {
-        if (!currentConversation) return;
+        if (!currentConversation || isLoading) return;
 
+        // Add user message to chat
+        const userMessage = {
+            message_id: `temp-user-${Date.now()}`,
+            role: 'user',
+            content: {
+                content_format: 'plain',
+                text: assistantRequest
+            },
+            created_at: new Date().toISOString()
+        };
+
+        setMessages(prev => [...prev, userMessage]);
         setIsLoading(true);
 
         try {
