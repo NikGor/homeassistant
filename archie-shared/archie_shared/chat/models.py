@@ -75,7 +75,8 @@ class ChatRequest(BaseModel):
         "plain", "markdown", "html", "ssml", 
         "json", "csv", "xml", "yaml", "prompt",
         "python", "bash", "sql", "regex", 
-        "dockerfile", "makefile", "ui_answer",
+        "dockerfile", "makefile",
+        "level2_answer", "level3_answer", "ui_answer",
         "dashboard", "widget"
     ] = Field(default="plain", description="Format of response expected from the agent")
     input: str = Field(description="Text content of the request")

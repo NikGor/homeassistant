@@ -1018,7 +1018,7 @@ class DocumentsWidget(BaseModel):
 
 class Level2Answer(BaseModel):
     """Level 2 response: text with quick action buttons"""
-    text: TextAnswer = Field(description="Main text content (plain or markdown)")
+    text: TextAnswer = Field(description="Main text content (markdown)")
     quick_action_buttons: Optional[QuickActionButtons] = Field(
         default=None,
         description="Quick action buttons for follow-up actions"
