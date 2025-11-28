@@ -12,7 +12,6 @@ class UserState(BaseModel):
     persona: str | None = None
     user_timezone: str | None = None
     measurement_units: str | None = None
-    language: str | None = None
     currency: str | None = None
     date_format: str | None = None
     time_format: str | None = None
