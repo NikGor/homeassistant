@@ -39,7 +39,6 @@ def get_user_profile(request):
             "default_country": profile.default_country,
             "user_timezone": profile.user_timezone,
             "measurement_units": profile.measurement_units,
-            "language": profile.language,
             "currency": profile.currency,
             "date_format": profile.date_format,
             "time_format": profile.time_format,
@@ -76,8 +75,6 @@ def update_user_profile(request):
             profile.user_timezone = data["user_timezone"]
         if "measurement_units" in data:
             profile.measurement_units = data["measurement_units"]
-        if "language" in data:
-            profile.language = data["language"]
         if "currency" in data:
             profile.currency = data["currency"]
         if "date_format" in data:
@@ -109,7 +106,6 @@ def get_profile_choices(request):
     """Get available choices for profile fields"""
     choices = {
         "persona": [{"value": choice[0], "label": choice[1]} for choice in UserProfile.PERSONA_CHOICES],
-        "language": [{"value": choice[0], "label": choice[1]} for choice in UserProfile.LANGUAGE_CHOICES],
         "currency": [{"value": choice[0], "label": choice[1]} for choice in UserProfile.CURRENCY_CHOICES],
         "time_format": [{"value": choice[0], "label": choice[1]} for choice in UserProfile.TIME_FORMAT_CHOICES],
     }
