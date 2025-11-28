@@ -82,6 +82,8 @@ class ChatRequest(BaseModel):
     input: str = Field(description="Text content of the request")
     conversation_id: Optional[str] = Field(default=None, description="ID of the conversation")
     previous_message_id: Optional[str] = Field(default=None, description="ID of the previous message for threading")
+    chat_history: Optional[str] = Field(default=None, description="Previous chat messages for context")
+    demo_mode: Optional[bool] = Field(default=False, description="Flag to indicate if the request is in demo mode")
     command_model: Optional[str] = Field(default=None, description="LLM model to use for command processing")
     final_output_model: Optional[str] = Field(default=None, description="LLM model to use for final output generation")
 
