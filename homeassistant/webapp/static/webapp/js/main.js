@@ -94,47 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (category === 'home') {
             e.preventDefault();
             
-            // Show dashboard view first
+            // Show dashboard view - will trigger updateDashboard() via startDashboardPolling
             showDashboardView();
-            
-            // Every click on dashboard icon -> send request to AI agent
-            console.log('=== DASHBOARD ICON CLICKED ===');
-            try {
-                const response = await fetch('/api/dashboard/action/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_name: 'Niko',
-                        assistant_request: 'Обновить дашборд'
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const updatedDashboard = await response.json();
-                console.log('Dashboard updated from AI:', updatedDashboard);
-                
-                // Update global dashboardData
-                window.dashboardData = updatedDashboard;
-                
-                // Re-render dashboard with AI response
-                renderDashboardGrid(updatedDashboard);
-                
-                // Re-render sidebar
-                renderRightSidebar();
-                
-                // Update active state AFTER sidebar re-render
-                updateSidebarActiveState('home');
-                
-                // Re-initialize icons
-                lucide.createIcons();
-                
-            } catch (error) {
-                console.error('Failed to update dashboard from AI:', error);
-                alert('Ошибка при обновлении дашборда');
-            }
         } else if (category === 'light' || category === 'climate' || category === 'music' || category === 'documents') {
             e.preventDefault();
             console.log('Widget icon clicked:', category);
