@@ -1,6 +1,9 @@
 import logging
+from dotenv import load_dotenv
 from django.core.management.base import BaseCommand
 from homeassistant.voice_assistant.services import VoiceAssistantService
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
