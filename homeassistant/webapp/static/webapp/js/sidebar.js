@@ -943,7 +943,6 @@ async function openUserProfileModal() {
         // Localization Section
         form.innerHTML += '<h3 class="text-lg font-semibold text-white mt-6 mb-2">Локализация</h3>';
         
-        form.innerHTML += createFormSelect('language', 'Язык', choices.language, profile.language);
         form.innerHTML += createFormSelect('currency', 'Валюта', choices.currency, profile.currency);
         form.innerHTML += createFormField('date_format', 'Формат даты', 'text', profile.date_format);
         form.innerHTML += createFormSelect('time_format', 'Формат времени', choices.time_format, profile.time_format);
