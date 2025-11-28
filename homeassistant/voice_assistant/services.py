@@ -262,7 +262,7 @@ class VoiceAssistantService:
     
     def __init__(self):
         self.voice_service = VoiceProcessingService()
-        self.ai_agent_url = os.getenv('AI_AGENT_URL', 'http://archie-ai-agent:8005')
+        self.ai_agent_url = os.getenv('AI_AGENT_URL', 'http://localhost:8005')
         
         # Initialize wake word service if key is available and dependencies are present
         access_key = os.getenv('PICOVOICE_ACCESS_KEY')
@@ -280,33 +280,36 @@ class VoiceAssistantService:
         logger.info("voice_assistant_013: Voice assistant service initialized")
     
     def send_to_chat(self, text: str, conversation_id: str = None) -> str:
-        """Send message to Django AI Assistant API with text_format: voice"""
-        logger.info("voice_assistant_014: Sending to Django AI Assistant API")
+        """Send message directly to AI Agent /chat endpoint"""
+        logger.info("voice_assistant_014: Sending to AI Agent")
         
-        # Используем локальный Django API вместо прямого обращения к AI Agent
-        django_url = "http://localhost:8000/ai-assistant/api/messages/"
+        chat_url = f"{self.ai_agent_url}/chat"
         
-        message_data = {
-            "role": "user",
-            "text": text,
-            "text_format": "voice",
-            "conversation_id": conversation_id
+        # ChatRequest format with plain response
+        chat_request = {
+            "user_name": "Voice User",
+            "response_format": "plain",
+            "input": text,
+            "conversation_id": conversation_id,
         }
         
         try:
             response = requests.post(
-                django_url,
-                json=message_data,
-                timeout=30
+                chat_url,
+                json=chat_request,
+                timeout=60
             )
             response.raise_for_status()
             result = response.json()
             
-            logger.info("voice_assistant_015: Received response from Django API")
-            return result.get('text', 'Нет ответа')
+            logger.info("voice_assistant_015: Received response from AI Agent")
+            
+            # ChatMessage -> content -> text
+            content = result.get('content', {})
+            return content.get('text', 'Нет ответа')
             
         except Exception as e:
-            logger.error(f"voice_assistant_error_007: Failed to send to Django API: {e}")
+            logger.error(f"voice_assistant_error_007: Failed to send to AI Agent: {e}")
             return f"Ошибка связи с сервером: {e}"
     
     def run_continuous_listening(self):
