@@ -521,15 +521,38 @@ class Chart(BaseModel):
 
 class Image(BaseModel):
     """Standalone image component for visual content display"""
-    image_prompt: str= Field(
-    description="""
-        Insert a short, clear prompt for generating a high-value visual asset that meaningfully enhances the content. 
-        Choose among: realistic photo, detailed illustration, artistic drawing, painting, 3D product render on a clean background, conceptual illustration, scene depiction or a schematic map. 
-        In all relevant cases, prefer infographics or schemes.
-        The image must express the core idea or scenario and provide visual depth.
-        Avoid minimalistic symbols, icons, logos or data charts. 
-        Use realistic or fully illustrated visuals when describing objects, environments, scenarios, concepts, locations or mechanisms. 
-    """
+    image_prompt: str = Field(
+        description="""
+Generate image prompt in English. Match user request to ONE format from Visual Library below.
+
+CONSTRAINTS:
+- NO statistical charts (bar, pie, line, scatter)
+- NO generic stock photos
+- Style: clean, professional, informative
+- Use pseudo-text or legible labels where appropriate
+
+VISUAL LIBRARY:
+
+1. STRUCTURES & CONNECTIONS
+   Mind Map | Flowchart | Tree/Genealogy | Concept Map | Org Chart
+
+2. MAPS & ARCHITECTURE
+   Fantasy Map (vintage parchment) | Transit Map | Floor Plan | Isometric Section | Landscape Plan | Evacuation/Seating Plan
+
+3. ENGINEERING & TECH
+   Exploded View | Patent Illustration (B&W line art) | Circuit Diagram | Cutaway View | Network Topology
+
+4. SCIENCE & NATURE
+   Anatomical Atlas | Botanical Illustration | Chemical Structure | Geological Cross-Section | Celestial Map
+
+5. INSTRUCTIONS & SEQUENCES
+   Assembly Instruction (IKEA style) | Knolling (top-down 90°) | Storyboard | User Journey | Visual Recipe | Origami/Knots diagram
+
+6. GAMEDEV & UI
+   Dungeon/Level Map | Skill Tree | Game Board | UI Wireframe
+
+STYLES: Technical illustration, Vintage map, Blueprint, Isometric vector, Hand-drawn diagram
+"""
     )
 
 class AdvancedAnswerItem(BaseModel):
