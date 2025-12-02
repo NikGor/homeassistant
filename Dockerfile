@@ -28,8 +28,8 @@ COPY . .
 
 EXPOSE 8000
 
-# Create a startup script to run migrations and start server
-RUN echo '#!/bin/bash\nset -e\necho "Running migrations..."\npython manage.py migrate\necho "Starting Django server..."\npython manage.py runserver 0.0.0.0:8000' > /app/start.sh && \
+# Create a startup script to run migrations, start polling, and start server
+RUN echo '#!/bin/bash\nset -e\necho "Running migrations..."\npython manage.py migrate\necho "Starting device polling service in background..."\npython manage.py poll_devices &\necho "Starting Django server..."\npython manage.py runserver 0.0.0.0:8000' > /app/start.sh && \
     chmod +x /app/start.sh
 
 CMD ["/app/start.sh"]
