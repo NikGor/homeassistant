@@ -63,7 +63,29 @@ class Card(BaseModel):
     )
     image_prompt: Optional[str] = Field(
         default=None,
-        description="A prompt for card's title image illustration. Can be: photo, illustration, drawing, painting, render on white background, logo, or other art style. Describe objects, background, lighting, and other important visual details."
+        description="""
+        A prompt for card's title image illustration. 
+
+        VISUAL STYLES[Literal]:
+        
+        1. MOST OF THE CASES:
+        Photorealistic render of a single subject on a clean white background with soft shadows and even lighting.
+        
+        2. PERSONS:
+        Professional headshot portrait with neutral background, soft lighting, and natural expression.
+
+        3. MULTI-SUBJECT SCENES:
+        Clean, photorealistic style with balanced composition.
+        
+        4. Chit-chat / Fun:
+        Memes, Comics, Visual Puns/Wordplay in a simple, black-and-white line art style or minimalist flat design.
+        
+        All cards **MUST** have the identical style for title images in the same response. Control it via this prompt and details in it.
+        Use yaml-like structure for clarity.
+        Describe objects, background, lighting, and other important visual details.
+        **DO NOT** use complex scenes or busy backgrounds.
+        **DO NOT** use text in images, even in memes.
+        """
     )
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None, 
