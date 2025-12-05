@@ -98,4 +98,35 @@ class ChatAPI {
             return null;
         }
     }
+
+    async processImages(uiAnswer) {
+        try {
+            const response = await fetch(`${this.baseUrl}/process-images/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ui_answer: uiAnswer })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            return result.ui_answer;
+        } catch (error) {
+            console.error('Failed to process images:', error);
+            return uiAnswer;
+        }
+    }
+
+    async saveMessage(conversationId, message) {
+        try {
+            const response = await fetch(`${this.baseUrl}/save-message/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ conversation_id: conversationId, message: message })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to save message:', error);
+            throw error;
+        }
+    }
 }

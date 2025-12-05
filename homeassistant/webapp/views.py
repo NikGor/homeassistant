@@ -7,22 +7,25 @@ from django.utils.decorators import method_decorator
 from homeassistant.weather.services import WeatherService
 from .models import UserProfile
 import json
+import os
+
+
+AI_AGENT_URL = os.getenv('AI_AGENT_URL', 'http://localhost:8005')
+AI_AGENT_URL_BROWSER = os.getenv('AI_AGENT_URL_BROWSER', 'ws://localhost:8005')
 
 
 class IndexView(View):
     def get(self, request):
-        # Получаем данные о погоде для главной страницы
         weather_service = WeatherService()
         weather_data = weather_service.get_bad_mergentheim_weather()
         forecast_data = weather_service.get_bad_mergentheim_forecast()
         user_name = request.user.profile.user_name
-        
         context = {
             'weather': weather_data,
             'forecast': forecast_data,
             'user_name': user_name,
+            'ai_agent_ws_url': AI_AGENT_URL_BROWSER,
         }
-        
         return render(request, 'webapp/index.html', context)
 
 

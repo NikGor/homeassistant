@@ -8,9 +8,10 @@ const IntegratedChatAssistant = () => {
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [statusMessage, setStatusMessage] = useState('');
     const [error, setError] = useState(null);
     const [isLeftSidebarExpanded, setIsLeftSidebarExpanded] = useState(false);
-    const [currentMessageIndex, setCurrentMessageIndex] = useState(-1); // Индекс текущего сообщения для навигации
+    const [currentMessageIndex, setCurrentMessageIndex] = useState(-1);
     
     const messagesEndRef = useRef(null);
     const api = useRef(new ChatAPI());
@@ -103,6 +104,48 @@ const IntegratedChatAssistant = () => {
         }
     };
 
+    const getWebSocketUrl = () => {
+        const wsBaseUrl = window.AI_AGENT_WS_URL || 'ws://localhost:8005';
+        return wsBaseUrl + '/ws_chat';
+    };
+
+    const sendMessageViaWebSocket = (payload) => {
+        return new Promise((resolve, reject) => {
+            const wsUrl = getWebSocketUrl();
+            console.log('ChatAssistant: Opening WebSocket to', wsUrl);
+            const ws = new WebSocket(wsUrl);
+            ws.onopen = () => {
+                console.log('ChatAssistant: WebSocket connected, sending payload', payload);
+                ws.send(JSON.stringify(payload));
+            };
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                console.log('ChatAssistant: WebSocket message', msg);
+                switch (msg.type) {
+                    case 'status':
+                        setStatusMessage(msg.message || `${msg.step}: ${msg.status}`);
+                        break;
+                    case 'final':
+                        setStatusMessage('');
+                        resolve(msg.data);
+                        break;
+                    case 'error':
+                        setStatusMessage('');
+                        reject(new Error(msg.message || 'WebSocket error'));
+                        break;
+                }
+            };
+            ws.onerror = (error) => {
+                console.error('ChatAssistant: WebSocket error', error);
+                setStatusMessage('');
+                reject(new Error('WebSocket connection failed'));
+            };
+            ws.onclose = (event) => {
+                console.log('ChatAssistant: WebSocket closed', event.code, event.reason);
+            };
+        });
+    };
+
     const sendMessage = async (e) => {
         e.preventDefault();
         if (!inputValue.trim() || !currentConversation || isLoading) return;
@@ -143,37 +186,44 @@ const IntegratedChatAssistant = () => {
                 ? api.current.generateTitle(messageText) 
                 : Promise.resolve(null);
             
-            // Find last assistant message for threading
-            const assistantMessages = messages.filter(msg => msg.role === 'assistant');
-            const lastAssistantMessage = assistantMessages.length > 0 ? assistantMessages[assistantMessages.length - 1] : null;
+            // Save user message to DB
+            await api.current.saveMessage(currentConversation, userMessage);
             
-            const result = await api.current.sendMessage({
+            const result = await sendMessageViaWebSocket({
                 user_name: userName,
                 response_format: backendFormat,
                 input: messageText,
-                conversation_id: currentConversation,
                 command_model: selectedCommandModel,
                 final_output_model: selectedFinalOutputModel,
-                previous_message_id: lastAssistantMessage?.message_id || null,
                 demo_mode: demoMode
             });
 
-            console.log('ChatAssistant: API result', result);
-            console.log('ChatAssistant: result.content', result.content);
-            console.log('ChatAssistant: result.ui_answer', result.ui_answer);
+            console.log('ChatAssistant: WebSocket result', result);
+
+            // Process images if ui_answer exists
+            let assistantContent = result.content || {};
+            if (assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer) {
+                console.log('ChatAssistant: Processing images in ui_answer');
+                setStatusMessage('Generating images');
+                const processedUiAnswer = await api.current.processImages(assistantContent.ui_answer);
+                assistantContent = {
+                    ...assistantContent,
+                    ui_answer: processedUiAnswer
+                };
+            }
 
             const assistantMessage = {
                 message_id: result.message_id || `temp-assistant-${Date.now()}`,
                 role: 'assistant',
-                content: result.content || {
-                    content_format: 'ui_answer',
-                    ui_answer: result.ui_answer
-                },
-                created_at: result.created_at || new Date().toISOString()
+                content: assistantContent,
+                created_at: result.created_at || new Date().toISOString(),
+                llm_trace: result.llm_trace || {}
             };
 
             console.log('ChatAssistant: assistantMessage', assistantMessage);
-            console.log('ChatAssistant: assistantMessage.content', assistantMessage.content);
+
+            // Save assistant message to DB
+            await api.current.saveMessage(currentConversation, assistantMessage);
 
             setMessages(prev => [...prev, assistantMessage]);
             
@@ -230,30 +280,39 @@ const IntegratedChatAssistant = () => {
             };
             const backendFormat = formatMap[selectedFormat] || selectedFormat;
             
-            // Find last assistant message for threading
-            const assistantMessages = messages.filter(msg => msg.role === 'assistant');
-            const lastAssistantMessage = assistantMessages.length > 0 ? assistantMessages[assistantMessages.length - 1] : null;
+            // Save user message to DB
+            await api.current.saveMessage(currentConversation, userMessage);
             
-            const result = await api.current.sendMessage({
+            const result = await sendMessageViaWebSocket({
                 user_name: userName,
                 response_format: backendFormat,
                 input: assistantRequest,
-                conversation_id: currentConversation,
                 command_model: selectedCommandModel,
                 final_output_model: selectedFinalOutputModel,
-                previous_message_id: lastAssistantMessage?.message_id || null,
                 demo_mode: demoMode
             });
+
+            // Process images if ui_answer exists
+            let assistantContent = result.content || {};
+            if (assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer) {
+                setStatusMessage('Generating images');
+                const processedUiAnswer = await api.current.processImages(assistantContent.ui_answer);
+                assistantContent = {
+                    ...assistantContent,
+                    ui_answer: processedUiAnswer
+                };
+            }
 
             const assistantMessage = {
                 message_id: result.message_id || `temp-assistant-${Date.now()}`,
                 role: 'assistant',
-                content: result.content || {
-                    content_format: 'ui_answer',
-                    ui_answer: result.ui_answer
-                },
-                created_at: result.created_at || new Date().toISOString()
+                content: assistantContent,
+                created_at: result.created_at || new Date().toISOString(),
+                llm_trace: result.llm_trace || {}
             };
+
+            // Save assistant message to DB
+            await api.current.saveMessage(currentConversation, assistantMessage);
 
             setMessages(prev => [...prev, assistantMessage]);
         } catch (err) {
@@ -402,31 +461,16 @@ const IntegratedChatAssistant = () => {
             }, [
                 React.createElement('div', {
                     key: 'loading-bubble',
-                    className: 'backdrop-blur-lg rounded-3xl p-6 bg-white/10 border border-white/20'
+                    className: 'backdrop-blur-lg rounded-3xl px-6 py-4 bg-white/10 border border-white/20'
                 }, [
-                    React.createElement('div', {
+                    React.createElement('span', {
                         key: 'loading-text',
-                        className: 'text-white/60 mb-2'
-                    }, 'Archie печатает'),
-                    React.createElement('div', {
+                        className: 'text-white/60'
+                    }, statusMessage || 'Thinking'),
+                    React.createElement('span', {
                         key: 'loading-dots',
-                        className: 'flex gap-1'
-                    }, [
-                        React.createElement('div', {
-                            key: 'dot1',
-                            className: 'w-2 h-2 bg-white/60 rounded-full animate-pulse'
-                        }),
-                        React.createElement('div', {
-                            key: 'dot2',
-                            className: 'w-2 h-2 bg-white/60 rounded-full animate-pulse',
-                            style: { animationDelay: '0.2s' }
-                        }),
-                        React.createElement('div', {
-                            key: 'dot3',
-                            className: 'w-2 h-2 bg-white/60 rounded-full animate-pulse',
-                            style: { animationDelay: '0.4s' }
-                        })
-                    ])
+                        className: 'text-white/60 ml-1'
+                    }, '...')
                 ])
             ]),
             React.createElement('div', {

@@ -142,3 +142,6 @@ LOGGING = {
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 REDIS_DB = int(os.getenv('REDIS_DB', 0))
+
+# Increase max upload size for base64 images (50MB)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800

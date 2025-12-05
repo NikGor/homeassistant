@@ -154,8 +154,9 @@
 
     <!-- Scripts -->
     <script>
-        // Global user_name from Django
+        // Global config from Django
         window.CURRENT_USER_NAME = "{{ user_name }}";
+        window.AI_AGENT_WS_URL = "{{ ai_agent_ws_url }}";
     </script>
     <script src="{% static 'webapp/js/globals.js' %}"></script>
     <script src="{% static 'webapp/js/utils.js' %}"></script>

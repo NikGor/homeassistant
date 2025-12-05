@@ -409,4 +409,81 @@ def regenerate_title(request, conversation_id):
         return add_cors_headers(error_response)
 
 
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def process_images(request):
+    """Process images in ui_answer - generate images from prompts."""
+    logger.info("ai_assistant_040: Processing images request")
+    if request.method == 'OPTIONS':
+        response = HttpResponse()
+        return add_cors_headers(response)
+    try:
+        data = json.loads(request.body)
+        ui_answer = data.get('ui_answer')
+        if not ui_answer:
+            error_response = JsonResponse({'error': 'ui_answer is required'}, status=400)
+            return add_cors_headers(error_response)
+        logger.info("ai_assistant_041: Starting image processing")
+        processed_ui_answer = async_to_sync(process_images_in_ui_answer)(ui_answer)
+        logger.info("ai_assistant_042: Image processing completed")
+        json_response = JsonResponse({'ui_answer': processed_ui_answer})
+        return add_cors_headers(json_response)
+    except Exception as e:
+        logger.error(f"ai_assistant_error_040: Failed to process images: {e}")
+        error_response = JsonResponse({'error': str(e)}, status=500)
+        return add_cors_headers(error_response)
+
+
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def save_message(request):
+    """Save a message to conversation after WebSocket response."""
+    logger.info("ai_assistant_050: Saving message request")
+    if request.method == 'OPTIONS':
+        response = HttpResponse()
+        return add_cors_headers(response)
+    try:
+        data = json.loads(request.body)
+        conversation_id = data.get('conversation_id')
+        message_data = data.get('message')
+        if not conversation_id or not message_data:
+            error_response = JsonResponse({'error': 'conversation_id and message are required'}, status=400)
+            return add_cors_headers(error_response)
+        try:
+            conversation = Conversation.objects.get(conversation_id=conversation_id)
+        except Conversation.DoesNotExist:
+            logger.info(f"ai_assistant_051: Creating new conversation {conversation_id}")
+            conversation = Conversation.objects.create(
+                conversation_id=conversation_id,
+                title=f"Chat {timezone.now().strftime('%Y-%m-%d %H:%M')}"
+            )
+        message_id = message_data.get('message_id', str(uuid.uuid4()))
+        role = message_data.get('role', 'user')
+        content = message_data.get('content', {})
+        llm_trace = message_data.get('llm_trace', {})
+        Message.objects.create(
+            message_id=message_id,
+            conversation=conversation,
+            role=role,
+            content=content,
+            created_at=timezone.now(),
+            llm_trace=llm_trace,
+            input_tokens=llm_trace.get('input_tokens'),
+            output_tokens=llm_trace.get('output_tokens'),
+            total_tokens=llm_trace.get('total_tokens'),
+            total_cost=llm_trace.get('total_cost')
+        )
+        if llm_trace.get('total_tokens'):
+            conversation.total_tokens += llm_trace.get('total_tokens', 0)
+            conversation.total_input_tokens += llm_trace.get('input_tokens', 0)
+            conversation.total_output_tokens += llm_trace.get('output_tokens', 0)
+            conversation.total_cost += llm_trace.get('total_cost', 0.0)
+            conversation.save()
+        logger.info(f"ai_assistant_052: Saved {role} message {message_id}")
+        json_response = JsonResponse({'success': True, 'message_id': message_id})
+        return add_cors_headers(json_response)
+    except Exception as e:
+        logger.error(f"ai_assistant_error_050: Failed to save message: {e}")
+        error_response = JsonResponse({'error': str(e)}, status=500)
+        return add_cors_headers(error_response)
 
