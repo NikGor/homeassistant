@@ -543,15 +543,18 @@ class Image(BaseModel):
             Exploded View | Patent Illustration (B&W line art) | Circuit Diagram | Cutaway View | Network Topology
 
             4. SCIENCE & NATURE
-            Anatomical Atlas | Botanical Illustration | Chemical Structure | Geological Cross-Section | Celestial Map
+            Anatomical Atlas | Botanical Illustration | Chemical Structure | Geological Cross-Section | Celestial Map | Educational Poster
 
             5. INSTRUCTIONS & SEQUENCES
-            Assembly Instruction (IKEA style) | Knolling (top-down 90°) | Storyboard | User Journey | Visual Recipe | Origami/Knots diagram
+            Assembly Instruction (IKEA style) | Knolling (top-down 90°) | Storyboard | User Journey | Visual Recipe
+            
+            7. NEWS & WEATHER
+            Infographic | Data Visualization | Political Cartoon | Timeline | Visual Summary
+            
+            8. CHITCHAT & FUN
+            Infographic | Visual Pun/Wordplay | Character Design Sheet | Memes | Comics
 
-            6. GAMEDEV & UI
-            Dungeon/Level Map | Skill Tree | Game Board | UI Wireframe
-
-            STYLES: Technical illustration, Vintage map, Blueprint, Isometric vector, Hand-drawn diagram
+            STYLES: Technical illustration, Vintage map, Blueprint, Isometric vector, Hand-drawn diagram, Whiteboard, Flat design, Minimalist, Realistic rendering with white background
         """
     )
 
