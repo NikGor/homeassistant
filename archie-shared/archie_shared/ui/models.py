@@ -546,6 +546,7 @@ class Image(BaseModel):
     image_prompt: str = Field(
         description="""
             Generate image prompt in English. Match user request to ONE format from Visual Library below.
+            **ALWAYS PREFER** to include this type of ui elements in your response at least once to clarify user intent and enhance UX.
 
             CONSTRAINTS:
             - NO statistical charts (bar, pie, line, scatter)
