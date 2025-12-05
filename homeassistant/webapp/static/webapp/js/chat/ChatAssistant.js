@@ -127,7 +127,16 @@ const IntegratedChatAssistant = () => {
             const selectedCommandModel = window.selectedCommandModel || localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
             const selectedFinalOutputModel = window.selectedFinalOutputModel || localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
             const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
+            const demoMode = window.demoMode || localStorage.getItem('demoMode') === 'true';
             const userName = window.CURRENT_USER_NAME || "guest";
+            
+            // Map frontend format to backend format
+            const formatMap = {
+                'plain': 'plain',
+                'formatted': 'level2_answer',
+                'ui_answer': 'ui_answer'
+            };
+            const backendFormat = formatMap[selectedFormat] || selectedFormat;
             
             // Start title generation in parallel (but don't await yet)
             const titlePromise = isFirstMessage 
@@ -140,12 +149,13 @@ const IntegratedChatAssistant = () => {
             
             const result = await api.current.sendMessage({
                 user_name: userName,
-                response_format: selectedFormat,
+                response_format: backendFormat,
                 input: messageText,
                 conversation_id: currentConversation,
                 command_model: selectedCommandModel,
                 final_output_model: selectedFinalOutputModel,
-                previous_message_id: lastAssistantMessage?.message_id || null
+                previous_message_id: lastAssistantMessage?.message_id || null,
+                demo_mode: demoMode
             });
 
             console.log('ChatAssistant: API result', result);
@@ -209,7 +219,16 @@ const IntegratedChatAssistant = () => {
             const selectedCommandModel = window.selectedCommandModel || localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
             const selectedFinalOutputModel = window.selectedFinalOutputModel || localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
             const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
+            const demoMode = window.demoMode || localStorage.getItem('demoMode') === 'true';
             const userName = window.CURRENT_USER_NAME || "guest";
+            
+            // Map frontend format to backend format
+            const formatMap = {
+                'plain': 'plain',
+                'formatted': 'level2_answer',
+                'ui_answer': 'ui_answer'
+            };
+            const backendFormat = formatMap[selectedFormat] || selectedFormat;
             
             // Find last assistant message for threading
             const assistantMessages = messages.filter(msg => msg.role === 'assistant');
@@ -217,12 +236,13 @@ const IntegratedChatAssistant = () => {
             
             const result = await api.current.sendMessage({
                 user_name: userName,
-                response_format: selectedFormat,
+                response_format: backendFormat,
                 input: assistantRequest,
                 conversation_id: currentConversation,
                 command_model: selectedCommandModel,
                 final_output_model: selectedFinalOutputModel,
-                previous_message_id: lastAssistantMessage?.message_id || null
+                previous_message_id: lastAssistantMessage?.message_id || null,
+                demo_mode: demoMode
             });
 
             const assistantMessage = {
@@ -420,39 +440,14 @@ const IntegratedChatAssistant = () => {
             key: 'input-area',
             className: 'p-4'
         }, [
-            React.createElement('div', {
-                key: 'input-container',
-                className: 'relative'
-            }, [
-                React.createElement('div', {
-                    key: 'input-bg',
-                    className: 'absolute inset-0 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl'
-                }),
-                React.createElement('form', {
-                    key: 'input-form',
-                    className: 'relative flex items-center p-2',
-                    onSubmit: sendMessage
-                }, [
-                    React.createElement('input', {
-                        key: 'input-field',
-                        type: 'text',
-                        placeholder: 'Напишите что-нибудь...',
-                        className: 'flex-1 bg-transparent text-white placeholder-gray-400 border-none outline-none focus:ring-0 p-3',
-                        value: inputValue,
-                        onChange: (e) => setInputValue(e.target.value),
-                        disabled: isLoading || !currentConversation
-                    }),
-                    React.createElement('button', {
-                        key: 'send-button',
-                        type: 'submit',
-                        disabled: !inputValue.trim() || isLoading || !currentConversation,
-                        className: 'p-3 text-gray-400 hover:text-white transition-colors rounded-lg disabled:opacity-50'
-                    }, React.createElement('i', {
-                        'data-lucide': 'send',
-                        className: 'w-6 h-6'
-                    }))
-                ])
-            ])
+            React.createElement(ChatInput, {
+                key: 'chat-input',
+                value: inputValue,
+                onChange: setInputValue,
+                onSubmit: sendMessage,
+                disabled: !currentConversation,
+                isLoading: isLoading
+            })
         ]),
 
         // Error display
