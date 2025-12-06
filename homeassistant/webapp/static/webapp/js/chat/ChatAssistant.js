@@ -109,6 +109,26 @@ const IntegratedChatAssistant = () => {
         return wsBaseUrl + '/ws_chat';
     };
 
+    const buildChatHistory = (msgs) => {
+        return msgs.map(msg => {
+            const role = msg.role === 'user' ? 'User' : 'Assistant';
+            const content = msg.content;
+            let text = '';
+            if (typeof content === 'string') {
+                text = content;
+            } else if (content.text) {
+                text = content.text;
+            } else if (content.level2_answer?.text?.text) {
+                text = content.level2_answer.text.text;
+            } else if (content.level3_answer?.text?.text) {
+                text = content.level3_answer.text.text;
+            } else if (content.ui_answer?.text?.text) {
+                text = content.ui_answer.text.text;
+            }
+            return text ? `${role}: ${text}` : null;
+        }).filter(Boolean).join('\n');
+    };
+
     const sendMessageViaWebSocket = (payload) => {
         return new Promise((resolve, reject) => {
             const wsUrl = getWebSocketUrl();
@@ -189,12 +209,27 @@ const IntegratedChatAssistant = () => {
             // Save user message to DB
             await api.current.saveMessage(currentConversation, userMessage);
             
+            // Find last assistant message for threading
+            let previousMessageId = null;
+            if (!isFirstMessage) {
+                const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+                if (assistantMessages.length > 0) {
+                    previousMessageId = assistantMessages[assistantMessages.length - 1].message_id;
+                }
+            }
+            
+            // Build chat history for context
+            const chatHistory = buildChatHistory(messages);
+            
             const result = await sendMessageViaWebSocket({
                 user_name: userName,
                 response_format: backendFormat,
                 input: messageText,
+                conversation_id: currentConversation,
                 command_model: selectedCommandModel,
                 final_output_model: selectedFinalOutputModel,
+                previous_message_id: previousMessageId,
+                chat_history: chatHistory || null,
                 demo_mode: demoMode
             });
 
@@ -283,12 +318,25 @@ const IntegratedChatAssistant = () => {
             // Save user message to DB
             await api.current.saveMessage(currentConversation, userMessage);
             
+            // Find last assistant message for threading
+            let prevMessageId = null;
+            const assistantMsgs = messages.filter(msg => msg.role === 'assistant');
+            if (assistantMsgs.length > 0) {
+                prevMessageId = assistantMsgs[assistantMsgs.length - 1].message_id;
+            }
+            
+            // Build chat history for context
+            const chatHistoryForExecute = buildChatHistory(messages);
+            
             const result = await sendMessageViaWebSocket({
                 user_name: userName,
                 response_format: backendFormat,
                 input: assistantRequest,
+                conversation_id: currentConversation,
                 command_model: selectedCommandModel,
                 final_output_model: selectedFinalOutputModel,
+                previous_message_id: prevMessageId,
+                chat_history: chatHistoryForExecute || null,
                 demo_mode: demoMode
             });
 
