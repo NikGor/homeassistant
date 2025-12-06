@@ -563,6 +563,55 @@ class Table(BaseModel):
         description="Zero-based index of column to emphasize (usually the comparison point or recommended option)"
     )
 
+class EmailForm(BaseModel):
+    """Email composition form with structured fields for clarity and actionability"""
+    to: Optional[str] = Field(
+        description="Recipient email address in standard format (e.g., 'user@example.com')"
+    )
+    subject: Optional[str] = Field(
+        default=None,
+        description="Subject line of the email"
+    )
+    body: Optional[str] = Field(
+        default=None,
+        description="Main content of the email"
+    )
+    
+class EventForm(BaseModel):
+    """Calendar event creation form with essential details for scheduling"""
+    title: str = Field(
+        description="Event title or name"
+    )
+    date: str = Field(
+        description="Event date in DD.MM.YYYY format"
+    )
+    time: Optional[str] = Field(
+        default=None,
+        description="Event time in HH:MM format (24-hour)"
+    )
+    duration_minutes: Optional[int] = Field(
+        default=60,
+        description="Event duration in minutes"
+    )
+    location: Optional[str] = Field(
+        default=None,
+        description="Event location or address"
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Additional notes or details about the event"
+    )
+    
+class InternalNoteForm(BaseModel):
+    """Internal note creation form for personal organization"""
+    title: Optional[str] = Field(
+        default=None,
+        description="Note title or headline"
+    )
+    content: str = Field(
+        description="Main body content of the note"
+    )
+
 class TextAnswer(BaseModel):
     """Rich text content with appropriate formatting for optimal readability"""
     type: Literal["plain", "markdown", "html", "voice"] = Field(
