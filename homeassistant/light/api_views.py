@@ -120,9 +120,38 @@ class DeviceStatusAPIView(View):
 
 
 class AllDevicesStatusAPIView(View):
+    # Known lamp IPs (same as in LightDashboardView)
+    LAMP_IPS = ["192.168.0.35", "192.168.0.226", "192.168.0.20"]
+    
     def get(self, request, *args, **kwargs):
         devices = light_controller.get_all_devices()
-        light_controller.refresh_devices()
+        
+        # If no devices in controller, initialize from known IPs
+        if not devices:
+            for ip in self.LAMP_IPS:
+                try:
+                    from yeelight import Bulb
+                    bulb = Bulb(ip)
+                    properties = bulb.get_properties()
+                    from .light_controller import YeelightDevice
+                    device = YeelightDevice(ip, properties=properties)
+                    device.name = f"Yeelight {ip.split('.')[-1]}"
+                    device.id = f"Yeelight_{ip.split('.')[-1]}"
+                    light_controller.devices[device.id] = device
+                except Exception as e:
+                    logger.error(f"api_views_001: \033[31mConnection failed to \033[36m{ip}\033[31m: {str(e)}\033[0m")
+                    from .light_controller import YeelightDevice
+                    device = YeelightDevice(ip, properties={
+                        'power': 'off', 'bright': 0, 'ct': 4000, 'rgb': 0
+                    })
+                    device.name = f"Yeelight {ip.split('.')[-1]}"
+                    device.id = f"Yeelight_{ip.split('.')[-1]}"
+                    device._connected = False
+                    light_controller.devices[device.id] = device
+            devices = light_controller.get_all_devices()
+        else:
+            light_controller.refresh_devices()
+        
         devices_data = [{
             'id': device.id,
             'name': device.name,
