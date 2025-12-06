@@ -357,6 +357,62 @@ class ArticleCard(BaseModel):
         """
     )
 
+class DocumentCard(BaseModel):
+    """Document search result card for displaying found documents from vector search"""
+    type: Literal["document_card"] = Field("document_card", description="Type of the card for frontend rendering")
+    
+    # Main info from search
+    filename: str = Field(
+        description="Original filename (e.g., 'INV34571480V38136181.pdf')"
+    )
+    title: Optional[str] = Field(
+        default=None,
+        description="Extracted document title or first heading"
+    )
+    
+    # Search result info
+    snippet: str = Field(
+        description="Relevant text snippet from the document matching the search query"
+    )
+    relevance_score: float = Field(
+        description="Search relevance score 0.0-1.0",
+        ge=0.0,
+        le=1.0
+    )
+    
+    # Document metadata
+    document_type: Optional[Literal[
+        "invoice", "contract", "insurance", "receipt", "tax", "medical", "legal", "other"
+    ]] = Field(
+        default=None,
+        description="Document category inferred from content or filename"
+    )
+    date: Optional[str] = Field(
+        default=None,
+        description="Document date extracted from content (e.g., '02.09.2025')"
+    )
+    amount: Optional[str] = Field(
+        default=None,
+        description="Monetary amount if applicable (e.g., '1.089,00 €')"
+    )
+    
+    # Internal reference
+    file_id: Optional[str] = Field(
+        default=None,
+        description="Internal file ID for reference (e.g., OpenAI file-xxx)"
+    )
+    
+    # Actions
+    buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
+        default=None,
+        description="""
+        Action buttons specific to the document
+        Add assistant button "Подробнее" to get full document content
+        Add assistant button "Найти похожие" for related documents
+        Maximum 2 buttons per document
+        """
+    )
+
 class ShoppingListCard(BaseModel):
     """Shopping list card with items organized by store departments"""
     type: Literal["shopping_list_card"] = Field("shopping_list_card", description="Type of the card for frontend rendering")
@@ -482,7 +538,7 @@ class CardGrid(BaseModel):
     grid_dimensions: Literal["1_column", "2_columns"] = Field(
         description="Grid layout choice: '1 column' for a single card, '2_columns' for 2 or more cards"
     )
-    cards: List[Union[Card, LocationCard, ContactCard, ProductCard, MovieCard, SeriesCard, MusicCard, ArticleCard, ShoppingListCard, WeatherCard]] = Field(
+    cards: List[Union[Card, LocationCard, ContactCard, ProductCard, MovieCard, SeriesCard, MusicCard, ArticleCard, DocumentCard, ShoppingListCard, WeatherCard]] = Field(
         description="List of cards to display in the grid. Keep individual card content concise for quick scanning."
     )
 
