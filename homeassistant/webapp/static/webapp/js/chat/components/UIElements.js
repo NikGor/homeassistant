@@ -311,6 +311,43 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
                 className: 'text-sm text-white/80 mb-3'
             }, card.summary));
         }
+        // Document Card
+        else if (card.type === 'document_card') {
+            card.filename && elements.push(React.createElement('h3', {
+                key: 'filename',
+                className: 'font-semibold text-white text-lg mb-1'
+            }, card.filename));
+            
+            card.title && elements.push(React.createElement('p', {
+                key: 'title',
+                className: 'text-sm text-white/70 mb-2'
+            }, card.title));
+            
+            const docMeta = [];
+            card.document_type && docMeta.push(card.document_type);
+            card.date && docMeta.push(card.date);
+            if (docMeta.length > 0) {
+                elements.push(React.createElement('p', {
+                    key: 'doc-meta',
+                    className: 'text-xs text-white/60 mb-2'
+                }, `📄 ${docMeta.join(' • ')}`));
+            }
+            
+            card.snippet && elements.push(React.createElement('p', {
+                key: 'snippet',
+                className: 'text-sm text-white/80 mb-2 italic border-l-2 border-white/30 pl-3'
+            }, card.snippet));
+            
+            const docDetails = [];
+            card.amount && docDetails.push(`💰 ${card.amount}`);
+            card.relevance_score && docDetails.push(`🎯 ${Math.round(card.relevance_score * 100)}%`);
+            if (docDetails.length > 0) {
+                elements.push(React.createElement('p', {
+                    key: 'doc-details',
+                    className: 'text-xs text-white/50'
+                }, docDetails.join(' • ')));
+            }
+        }
         // Shopping List Card
         else if (card.type === 'shopping_list_card') {
             card.title && elements.push(React.createElement('h3', {
