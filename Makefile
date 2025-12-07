@@ -25,8 +25,10 @@ shell:
 superuser:
 	poetry run python manage.py createsuperuser
 
-# Start voice assistant (wake word detection)
+# Start voice assistant (wake word detection, connects to AI Agent on localhost:8005)
 voice:
+	AI_AGENT_URL=http://localhost:8005 \
+	WAKE_WORD_FILE=archie-voice/hey-archie_en_linux_v3_0_0.ppn \
 	poetry run python manage.py start_voice_assistant
 
 docker-clean:
