@@ -694,7 +694,7 @@ class AdvancedAnswerItem(BaseModel):
     type: Literal["text_answer", "card_grid", "table", "chart", "image"] = Field(
         description="Component type - choose based on user intent: 'card' for actions, 'table' for comparison, 'text_answer' for explanation, 'chart' for data visualization, 'image' for visual content"
     )
-    content: Union[TextAnswer, CardGrid, Table, Chart, Image] = Field(
+    content: Union[TextAnswer, CardGrid, Table, Chart, Image, EventForm, EmailForm, InternalNoteForm] = Field(
         description="Component payload - ensure content matches type and supports user's immediate next action"
     )
     layout_hint: Optional[Literal["full_width", "half_width", "inline", "emphasis"]] = Field(
