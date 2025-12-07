@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from typing import Any
-from homeassistant.webapp.tools.fast_image_generation_tool import fast_image_generation_tool
+# from homeassistant.webapp.tools.fast_image_generation_tool import fast_image_generation_tool
 from homeassistant.webapp.tools.profi_image_generation_tool import profi_image_generation_tool
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,7 @@ async def process_images_in_ui_answer(ui_answer: dict[str, Any]) -> dict[str, An
     Process all image_prompt fields in UIAnswer structure.
     Generates images and replaces image_prompt values with base64 strings.
     
-    - Fast model: for Card.image_prompt (parallel generation)
-    - Profi model: for type:image items (sequential generation)
+    - Profi model: for all images (sequential generation)
     
     Args:
         ui_answer: UIAnswer dict from AI Agent response
@@ -40,8 +39,9 @@ async def process_images_in_ui_answer(ui_answer: dict[str, Any]) -> dict[str, An
     
     logger.info("image_proc_001: Starting image generation for UIAnswer")
     
-    fast_prompts = []
+    # fast_prompts = []
     profi_prompts = []
+    card_prompts = []
     
     for item in ui_answer["items"]:
         item_type = item.get("type")
@@ -64,52 +64,54 @@ async def process_images_in_ui_answer(ui_answer: dict[str, Any]) -> dict[str, An
             for card in cards:
                 if card.get("type") == "card" and card.get("image_prompt"):
                     prompt = card["image_prompt"]
-                    fast_prompts.append({
+                    card_prompts.append({
                         "prompt": prompt,
                         "card": card
                     })
-                    logger.info(f"image_proc_003: Found fast card prompt: \033[36m{prompt[:50]}...\033[0m")
+                    logger.info(f"image_proc_003: Found card prompt: \033[36m{prompt[:50]}...\033[0m")
     
-    logger.info(f"image_proc_004: Collected \033[33m{len(fast_prompts)}\033[0m fast + \033[33m{len(profi_prompts)}\033[0m profi prompts")
+    logger.info(f"image_proc_004: Collected \033[33m{len(card_prompts)}\033[0m card + \033[33m{len(profi_prompts)}\033[0m profi prompts")
     
-    if fast_prompts:
-        logger.info("image_proc_005: Starting parallel fast image generation")
-        fast_tasks = [
-            fast_image_generation_tool(p["prompt"]) 
-            for p in fast_prompts
-        ]
-        fast_results = await asyncio.gather(*fast_tasks, return_exceptions=True)
+    all_tasks = []
+    task_metadata = []
+    
+    for prompt_info in card_prompts:
+        task = profi_image_generation_tool(
+            prompt=prompt_info["prompt"],
+            aspect_ratio="1:1",
+            image_size="1K"
+        )
+        all_tasks.append(task)
+        task_metadata.append({"type": "card", "info": prompt_info})
+    
+    for prompt_info in profi_prompts:
+        task = profi_image_generation_tool(
+            prompt=prompt_info["prompt"],
+            aspect_ratio=prompt_info["aspect_ratio"],
+            image_size="1K"
+        )
+        all_tasks.append(task)
+        task_metadata.append({"type": "profi", "info": prompt_info})
+    
+    if all_tasks:
+        logger.info(f"image_proc_005: Starting parallel profi generation for \033[33m{len(all_tasks)}\033[0m images")
+        results = await asyncio.gather(*all_tasks, return_exceptions=True)
         
-        for prompt_info, result in zip(fast_prompts, fast_results):
+        for metadata, result in zip(task_metadata, results):
             if isinstance(result, Exception):
-                logger.error("image_proc_error_001: Fast generation failed")
+                logger.error(f"image_proc_error_001: Generation failed for {metadata['type']}")
                 continue
             
-            if result.get("success") and result.get("image"):
-                base64_img = result["image"]["base64"]
-                prompt_info["card"]["image_prompt"] = base64_img
-                logger.info("image_proc_006: Replaced fast card prompt")
-            else:
-                logger.warning("image_proc_warning_001: Fast generation unsuccessful")
-    
-    if profi_prompts:
-        logger.info("image_proc_007: Starting sequential profi image generation")
-        for prompt_info in profi_prompts:
-            try:
-                result = await profi_image_generation_tool(
-                    prompt=prompt_info["prompt"],
-                    aspect_ratio=prompt_info["aspect_ratio"],
-                    image_size="1K"
-                )
-                
-                if result.get("success") and result.get("images"):
-                    base64_img = result["images"][0]["base64"]
-                    prompt_info["content"]["image_prompt"] = base64_img
-                    logger.info("image_proc_008: Replaced profi image prompt")
+            if result.get("success") and result.get("images"):
+                base64_img = result["images"][0]["base64"]
+                if metadata["type"] == "card":
+                    metadata["info"]["card"]["image_prompt"] = base64_img
+                    logger.info("image_proc_006: Replaced card image prompt")
                 else:
-                    logger.warning("image_proc_warning_002: Profi generation unsuccessful")
-            except Exception as e:
-                logger.error("image_proc_error_002: Profi generation failed")
+                    metadata["info"]["content"]["image_prompt"] = base64_img
+                    logger.info("image_proc_007: Replaced profi image prompt")
+            else:
+                logger.warning(f"image_proc_warning_001: Generation unsuccessful for {metadata['type']}")
     
     logger.info("image_proc_009: Image generation complete")
     return ui_answer
