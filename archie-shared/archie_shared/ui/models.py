@@ -65,7 +65,6 @@ class Card(BaseModel):
         default=None,
         description="""
         A prompt for optional card's title image illustration. 
-        Add an image if it enhances clarity or visual appeal.
 
         VISUAL STYLES[Literal]:
         
