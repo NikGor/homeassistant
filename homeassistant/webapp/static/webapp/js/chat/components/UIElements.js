@@ -89,6 +89,397 @@ const ChatButton = ({ button, onExecute, cardData }) => {
     ]);
 };
 
+// Form helper to convert form data to YAML
+const formDataToYaml = (formType, data) => {
+    const lines = [`${formType}:`];
+    for (const [key, value] of Object.entries(data)) {
+        if (value !== null && value !== undefined && value !== '') {
+            lines.push(`  ${key}: "${value}"`);
+        } else {
+            lines.push(`  ${key}: null`);
+        }
+    }
+    return lines.join('\n');
+};
+
+// Common form input component
+const FormInput = ({ label, name, type, value, onChange, placeholder, required }) => {
+    return React.createElement('div', {
+        className: 'mb-4'
+    }, [
+        React.createElement('label', {
+            key: 'label',
+            className: 'block text-sm font-medium text-white/80 mb-1'
+        }, label + (required ? ' *' : '')),
+        React.createElement('input', {
+            key: 'input',
+            type: type || 'text',
+            name: name,
+            value: value || '',
+            onChange: (e) => onChange(name, e.target.value),
+            placeholder: placeholder,
+            className: 'w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all'
+        })
+    ]);
+};
+
+// Common form textarea component
+const FormTextarea = ({ label, name, value, onChange, placeholder, rows }) => {
+    return React.createElement('div', {
+        className: 'mb-4'
+    }, [
+        React.createElement('label', {
+            key: 'label',
+            className: 'block text-sm font-medium text-white/80 mb-1'
+        }, label),
+        React.createElement('textarea', {
+            key: 'textarea',
+            name: name,
+            value: value || '',
+            onChange: (e) => onChange(name, e.target.value),
+            placeholder: placeholder,
+            rows: rows || 3,
+            className: 'w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all resize-none'
+        })
+    ]);
+};
+
+// Event Form Component
+const ChatEventForm = ({ content, onExecute }) => {
+    const [formData, setFormData] = React.useState({
+        title: content.title || '',
+        date: content.date || '',
+        time: content.time || '',
+        duration_minutes: content.duration_minutes || '',
+        location: content.location || '',
+        description: content.description || ''
+    });
+
+    const handleChange = (name, value) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = () => {
+        const yaml = formDataToYaml('event_form', formData);
+        const request = `Создать событие в календаре:\n\`\`\`yaml\n${yaml}\n\`\`\``;
+        onExecute(request);
+    };
+
+    const handleCancel = () => {
+        onExecute('Отмена создания события в календаре');
+    };
+
+    return React.createElement('div', {
+        className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-6 border-2 border-indigo-500 shadow-xl shadow-indigo-500/20'
+    }, [
+        React.createElement('div', {
+            key: 'header',
+            className: 'flex items-center gap-3 mb-4'
+        }, [
+            React.createElement('i', {
+                key: 'icon',
+                'data-lucide': 'calendar-plus',
+                className: 'w-6 h-6 text-indigo-400'
+            }),
+            React.createElement('h3', {
+                key: 'title',
+                className: 'text-lg font-semibold text-white'
+            }, 'Новое событие')
+        ]),
+        React.createElement('div', {
+            key: 'form',
+            className: 'space-y-1'
+        }, [
+            React.createElement(FormInput, {
+                key: 'title',
+                label: 'Название',
+                name: 'title',
+                value: formData.title,
+                onChange: handleChange,
+                placeholder: 'Введите название события',
+                required: true
+            }),
+            React.createElement('div', {
+                key: 'datetime-row',
+                className: 'grid grid-cols-2 gap-4'
+            }, [
+                React.createElement(FormInput, {
+                    key: 'date',
+                    label: 'Дата',
+                    name: 'date',
+                    value: formData.date,
+                    onChange: handleChange,
+                    placeholder: 'ДД.ММ.ГГГГ',
+                    required: true
+                }),
+                React.createElement(FormInput, {
+                    key: 'time',
+                    label: 'Время',
+                    name: 'time',
+                    value: formData.time,
+                    onChange: handleChange,
+                    placeholder: 'ЧЧ:ММ'
+                })
+            ]),
+            React.createElement('div', {
+                key: 'duration-location-row',
+                className: 'grid grid-cols-2 gap-4'
+            }, [
+                React.createElement(FormInput, {
+                    key: 'duration',
+                    label: 'Длительность (мин)',
+                    name: 'duration_minutes',
+                    type: 'number',
+                    value: formData.duration_minutes,
+                    onChange: handleChange,
+                    placeholder: '60'
+                }),
+                React.createElement(FormInput, {
+                    key: 'location',
+                    label: 'Место',
+                    name: 'location',
+                    value: formData.location,
+                    onChange: handleChange,
+                    placeholder: 'Где будет событие'
+                })
+            ]),
+            React.createElement(FormTextarea, {
+                key: 'description',
+                label: 'Описание',
+                name: 'description',
+                value: formData.description,
+                onChange: handleChange,
+                placeholder: 'Дополнительные заметки',
+                rows: 2
+            })
+        ]),
+        React.createElement('div', {
+            key: 'buttons',
+            className: 'flex gap-3 mt-6'
+        }, [
+            React.createElement('button', {
+                key: 'submit',
+                onClick: handleSubmit,
+                className: 'flex-1 px-4 py-2 rounded-full text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-300 flex items-center justify-center gap-2'
+            }, [
+                React.createElement('i', {
+                    key: 'icon',
+                    'data-lucide': 'check',
+                    className: 'w-4 h-4'
+                }),
+                React.createElement('span', { key: 'text' }, 'Создать')
+            ]),
+            React.createElement('button', {
+                key: 'cancel',
+                onClick: handleCancel,
+                className: 'px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-all duration-300 flex items-center justify-center gap-2'
+            }, [
+                React.createElement('i', {
+                    key: 'icon',
+                    'data-lucide': 'x',
+                    className: 'w-4 h-4'
+                }),
+                React.createElement('span', { key: 'text' }, 'Отмена')
+            ])
+        ])
+    ]);
+};
+
+// Email Form Component
+const ChatEmailForm = ({ content, onExecute }) => {
+    const [formData, setFormData] = React.useState({
+        to: content.to || '',
+        subject: content.subject || '',
+        body: content.body || ''
+    });
+
+    const handleChange = (name, value) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = () => {
+        const yaml = formDataToYaml('email_form', formData);
+        const request = `Отправить email:\n\`\`\`yaml\n${yaml}\n\`\`\``;
+        onExecute(request);
+    };
+
+    const handleCancel = () => {
+        onExecute('Отмена отправки email');
+    };
+
+    return React.createElement('div', {
+        className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-6 border-2 border-sky-500 shadow-xl shadow-sky-500/20'
+    }, [
+        React.createElement('div', {
+            key: 'header',
+            className: 'flex items-center gap-3 mb-4'
+        }, [
+            React.createElement('i', {
+                key: 'icon',
+                'data-lucide': 'mail',
+                className: 'w-6 h-6 text-sky-400'
+            }),
+            React.createElement('h3', {
+                key: 'title',
+                className: 'text-lg font-semibold text-white'
+            }, 'Новое письмо')
+        ]),
+        React.createElement('div', {
+            key: 'form',
+            className: 'space-y-1'
+        }, [
+            React.createElement(FormInput, {
+                key: 'to',
+                label: 'Кому',
+                name: 'to',
+                type: 'email',
+                value: formData.to,
+                onChange: handleChange,
+                placeholder: 'email@example.com',
+                required: true
+            }),
+            React.createElement(FormInput, {
+                key: 'subject',
+                label: 'Тема',
+                name: 'subject',
+                value: formData.subject,
+                onChange: handleChange,
+                placeholder: 'Тема письма'
+            }),
+            React.createElement(FormTextarea, {
+                key: 'body',
+                label: 'Текст письма',
+                name: 'body',
+                value: formData.body,
+                onChange: handleChange,
+                placeholder: 'Введите текст письма...',
+                rows: 5
+            })
+        ]),
+        React.createElement('div', {
+            key: 'buttons',
+            className: 'flex gap-3 mt-6'
+        }, [
+            React.createElement('button', {
+                key: 'submit',
+                onClick: handleSubmit,
+                className: 'flex-1 px-4 py-2 rounded-full text-sm font-semibold bg-sky-600 hover:bg-sky-500 text-white transition-all duration-300 flex items-center justify-center gap-2'
+            }, [
+                React.createElement('i', {
+                    key: 'icon',
+                    'data-lucide': 'send',
+                    className: 'w-4 h-4'
+                }),
+                React.createElement('span', { key: 'text' }, 'Отправить')
+            ]),
+            React.createElement('button', {
+                key: 'cancel',
+                onClick: handleCancel,
+                className: 'px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-all duration-300 flex items-center justify-center gap-2'
+            }, [
+                React.createElement('i', {
+                    key: 'icon',
+                    'data-lucide': 'x',
+                    className: 'w-4 h-4'
+                }),
+                React.createElement('span', { key: 'text' }, 'Отмена')
+            ])
+        ])
+    ]);
+};
+
+// Internal Note Form Component
+const ChatNoteForm = ({ content, onExecute }) => {
+    const [formData, setFormData] = React.useState({
+        title: content.title || '',
+        content: content.content || ''
+    });
+
+    const handleChange = (name, value) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = () => {
+        const yaml = formDataToYaml('note_form', formData);
+        const request = `Сохранить заметку:\n\`\`\`yaml\n${yaml}\n\`\`\``;
+        onExecute(request);
+    };
+
+    const handleCancel = () => {
+        onExecute('Отмена создания заметки');
+    };
+
+    return React.createElement('div', {
+        className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-6 border-2 border-amber-500 shadow-xl shadow-amber-500/20'
+    }, [
+        React.createElement('div', {
+            key: 'header',
+            className: 'flex items-center gap-3 mb-4'
+        }, [
+            React.createElement('i', {
+                key: 'icon',
+                'data-lucide': 'sticky-note',
+                className: 'w-6 h-6 text-amber-400'
+            }),
+            React.createElement('h3', {
+                key: 'title',
+                className: 'text-lg font-semibold text-white'
+            }, 'Новая заметка')
+        ]),
+        React.createElement('div', {
+            key: 'form',
+            className: 'space-y-1'
+        }, [
+            React.createElement(FormInput, {
+                key: 'title',
+                label: 'Заголовок',
+                name: 'title',
+                value: formData.title,
+                onChange: handleChange,
+                placeholder: 'Название заметки'
+            }),
+            React.createElement(FormTextarea, {
+                key: 'content',
+                label: 'Содержание',
+                name: 'content',
+                value: formData.content,
+                onChange: handleChange,
+                placeholder: 'Текст заметки...',
+                rows: 5
+            })
+        ]),
+        React.createElement('div', {
+            key: 'buttons',
+            className: 'flex gap-3 mt-6'
+        }, [
+            React.createElement('button', {
+                key: 'submit',
+                onClick: handleSubmit,
+                className: 'flex-1 px-4 py-2 rounded-full text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-white transition-all duration-300 flex items-center justify-center gap-2'
+            }, [
+                React.createElement('i', {
+                    key: 'icon',
+                    'data-lucide': 'save',
+                    className: 'w-4 h-4'
+                }),
+                React.createElement('span', { key: 'text' }, 'Сохранить')
+            ]),
+            React.createElement('button', {
+                key: 'cancel',
+                onClick: handleCancel,
+                className: 'px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-all duration-300 flex items-center justify-center gap-2'
+            }, [
+                React.createElement('i', {
+                    key: 'icon',
+                    'data-lucide': 'x',
+                    className: 'w-4 h-4'
+                }),
+                React.createElement('span', { key: 'text' }, 'Отмена')
+            ])
+        ])
+    ]);
+};
+
 const ChatCardGrid = ({ cardGrid, onExecute }) => {
     const gridClass = cardGrid.grid_dimensions === '2_columns' 
         ? 'grid grid-cols-1 md:grid-cols-2 gap-4 mb-4' 
@@ -611,6 +1002,24 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
                 alt: item.content.alt || 'Generated image',
                 className: 'w-full h-auto rounded-xl shadow-2xl'
             }));
+        
+        case 'event_form':
+            return React.createElement(ChatEventForm, {
+                content: item.content,
+                onExecute: onExecute
+            });
+        
+        case 'email_form':
+            return React.createElement(ChatEmailForm, {
+                content: item.content,
+                onExecute: onExecute
+            });
+        
+        case 'note_form':
+            return React.createElement(ChatNoteForm, {
+                content: item.content,
+                onExecute: onExecute
+            });
         
         default:
             return React.createElement('div', {
