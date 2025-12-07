@@ -1,93 +1,150 @@
-# Home Assistant Dashboard
+# Archie Home Assistant
 
 [![CI](https://github.com/NikGor/homeassistant/actions/workflows/ci.yml/badge.svg)](https://github.com/NikGor/homeassistant/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 
-A modular Django-based smart home dashboard with Yeelight lighting integration, camera support, and a modern tablet-optimized UI.
-
-## Features
-
-- **Tablet-optimized web dashboard** with 8-button control grid
-- **Yeelight smart light control** (on/off, brightness, color temp, RGB)
-- **Camera module** with live video feed and controls
-- **Modular Django apps**: webapp, api, light, camera
-- **API endpoints** for device and group control
-- **AI chat interface** (OpenAI integration, demo)
-- **Matrix rain animation** and custom dark theme
-- **Responsive, touch-friendly design**
-
-## Project Structure
-
-```
-homeassistant/
-├── __init__.py
-├── asgi.py
-├── settings.py
-├── urls.py
-├── wsgi.py
-├── api/        # API endpoints
-├── camera/     # Camera app
-├── light/      # Lighting control app
-├── webapp/     # Main web interface
-├── static/     # Static assets
-└── templates/  # Shared templates
-```
+Django-based smart home dashboard — part of the Archie ecosystem. Light control (Yeelight), weather, cameras, AI assistant.
 
 ## Quick Start
 
-1. **Install dependencies:**
-   ```bash
-   poetry install
-   ```
-2. **Apply migrations:**
-   ```bash
-   poetry run python manage.py migrate
-   ```
-3. **Run development server:**
-   ```bash
-   poetry run python manage.py runserver
-   ```
-4. **Access dashboard:**
-   Open [http://localhost:8000/](http://localhost:8000/) in your browser.
+### 1. Clone
 
-## Environment Setup
-
-- Copy `.env.example` to `.env` and set your environment variables (SECRET_KEY, DEBUG, etc).
-- Uses SQLite by default, can be configured for Postgres via `DATABASE_URL`.
-
-## Main Modules
-
-- **webapp/**: Main dashboard UI, navigation, chat, and widgets
-- **light/**: Yeelight device discovery, control, groups, schedules, API
-- **camera/**: Camera page, video streaming, camera API
-- **api/**: (Scaffold) for future REST/GraphQL endpoints
-
-## Lighting API Examples
-
-- Toggle device: `POST /light/api/device/{id}/toggle/`
-- Set brightness: `POST /light/api/device/{id}/brightness/`
-- Set color temp: `POST /light/api/device/{id}/temperature/`
-- Set RGB: `POST /light/api/device/{id}/rgb/`
-- Get status: `GET /light/api/device/{id}/status/`
-- All statuses: `GET /light/api/devices/status/`
-
-## Testing
-
-Run all tests:
 ```bash
-poetry run python manage.py test
+git clone git@github.com:NikGor/homeassistant.git archie-homeassistant
+cd archie-homeassistant
 ```
+
+### 2. Create `.env`
+
+```bash
+# Required
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+
+# Database (SQLite for development)
+DATABASE_URL=sqlite:///db.sqlite3
+
+# Or PostgreSQL for Docker/production:
+# DATABASE_URL=postgresql://homeassistant_user:homeassistant_password@localhost:5432/homeassistant_db
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_DB=0
+
+# AI Agent (required for chat functionality)
+AI_AGENT_URL=http://localhost:8005
+
+# Optional
+OPENWEATHER_API_KEY=your-openweathermap-key
+OPENAI_API_KEY=your-openai-key
+PICOVOICE_ACCESS_KEY=your-picovoice-key
+```
+
+### 3. Local Installation
+
+```bash
+# Install Poetry
+pip install poetry
+
+# Install dependencies
+poetry install
+
+# Run migrations
+poetry run python manage.py migrate
+
+# Start server
+poetry run python manage.py runserver
+```
+
+Or via Makefile:
+```bash
+make install && make migrate && make run
+```
+
+### 4. Docker Deployment
+
+```bash
+# Create shared network (once)
+docker network create shared_network
+
+# Create PostgreSQL database
+sudo -u postgres psql -c "CREATE DATABASE homeassistant_db;"
+sudo -u postgres psql -c "CREATE USER homeassistant_user WITH PASSWORD 'homeassistant_password';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE homeassistant_db TO homeassistant_user;"
+
+# Build and run
+docker compose build
+docker compose up -d
+```
+
+Application: http://localhost:8000
+
+## AI Agent Connection
+
+Home Assistant proxies requests to external [archie-ai-agent](https://github.com/NikGor/archie-ai-agent).
+
+```
+[Home Assistant :8000] ──proxy──▶ [AI Agent :8005]
+     /ai-assistant/*                POST /chat
+```
+
+**`AI_AGENT_URL` configuration:**
+
+| Scenario | Value |
+|----------|-------|
+| AI Agent on host | `http://localhost:8005` |
+| AI Agent in Docker (same network) | `http://archie-ai-agent:8005` |
+| AI Agent on another machine | `http://192.168.1.100:8005` |
+
+Both containers must be in `shared_network`.
+
+## Architecture
+
+```
+┌─────────────────┐     ┌─────────────────────┐
+│ archie-frontend │────▶│ archie-homeassistant│
+│  (Next.js)      │     │   (Django :8000)    │
+└─────────────────┘     └──────────┬──────────┘
+                                   │
+                       ┌───────────▼───────────┐
+                       │   archie-ai-agent     │
+                       │   (FastAPI :8005)     │
+                       └───────────────────────┘
+```
+
+## Makefile Commands
+
+| Command | Description |
+|---------|-------------|
+| `make run` | Start dev server |
+| `make install` | Install dependencies |
+| `make migrate` | Apply migrations |
+| `make shell` | Django shell |
+| `make superuser` | Create admin user |
+| `make voice` | Start voice assistant |
+
+## API Endpoints
+
+**Light (Yeelight):**
+- `POST /light/api/device/{id}/toggle/`
+- `POST /light/api/device/{id}/brightness/`
+- `POST /light/api/device/{id}/temperature/`
+- `GET /light/api/devices/status/`
+
+**AI Assistant:**
+- `GET /ai-assistant/conversations/`
+- `POST /ai-assistant/chat/`
 
 ## Tech Stack
 
-- Python 3.10+, Django 5.2.1
-- Poetry for dependency management
-- Bootstrap 5, custom CSS/JS
-- Yeelight Python library
-- OpenCV (for camera simulation)
-- OpenAI (for chat demo)
+- Python 3.11+, Django 5.2
+- Poetry, Pydantic 2
+- Redis, PostgreSQL
+- Yeelight, OpenCV
+- Docker Compose
 
 ## License
 
-MIT License. See LICENSE file for details.
+MIT
