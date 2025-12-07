@@ -691,7 +691,16 @@ class AdvancedAnswerItem(BaseModel):
     order: int = Field(
         description="Visual sequence (1-based). Lower numbers appear first. Use 10, 20, 30 for easy reordering."
     )
-    type: Literal["text_answer", "card_grid", "table", "chart", "image"] = Field(
+    type: Literal[
+        "text_answer",
+        "card_grid",
+        "table",
+        "chart",
+        "image",
+        "event_form",
+        "email_form",
+        "note_form"
+    ] = Field(
         description="Component type - choose based on user intent: 'card' for actions, 'table' for comparison, 'text_answer' for explanation, 'chart' for data visualization, 'image' for visual content"
     )
     content: Union[TextAnswer, CardGrid, Table, Chart, Image, EventForm, EmailForm, InternalNoteForm] = Field(
