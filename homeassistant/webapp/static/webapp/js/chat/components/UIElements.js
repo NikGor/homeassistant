@@ -484,6 +484,8 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
     const gridClass = cardGrid.grid_dimensions === '2_columns' 
         ? 'grid grid-cols-1 md:grid-cols-2 gap-4 mb-4' 
         : 'grid grid-cols-1 gap-4 mb-4';
+    
+    const isTwoColumns = cardGrid.grid_dimensions === '2_columns';
 
     const getCardStyle = (type) => {
         const baseStyle = 'backdrop-blur-lg bg-white/10 rounded-2xl p-4 shadow-xl transition-all duration-300';
@@ -512,7 +514,7 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
         }
     };
 
-    const renderCardContent = (card) => {
+    const renderCardContent = (card, isTwoColumns) => {
         const elements = [];
         
         // Contact Card
@@ -865,12 +867,17 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
             
             // Render image from image_prompt (base64)
             if (card.image_prompt) {
+                // 2_columns: 1:1 aspect ratio, show full image
+                // 1_column: 16:9 aspect ratio, can use object-cover
+                const imageClass = isTwoColumns
+                    ? 'w-full h-auto rounded-lg mb-3 object-contain aspect-square'
+                    : 'w-full h-auto rounded-lg mb-3 object-cover aspect-video';
+                
                 elements.push(React.createElement('img', {
                     key: 'image',
                     src: `data:image/png;base64,${card.image_prompt}`,
                     alt: card.title || 'Card image',
-                    className: 'w-full h-auto rounded-lg mb-3 object-cover',
-                    style: { maxHeight: '300px' }
+                    className: imageClass
                 }));
             }
             
@@ -905,7 +912,7 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
         React.createElement('div', {
             key: `card-${index}`,
             className: getCardStyle(card.type)
-        }, renderCardContent(card))
+        }, renderCardContent(card, isTwoColumns))
     ));
 };
 
