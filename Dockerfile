@@ -12,16 +12,24 @@ RUN apt-get update && apt-get install -y \
     netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN pip install --upgrade pip && pip install poetry
+# Install Poetry with increased pip timeout
+RUN pip install --upgrade pip && \
+    pip install poetry --timeout 100
 
 # Copy Poetry files and archie-shared dependency
 COPY pyproject.toml poetry.lock ./
 COPY archie-shared/ ./archie-shared/
 
-# Install dependencies via Poetry (excluding voice group for Docker)
+# Configure Poetry: no venv, limit workers, increase timeout
 RUN poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi --no-root --without voice
+    poetry config installer.max-workers 10
+
+# Install dependencies with retries (3 attempts total)
+RUN for i in 1 2 3; do \
+        echo "Attempt $i: Installing dependencies..." && \
+        poetry install --no-interaction --no-ansi --no-root --without voice && exit 0 || \
+        { echo "Attempt $i failed, retrying in 5s..."; sleep 5; }; \
+    done && exit 1
 
 # Copy application code
 COPY . .
