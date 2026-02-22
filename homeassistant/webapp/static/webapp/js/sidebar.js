@@ -3,6 +3,64 @@ function renderLeftSidebar() {
     leftSidebarCollapsedIcons.innerHTML = '';
     leftSidebarExpandedMenu.innerHTML = '';
 
+    // Иконка профиля (аватар с буквой)
+    const userName = window.CURRENT_USER_NAME || '';
+    const avatarLetter = userName.trim().charAt(0).toUpperCase() || '?';
+
+    const avatarStyle = 'display:flex;align-items:center;justify-content:center;width:2.25rem;height:2.25rem;border-radius:50%;background:rgba(0,191,255,0.2);border:1px solid rgba(0,191,255,0.4);color:#00bfff;font-weight:600;font-size:0.95rem;flex-shrink:0;cursor:pointer;';
+
+    // Collapsed: круглый аватар, по клику — попап с выходом
+    const profileCollapsed = document.createElement('div');
+    profileCollapsed.className = 'sidebar-item';
+    profileCollapsed.title = userName || 'Профиль';
+    profileCollapsed.style.cssText = 'position:relative;';
+    profileCollapsed.innerHTML = `<span style="${avatarStyle}">${avatarLetter}</span>`;
+    profileCollapsed.onclick = (e) => {
+        e.stopPropagation();
+        const existing = document.getElementById('profile-popup-collapsed');
+        if (existing) { existing.remove(); return; }
+        const popup = document.createElement('div');
+        popup.id = 'profile-popup-collapsed';
+        popup.style.cssText = 'position:absolute;left:4rem;top:0;z-index:100;background:rgba(15,15,20,0.95);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);border-radius:0.75rem;padding:0.5rem;min-width:10rem;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
+        popup.innerHTML = `
+            <div style="padding:0.5rem 0.75rem;color:#9ca3af;font-size:0.75rem;font-weight:500;">${userName}</div>
+            <hr style="border-color:rgba(255,255,255,0.1);margin:0.25rem 0;">
+            <form method="post" action="/logout/" style="margin:0;">
+                <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
+                <button type="submit" style="display:flex;align-items:center;gap:0.5rem;width:100%;padding:0.5rem 0.75rem;background:none;border:none;color:#f87171;font-size:0.875rem;cursor:pointer;border-radius:0.5rem;font-family:inherit;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='none'">
+                    <i data-lucide="log-out" style="width:1rem;height:1rem;"></i> Выйти
+                </button>
+            </form>
+        `;
+        profileCollapsed.appendChild(popup);
+        lucide.createIcons({ nodes: [popup] });
+        const closePopup = (ev) => { if (!profileCollapsed.contains(ev.target)) { popup.remove(); document.removeEventListener('click', closePopup); } };
+        setTimeout(() => document.addEventListener('click', closePopup), 0);
+    };
+    leftSidebarCollapsedIcons.appendChild(profileCollapsed);
+
+    // Expanded: аватар + имя + кнопка logout
+    const profileExpanded = document.createElement('div');
+    profileExpanded.className = 'sidebar-item-expanded';
+    profileExpanded.style.cssText = 'justify-content:space-between;';
+    profileExpanded.innerHTML = `
+        <div style="display:flex;align-items:center;gap:0.75rem;overflow:hidden;">
+            <span style="${avatarStyle}">${avatarLetter}</span>
+            <span class="sidebar-text" style="font-size:0.875rem;font-weight:500;color:#e5e7eb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${userName}</span>
+        </div>
+        <form method="post" action="/logout/" style="margin:0;flex-shrink:0;">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
+            <button type="submit" class="sidebar-text" title="Выйти" style="background:none;border:none;padding:0.25rem;cursor:pointer;color:#6b7280;display:flex;align-items:center;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#6b7280'">
+                <i data-lucide="log-out" style="width:1rem;height:1rem;"></i>
+            </button>
+        </form>
+    `;
+    leftSidebarExpandedMenu.appendChild(profileExpanded);
+
+    // Разделитель после профиля
+    leftSidebarCollapsedIcons.innerHTML += '<hr class="border-t border-white/10 my-2">';
+    leftSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
+
     // Кнопка "Новый чат"
     const newChatCollapsed = document.createElement('a');
     newChatCollapsed.href = "#";
