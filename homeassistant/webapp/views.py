@@ -39,6 +39,7 @@ class LoginPageView(View):
 
 
 @require_http_methods(["POST"])
+@login_required
 def logout_view(request):
     username = request.user.username
     logout(request)
