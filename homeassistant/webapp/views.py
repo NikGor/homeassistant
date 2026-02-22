@@ -1,19 +1,52 @@
-from django.shortcuts import render
-from django.views import View
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
-from homeassistant.weather.services import WeatherService
-from .models import UserProfile
 import json
+import logging
 import os
 
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.views.decorators.http import require_http_methods
+
+from homeassistant.weather.services import WeatherService
+
+from .models import UserProfile
+
+logger = logging.getLogger(__name__)
 
 AI_AGENT_URL = os.getenv('AI_AGENT_URL', 'http://localhost:8005')
 AI_AGENT_URL_BROWSER = os.getenv('AI_AGENT_URL_BROWSER', 'ws://localhost:8005')
 
 
+class LoginPageView(View):
+    def get(self, request):
+        if request.user.is_authenticated:
+            return redirect('/')
+        return render(request, 'webapp/login.html')
+
+    def post(self, request):
+        username = request.POST.get('username', '')
+        password = request.POST.get('password', '')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            logger.info(f"login_view_001: User \033[34m{username}\033[0m logged in")
+            return redirect('/')
+        logger.info(f"login_view_002: Failed login attempt for \033[33m{username}\033[0m")
+        return render(request, 'webapp/login.html', {'error': 'Неверный логин или пароль'})
+
+
+@require_http_methods(["POST"])
+def logout_view(request):
+    username = request.user.username
+    logout(request)
+    logger.info(f"logout_view_001: User \033[34m{username}\033[0m logged out")
+    return redirect('/login/')
+
+
+@method_decorator(login_required, name='dispatch')
 class IndexView(View):
     def get(self, request):
         weather_service = WeatherService()
