@@ -487,7 +487,7 @@ const IntegratedChatAssistant = () => {
                 }, [
                     React.createElement('div', {
                         key: 'centered-message',
-                        className: 'w-full max-w-3xl mx-auto'
+                        className: 'w-full max-w-[60rem] mx-auto'
                     }, messagesToShow.map(message =>
                         React.createElement(ChatMessage, {
                             key: message.message_id,
@@ -498,7 +498,7 @@ const IntegratedChatAssistant = () => {
                 ])
                 : React.createElement('div', {
                     key: 'messages-container',
-                    className: 'w-full max-w-3xl mx-auto'
+                    className: 'w-full max-w-[60rem] mx-auto'
                 }, messagesToShow.map(message =>
                     React.createElement(ChatMessage, {
                         key: message.message_id,
@@ -508,7 +508,7 @@ const IntegratedChatAssistant = () => {
                 )),
             isLoading && React.createElement('div', {
                 key: 'loading',
-                className: 'w-full max-w-3xl mx-auto flex justify-start mb-6'
+                className: 'w-full max-w-[60rem] mx-auto flex justify-start mb-6'
             }, [
                 React.createElement('div', {
                     key: 'loading-bubble',
