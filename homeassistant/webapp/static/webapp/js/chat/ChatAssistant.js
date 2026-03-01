@@ -268,11 +268,12 @@ const IntegratedChatAssistant = () => {
                     status: 'done',
                     duration_ms: Date.now() - imageGenStart
                 });
+                const processedUiAnswer = imageResult?.ui_answer ?? imageResult;
                 assistantContent = {
                     ...assistantContent,
-                    ui_answer: imageResult.ui_answer
+                    ui_answer: processedUiAnswer
                 };
-                imageCost = imageResult.imageCost || 0;
+                imageCost = imageResult?.imageCost || 0;
             }
 
             const llmTrace = result.llm_trace || {};
@@ -384,11 +385,12 @@ const IntegratedChatAssistant = () => {
                     status: 'done',
                     duration_ms: Date.now() - imageGenStart
                 });
+                const processedUiAnswer = imageResult?.ui_answer ?? imageResult;
                 assistantContent = {
                     ...assistantContent,
-                    ui_answer: imageResult.ui_answer
+                    ui_answer: processedUiAnswer
                 };
-                imageCost = imageResult.imageCost || 0;
+                imageCost = imageResult?.imageCost || 0;
             }
 
             const llmTrace = result.llm_trace || {};
