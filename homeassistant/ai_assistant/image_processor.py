@@ -8,8 +8,12 @@ from homeassistant.webapp.tools.profi_image_generation_tool import \
 
 logger = logging.getLogger(__name__)
 
+IMAGE_GENERATION_COST_PER_IMAGE = 0.04
 
-async def process_images_in_ui_answer(ui_answer: dict[str, Any]) -> dict[str, Any]:
+
+async def process_images_in_ui_answer(
+    ui_answer: dict[str, Any],
+) -> tuple[dict[str, Any], int]:
     """
     Process all image_prompt fields in UIAnswer structure.
     Generates images and replaces image_prompt values with base64 strings.
@@ -23,10 +27,10 @@ async def process_images_in_ui_answer(ui_answer: dict[str, Any]) -> dict[str, An
         ui_answer: UIAnswer dict from AI Agent response
 
     Returns:
-        Modified ui_answer dict with image_prompt replaced by base64
+        Tuple of (modified ui_answer with base64 images, count of generated images)
     """
     if not ui_answer or "items" not in ui_answer:
-        return ui_answer
+        return ui_answer, 0
 
     logger.info("image_proc_001: Starting image generation for UIAnswer")
 
@@ -75,6 +79,8 @@ async def process_images_in_ui_answer(ui_answer: dict[str, Any]) -> dict[str, An
         f"image_proc_004: Collected \033[33m{len(all_tasks)}\033[0m image prompts"
     )
 
+    images_generated = 0
+
     if all_tasks:
         logger.info(
             f"image_proc_005: Starting parallel generation for \033[33m{len(all_tasks)}\033[0m images"
@@ -96,10 +102,13 @@ async def process_images_in_ui_answer(ui_answer: dict[str, Any]) -> dict[str, An
                 else:
                     metadata["content"]["image_prompt"] = base64_img
                     logger.info("image_proc_007: Replaced image prompt")
+                images_generated += 1
             else:
                 logger.warning(
                     f"image_proc_warning_001: Generation unsuccessful for {metadata['type']}"
                 )
 
-    logger.info("image_proc_008: Image generation complete")
-    return ui_answer
+    logger.info(
+        f"image_proc_008: Image generation complete, \033[33m{images_generated}\033[0m images generated"
+    )
+    return ui_answer, images_generated

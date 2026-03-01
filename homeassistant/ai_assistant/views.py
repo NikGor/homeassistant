@@ -11,7 +11,8 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .image_processor import process_images_in_ui_answer
+from .image_processor import (IMAGE_GENERATION_COST_PER_IMAGE,
+                              process_images_in_ui_answer)
 from .models import Conversation, Message
 
 # AI Agent URL - keep for AI functionality
@@ -286,7 +287,7 @@ def proxy_send_message(request):
             logger.info("ai_assistant_015a: Processing images in ui_answer")
             try:
                 ui_answer = assistant_content["ui_answer"]
-                processed_ui_answer = async_to_sync(process_images_in_ui_answer)(
+                processed_ui_answer, _ = async_to_sync(process_images_in_ui_answer)(
                     ui_answer
                 )
                 assistant_content["ui_answer"] = processed_ui_answer
@@ -493,9 +494,20 @@ def process_images(request):
             )
             return add_cors_headers(error_response)
         logger.info("ai_assistant_041: Starting image processing")
-        processed_ui_answer = async_to_sync(process_images_in_ui_answer)(ui_answer)
-        logger.info("ai_assistant_042: Image processing completed")
-        json_response = JsonResponse({"ui_answer": processed_ui_answer})
+        processed_ui_answer, images_generated = async_to_sync(
+            process_images_in_ui_answer
+        )(ui_answer)
+        image_cost = images_generated * IMAGE_GENERATION_COST_PER_IMAGE
+        logger.info(
+            f"ai_assistant_042: Image processing completed, \033[33m{images_generated}\033[0m images, cost \033[33m${image_cost:.4f}\033[0m"
+        )
+        json_response = JsonResponse(
+            {
+                "ui_answer": processed_ui_answer,
+                "images_generated": images_generated,
+                "image_cost": image_cost,
+            }
+        )
         return add_cors_headers(json_response)
     except Exception as e:
         logger.error(f"ai_assistant_error_040: Failed to process images: {e}")
@@ -534,6 +546,7 @@ def save_message(request):
         role = message_data.get("role", "user")
         content = message_data.get("content", {})
         llm_trace = message_data.get("llm_trace", {})
+        pipeline_steps = message_data.get("pipeline_steps", [])
         Message.objects.create(
             message_id=message_id,
             conversation=conversation,
@@ -545,6 +558,7 @@ def save_message(request):
             output_tokens=llm_trace.get("output_tokens"),
             total_tokens=llm_trace.get("total_tokens"),
             total_cost=llm_trace.get("total_cost"),
+            pipeline_steps=pipeline_steps,
         )
         if llm_trace.get("total_tokens"):
             conversation.total_tokens += llm_trace.get("total_tokens", 0)

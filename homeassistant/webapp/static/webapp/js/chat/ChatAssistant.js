@@ -257,22 +257,33 @@ const IntegratedChatAssistant = () => {
 
             // Process images if ui_answer exists
             let assistantContent = result.content || {};
+            let imageCost = 0;
             if (assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer) {
                 console.log('ChatAssistant: Processing images in ui_answer');
                 setStatusMessage('Generating images');
-                const processedUiAnswer = await api.current.processImages(assistantContent.ui_answer);
+                const imageGenStart = Date.now();
+                const imageResult = await api.current.processImages(assistantContent.ui_answer);
+                pipeline_steps.push({
+                    step: 'image_generation',
+                    status: 'done',
+                    duration_ms: Date.now() - imageGenStart
+                });
                 assistantContent = {
                     ...assistantContent,
-                    ui_answer: processedUiAnswer
+                    ui_answer: imageResult.ui_answer
                 };
+                imageCost = imageResult.imageCost || 0;
             }
+
+            const llmTrace = result.llm_trace || {};
+            llmTrace.total_cost = (llmTrace.total_cost || 0) + imageCost;
 
             const assistantMessage = {
                 message_id: result.message_id || `temp-assistant-${Date.now()}`,
                 role: 'assistant',
                 content: assistantContent,
                 created_at: result.created_at || new Date().toISOString(),
-                llm_trace: result.llm_trace || {},
+                llm_trace: llmTrace,
                 pipeline_steps: pipeline_steps || []
             };
 
@@ -363,21 +374,32 @@ const IntegratedChatAssistant = () => {
 
             // Process images if ui_answer exists
             let assistantContent = result.content || {};
+            let imageCost = 0;
             if (assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer) {
                 setStatusMessage('Generating images');
-                const processedUiAnswer = await api.current.processImages(assistantContent.ui_answer);
+                const imageGenStart = Date.now();
+                const imageResult = await api.current.processImages(assistantContent.ui_answer);
+                pipeline_steps.push({
+                    step: 'image_generation',
+                    status: 'done',
+                    duration_ms: Date.now() - imageGenStart
+                });
                 assistantContent = {
                     ...assistantContent,
-                    ui_answer: processedUiAnswer
+                    ui_answer: imageResult.ui_answer
                 };
+                imageCost = imageResult.imageCost || 0;
             }
+
+            const llmTrace = result.llm_trace || {};
+            llmTrace.total_cost = (llmTrace.total_cost || 0) + imageCost;
 
             const assistantMessage = {
                 message_id: result.message_id || `temp-assistant-${Date.now()}`,
                 role: 'assistant',
                 content: assistantContent,
                 created_at: result.created_at || new Date().toISOString(),
-                llm_trace: result.llm_trace || {},
+                llm_trace: llmTrace,
                 pipeline_steps: pipeline_steps || []
             };
 
