@@ -186,6 +186,29 @@ const IntegratedChatAssistant = () => {
         });
     };
 
+    const processUiAnswerImages = async (result, pipeline_steps) => {
+        let assistantContent = result.content || {};
+        let imageCost = 0;
+        if (assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer) {
+            setStatusMessage('Generating images');
+            const imageGenStart = Date.now();
+            const imageResult = await api.current.processImages(assistantContent.ui_answer);
+            pipeline_steps.push({
+                step: 'image_generation',
+                status: 'done',
+                duration_ms: Date.now() - imageGenStart
+            });
+            assistantContent = {
+                ...assistantContent,
+                ui_answer: imageResult.ui_answer
+            };
+            imageCost = imageResult.imageCost || 0;
+        }
+        const llmTrace = result.llm_trace || {};
+        llmTrace.total_cost = (llmTrace.total_cost || 0) + imageCost;
+        return { assistantContent, llmTrace };
+    };
+
     const sendMessage = async (e) => {
         e.preventDefault();
         if (!inputValue.trim() || !currentConversation || isLoading) return;
@@ -255,28 +278,7 @@ const IntegratedChatAssistant = () => {
 
             console.log('ChatAssistant: WebSocket result', result);
 
-            // Process images if ui_answer exists
-            let assistantContent = result.content || {};
-            let imageCost = 0;
-            if (assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer) {
-                console.log('ChatAssistant: Processing images in ui_answer');
-                setStatusMessage('Generating images');
-                const imageGenStart = Date.now();
-                const imageResult = await api.current.processImages(assistantContent.ui_answer);
-                pipeline_steps.push({
-                    step: 'image_generation',
-                    status: 'done',
-                    duration_ms: Date.now() - imageGenStart
-                });
-                assistantContent = {
-                    ...assistantContent,
-                    ui_answer: imageResult.ui_answer
-                };
-                imageCost = imageResult.imageCost || 0;
-            }
-
-            const llmTrace = result.llm_trace || {};
-            llmTrace.total_cost = (llmTrace.total_cost || 0) + imageCost;
+            const { assistantContent, llmTrace } = await processUiAnswerImages(result, pipeline_steps);
 
             const assistantMessage = {
                 message_id: result.message_id || `temp-assistant-${Date.now()}`,
@@ -372,27 +374,7 @@ const IntegratedChatAssistant = () => {
                 demo_mode: demoMode
             });
 
-            // Process images if ui_answer exists
-            let assistantContent = result.content || {};
-            let imageCost = 0;
-            if (assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer) {
-                setStatusMessage('Generating images');
-                const imageGenStart = Date.now();
-                const imageResult = await api.current.processImages(assistantContent.ui_answer);
-                pipeline_steps.push({
-                    step: 'image_generation',
-                    status: 'done',
-                    duration_ms: Date.now() - imageGenStart
-                });
-                assistantContent = {
-                    ...assistantContent,
-                    ui_answer: imageResult.ui_answer
-                };
-                imageCost = imageResult.imageCost || 0;
-            }
-
-            const llmTrace = result.llm_trace || {};
-            llmTrace.total_cost = (llmTrace.total_cost || 0) + imageCost;
+            const { assistantContent, llmTrace } = await processUiAnswerImages(result, pipeline_steps);
 
             const assistantMessage = {
                 message_id: result.message_id || `temp-assistant-${Date.now()}`,
