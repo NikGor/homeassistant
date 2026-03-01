@@ -47,6 +47,33 @@ class LllmTrace(BaseModel):
     total_cost: float = Field(default=0.0, description="Total cost of the API call")
 
 
+class StepTrace(BaseModel):
+    """Timing and LLM usage data for a single pipeline stage"""
+
+    duration_ms: int = Field(description="Duration of the stage in milliseconds")
+    llm_trace: Optional[LllmTrace] = Field(
+        default=None,
+        description="LLM usage trace for this stage, if it involved an LLM call",
+    )
+
+
+class PipelineTrace(BaseModel):
+    """Aggregated trace for all stages of a single agent request"""
+
+    stage1: Optional[StepTrace] = Field(
+        default=None, description="Command call stage trace"
+    )
+    stage2: Optional[StepTrace] = Field(
+        default=None, description="Tool execution stage trace"
+    )
+    stage3: Optional[StepTrace] = Field(
+        default=None, description="Output generation stage trace"
+    )
+    total_ms: int = Field(
+        description="Total duration of the arun() call in milliseconds"
+    )
+
+
 class ChatMessage(BaseModel):
     """Individual chat message in a conversation"""
 
@@ -76,6 +103,10 @@ class ChatMessage(BaseModel):
     pipeline_steps: list[PipelineStep] = Field(
         default_factory=list,
         description="Pipeline step timings for this message",
+    )
+    pipeline_trace: Optional[PipelineTrace] = Field(
+        default=None,
+        description="Detailed per-stage pipeline trace from the AI agent",
     )
 
 
