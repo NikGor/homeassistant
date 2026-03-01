@@ -3,7 +3,7 @@ from typing import Optional
 from archie_shared.chat.models import ChatMessage
 from archie_shared.chat.models import Conversation as ConversationModel
 from archie_shared.chat.models import (InputTokensDetails, LllmTrace,
-                                       OutputTokensDetails)
+                                       OutputTokensDetails, PipelineStep)
 from archie_shared.ui.models import Content
 from django.db import models
 from django.utils import timezone
@@ -179,6 +179,7 @@ class Message(models.Model):
     output_reasoning_tokens = models.IntegerField(default=0)
     total_tokens = models.IntegerField(null=True, blank=True)
     total_cost = models.FloatField(null=True, blank=True)
+    pipeline_steps = models.JSONField(default=list)
 
     class Meta:
         db_table = "ai_assistant_message"
@@ -235,4 +236,5 @@ class Message(models.Model):
             ),
             model=self.model,
             llm_trace=llm_trace,
+            pipeline_steps=[PipelineStep(**s) for s in (self.pipeline_steps or [])],
         )
