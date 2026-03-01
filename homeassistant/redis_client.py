@@ -2,9 +2,10 @@ import json
 import logging
 from datetime import datetime
 from typing import Any
+
 import redis
-from django.conf import settings
 from archie_shared.user.models import UserState
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ class RedisClient:
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
             db=settings.REDIS_DB,
-            decode_responses=True
+            decode_responses=True,
         )
 
     def _get_user_key_by_name(self, user_name: str) -> str:
@@ -41,7 +42,9 @@ class RedisClient:
             return None
 
         except Exception as e:
-            logger.error(f"redis_client_006: Error getting user state by name {user_name}: {e}")
+            logger.error(
+                f"redis_client_006: Error getting user state by name {user_name}: {e}"
+            )
             return None
 
     def set_user_state(
@@ -96,7 +99,9 @@ class RedisClient:
             return self.set_user_state(user_name, updated_state, ttl)
 
         except Exception as e:
-            logger.error(f"redis_client_003: Error updating user state {user_name}: {e}")
+            logger.error(
+                f"redis_client_003: Error updating user state {user_name}: {e}"
+            )
             return False
 
     def delete_user_state(self, user_name: str) -> bool:
@@ -107,7 +112,9 @@ class RedisClient:
             return result > 0
 
         except Exception as e:
-            logger.error(f"redis_client_004: Error deleting user state {user_name}: {e}")
+            logger.error(
+                f"redis_client_004: Error deleting user state {user_name}: {e}"
+            )
             return False
 
     def get_user_field(self, user_name: str, field: str) -> Any | None:

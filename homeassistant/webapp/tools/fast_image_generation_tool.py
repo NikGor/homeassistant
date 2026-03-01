@@ -4,6 +4,7 @@ import logging
 import mimetypes
 import os
 from typing import Any, Literal
+
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -19,7 +20,9 @@ def _generate_image_sync(
     """Synchronous image generation - runs in thread pool."""
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        logger.error("fast_image_gen_error_001: \033[31mGEMINI_API_KEY not found\033[0m")
+        logger.error(
+            "fast_image_gen_error_001: \033[31mGEMINI_API_KEY not found\033[0m"
+        )
         return {
             "success": False,
             "message": "GEMINI_API_KEY not configured",
@@ -73,7 +76,9 @@ def _generate_image_sync(
             inline_data = part.inline_data
             image_data = inline_data.data
             image_mime_type = inline_data.mime_type
-            logger.info(f"fast_image_gen_004: Received image data - mime: \033[33m{image_mime_type}\033[0m")
+            logger.info(
+                f"fast_image_gen_004: Received image data - mime: \033[33m{image_mime_type}\033[0m"
+            )
         elif hasattr(chunk, "text") and chunk.text:
             text_response += chunk.text
 
@@ -89,7 +94,9 @@ def _generate_image_sync(
     image_base64 = base64.b64encode(image_data).decode("utf-8")
     file_extension = mimetypes.guess_extension(image_mime_type) or ".bin"
 
-    logger.info(f"fast_image_gen_005: Successfully generated image with extension \033[33m{file_extension}\033[0m")
+    logger.info(
+        f"fast_image_gen_005: Successfully generated image with extension \033[33m{file_extension}\033[0m"
+    )
 
     return {
         "success": True,
@@ -114,8 +121,12 @@ async def fast_image_generation_tool(
     Fast image generation using Gemini 2.5 Flash Image model.
     Runs synchronous API call in thread pool for true parallelism.
     """
-    logger.info(f"fast_image_gen_001: Fast generation requested for: \033[36m{prompt[:50]}...\033[0m")
-    logger.info(f"fast_image_gen_002: Parameters - ratio: \033[33m{aspect_ratio}\033[0m")
+    logger.info(
+        f"fast_image_gen_001: Fast generation requested for: \033[36m{prompt[:50]}...\033[0m"
+    )
+    logger.info(
+        f"fast_image_gen_002: Parameters - ratio: \033[33m{aspect_ratio}\033[0m"
+    )
 
     try:
         result = await asyncio.to_thread(_generate_image_sync, prompt, aspect_ratio)

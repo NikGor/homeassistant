@@ -15,33 +15,133 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='UserProfile',
+            name="UserProfile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('user_name', models.CharField(blank=True, default='', max_length=100)),
-                ('persona', models.CharField(choices=[('business', 'Business'), ('personal', 'Personal'), ('family', 'Family')], default='personal', max_length=20)),
-                ('default_city', models.CharField(default='Bad Mergentheim', max_length=100)),
-                ('default_country', models.CharField(default='Germany', max_length=100)),
-                ('user_timezone', models.CharField(default='Europe/Berlin', max_length=50)),
-                ('measurement_units', models.CharField(default='metric', max_length=20)),
-                ('language', models.CharField(choices=[('en', 'English'), ('ru', 'Russian'), ('de', 'German')], default='en', max_length=5)),
-                ('currency', models.CharField(choices=[('EUR', 'Euro'), ('USD', 'US Dollar'), ('RUB', 'Russian Ruble')], default='EUR', max_length=5)),
-                ('date_format', models.CharField(default='DD Month YYYY', max_length=50)),
-                ('time_format', models.CharField(choices=[('12h', '12-hour'), ('24h', '24-hour')], default='24h', max_length=5)),
-                ('commercial_holidays', models.CharField(default='DE-BW', help_text='Holiday region code', max_length=10)),
-                ('commercial_check_open_now', models.BooleanField(default=True)),
-                ('transport_preferences', models.JSONField(blank=True, default=list, help_text='List of preferred transport types')),
-                ('cuisine_preferences', models.JSONField(blank=True, default=list, help_text='List of preferred cuisine types')),
-                ('weather_cache', models.JSONField(blank=True, help_text='Cached weather data', null=True)),
-                ('sunrise_cache', models.CharField(blank=True, default='', max_length=10)),
-                ('sunset_cache', models.CharField(blank=True, default='', max_length=10)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='profile', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("user_name", models.CharField(blank=True, default="", max_length=100)),
+                (
+                    "persona",
+                    models.CharField(
+                        choices=[
+                            ("business", "Business"),
+                            ("personal", "Personal"),
+                            ("family", "Family"),
+                        ],
+                        default="personal",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "default_city",
+                    models.CharField(default="Bad Mergentheim", max_length=100),
+                ),
+                (
+                    "default_country",
+                    models.CharField(default="Germany", max_length=100),
+                ),
+                (
+                    "user_timezone",
+                    models.CharField(default="Europe/Berlin", max_length=50),
+                ),
+                (
+                    "measurement_units",
+                    models.CharField(default="metric", max_length=20),
+                ),
+                (
+                    "language",
+                    models.CharField(
+                        choices=[
+                            ("en", "English"),
+                            ("ru", "Russian"),
+                            ("de", "German"),
+                        ],
+                        default="en",
+                        max_length=5,
+                    ),
+                ),
+                (
+                    "currency",
+                    models.CharField(
+                        choices=[
+                            ("EUR", "Euro"),
+                            ("USD", "US Dollar"),
+                            ("RUB", "Russian Ruble"),
+                        ],
+                        default="EUR",
+                        max_length=5,
+                    ),
+                ),
+                (
+                    "date_format",
+                    models.CharField(default="DD Month YYYY", max_length=50),
+                ),
+                (
+                    "time_format",
+                    models.CharField(
+                        choices=[("12h", "12-hour"), ("24h", "24-hour")],
+                        default="24h",
+                        max_length=5,
+                    ),
+                ),
+                (
+                    "commercial_holidays",
+                    models.CharField(
+                        default="DE-BW", help_text="Holiday region code", max_length=10
+                    ),
+                ),
+                ("commercial_check_open_now", models.BooleanField(default=True)),
+                (
+                    "transport_preferences",
+                    models.JSONField(
+                        blank=True,
+                        default=list,
+                        help_text="List of preferred transport types",
+                    ),
+                ),
+                (
+                    "cuisine_preferences",
+                    models.JSONField(
+                        blank=True,
+                        default=list,
+                        help_text="List of preferred cuisine types",
+                    ),
+                ),
+                (
+                    "weather_cache",
+                    models.JSONField(
+                        blank=True, help_text="Cached weather data", null=True
+                    ),
+                ),
+                (
+                    "sunrise_cache",
+                    models.CharField(blank=True, default="", max_length=10),
+                ),
+                (
+                    "sunset_cache",
+                    models.CharField(blank=True, default="", max_length=10),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="profile",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'User Profile',
-                'verbose_name_plural': 'User Profiles',
+                "verbose_name": "User Profile",
+                "verbose_name_plural": "User Profiles",
             },
         ),
     ]

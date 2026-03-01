@@ -7,43 +7,31 @@ This module now imports from the shared models package for consistency across th
 # Note: In a real setup, you would install the shared package separately:
 # pip install archie-ai-models
 
+import os
 # For demo purposes, importing from local archie-shared
 import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'archie-shared'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "archie-shared"))
 
 try:
-    from archie_shared import (
-        # Chat models
-        ChatMessage,
-        ConversationModel,
-        ChatRequest,
-        # UI models
-        ButtonOption,
-        DropdownOption,
-        ChecklistOption,
-        UIElements,
-        Card,
-        NavigationCard,
-        ContactCard,
-        ToolCard,
-        Metadata,
-        # LLM models
-        InputTokensDetails,
-        OutputTokensDetails,
-        LllmTrace,
-    )
+    from archie_shared import (  # Chat models; UI models; LLM models
+        ButtonOption, Card, ChatMessage, ChatRequest, ChecklistOption,
+        ContactCard, ConversationModel, DropdownOption, InputTokensDetails,
+        LllmTrace, Metadata, NavigationCard, OutputTokensDetails, ToolCard,
+        UIElements)
 except ImportError:
     # Fallback to local definitions if shared package is not available
     print("Warning: Shared models package not found, using local definitions")
-    
-    from typing import Optional, List, Literal
+
+    from datetime import datetime
+    from datetime import timezone as dt_timezone
+    from typing import List, Literal, Optional
+
     from pydantic import BaseModel, Field
-    from datetime import datetime, timezone as dt_timezone
 
     # Include all the original model definitions as fallback...
     # This ensures the project works even without the shared package
-    
+
     class ButtonOption(BaseModel):
         text: str
         command: Optional[str] = None
@@ -52,7 +40,7 @@ except ImportError:
         label: str
         value: str
         command: Optional[str] = None
-        
+
     class ChecklistOption(BaseModel):
         label: str
         value: str
@@ -81,7 +69,7 @@ except ImportError:
         email: Optional[str] = None
         phone: Optional[str] = None
         buttons: Optional[List[ButtonOption]] = None
-        
+
     class ToolCard(BaseModel):
         name: str
         description: Optional[str] = None
@@ -128,11 +116,12 @@ except ImportError:
         messages: Optional[List[ChatMessage]] = None
         created_at: datetime = datetime.now(dt_timezone.utc)
         llm_trace: Optional[LllmTrace] = Field(default_factory=lambda: None)
-        
+
         def __init__(self, **data):
             super().__init__(**data)
             # Import here to avoid circular import
             from .utils import calculate_conversation_llm_trace
+
             self.llm_trace = calculate_conversation_llm_trace(self.messages)
 
     class ChatRequest(BaseModel):
@@ -143,10 +132,11 @@ except ImportError:
         previous_message_id: Optional[str] = None
         model: Optional[str] = None
 
+
 # Export all models for backward compatibility
 __all__ = [
     "ChatMessage",
-    "ConversationModel", 
+    "ConversationModel",
     "ChatRequest",
     "ButtonOption",
     "DropdownOption",

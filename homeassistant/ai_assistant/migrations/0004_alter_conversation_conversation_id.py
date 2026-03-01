@@ -6,13 +6,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ai_assistant', '0003_initial'),
+        ("ai_assistant", "0003_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='conversation',
-            name='conversation_id',
-            field=models.CharField(db_index=True, max_length=255, primary_key=True, serialize=False),
+            model_name="conversation",
+            name="conversation_id",
+            field=models.CharField(
+                db_index=True, max_length=255, primary_key=True, serialize=False
+            ),
         ),
     ]

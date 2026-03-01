@@ -6,18 +6,18 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ai_assistant', '0001_initial'),
+        ("ai_assistant", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='message',
-            name='conversation',
+            model_name="message",
+            name="conversation",
         ),
         migrations.DeleteModel(
-            name='Conversation',
+            name="Conversation",
         ),
         migrations.DeleteModel(
-            name='Message',
+            name="Message",
         ),
     ]

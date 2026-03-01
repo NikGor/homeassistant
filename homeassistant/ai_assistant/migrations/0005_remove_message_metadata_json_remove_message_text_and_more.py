@@ -6,31 +6,47 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ai_assistant', '0004_alter_conversation_conversation_id'),
+        ("ai_assistant", "0004_alter_conversation_conversation_id"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='message',
-            name='metadata_json',
+            model_name="message",
+            name="metadata_json",
         ),
         migrations.RemoveField(
-            model_name='message',
-            name='text',
+            model_name="message",
+            name="text",
         ),
         migrations.AddField(
-            model_name='message',
-            name='content',
+            model_name="message",
+            name="content",
             field=models.JSONField(default=dict),
         ),
         migrations.AlterField(
-            model_name='message',
-            name='role',
-            field=models.CharField(choices=[('user', 'User'), ('assistant', 'Assistant'), ('system', 'System')], max_length=20),
+            model_name="message",
+            name="role",
+            field=models.CharField(
+                choices=[
+                    ("user", "User"),
+                    ("assistant", "Assistant"),
+                    ("system", "System"),
+                ],
+                max_length=20,
+            ),
         ),
         migrations.AlterField(
-            model_name='message',
-            name='text_format',
-            field=models.CharField(choices=[('plain', 'Plain'), ('markdown', 'Markdown'), ('html', 'HTML'), ('voice', 'Voice')], default='plain', max_length=20),
+            model_name="message",
+            name="text_format",
+            field=models.CharField(
+                choices=[
+                    ("plain", "Plain"),
+                    ("markdown", "Markdown"),
+                    ("html", "HTML"),
+                    ("voice", "Voice"),
+                ],
+                default="plain",
+                max_length=20,
+            ),
         ),
     ]

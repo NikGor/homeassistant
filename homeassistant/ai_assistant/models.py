@@ -1,27 +1,22 @@
 from typing import Optional
+
+from archie_shared.chat.models import ChatMessage
+from archie_shared.chat.models import Conversation as ConversationModel
+from archie_shared.chat.models import (InputTokensDetails, LllmTrace,
+                                       OutputTokensDetails)
+from archie_shared.ui.models import Content
 from django.db import models
 from django.utils import timezone
-from archie_shared.chat.models import (
-    Conversation as ConversationModel, 
-    LllmTrace, 
-    ChatMessage, 
-    InputTokensDetails, 
-    OutputTokensDetails
-)
-from archie_shared.ui.models import Content
+
 
 class Conversation(models.Model):
     """Django model for storing conversations in PostgreSQL"""
-    
-    conversation_id = models.CharField(
-        max_length=255,
-        primary_key=True, 
-        db_index=True
-    )
+
+    conversation_id = models.CharField(max_length=255, primary_key=True, db_index=True)
     title = models.TextField(default="New Conversation")
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     # LLM Trace fields - expanded set
     total_input_tokens = models.IntegerField(default=0)
     total_input_cached_tokens = models.IntegerField(default=0)
@@ -29,24 +24,23 @@ class Conversation(models.Model):
     total_output_reasoning_tokens = models.IntegerField(default=0)
     total_tokens = models.IntegerField(default=0)
     total_cost = models.FloatField(default=0.0)
-    
+
     class Meta:
-        db_table = 'ai_assistant_conversation'
-        ordering = ['-created_at']
+        db_table = "ai_assistant_conversation"
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['-created_at']),
-            models.Index(fields=['conversation_id']),
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["conversation_id"]),
         ]
-    
+
     def __str__(self):
         return f"{self.title} ({self.conversation_id})"
-    
+
     def to_conversation_model(self):
         """Convert Django model to Pydantic model"""
-        
-        
+
         messages = [msg.to_chat_message() for msg in self.messages.all()]
-        
+
         return ConversationModel(
             conversation_id=str(self.conversation_id),
             title=self.title,
@@ -57,15 +51,23 @@ class Conversation(models.Model):
             total_output_tokens=self.total_output_tokens,
             total_tokens=self.total_tokens,
             total_cost=float(self.total_cost),
-            llm_trace=LllmTrace(
-                model="aggregate",
-                input_tokens=self.total_input_tokens,
-                input_tokens_details=InputTokensDetails(cached_tokens=self.total_input_cached_tokens),
-                output_tokens=self.total_output_tokens,
-                output_tokens_details=OutputTokensDetails(reasoning_tokens=self.total_output_reasoning_tokens),
-                total_tokens=self.total_tokens,
-                total_cost=float(self.total_cost)
-            ) if self.total_tokens > 0 else None
+            llm_trace=(
+                LllmTrace(
+                    model="aggregate",
+                    input_tokens=self.total_input_tokens,
+                    input_tokens_details=InputTokensDetails(
+                        cached_tokens=self.total_input_cached_tokens
+                    ),
+                    output_tokens=self.total_output_tokens,
+                    output_tokens_details=OutputTokensDetails(
+                        reasoning_tokens=self.total_output_reasoning_tokens
+                    ),
+                    total_tokens=self.total_tokens,
+                    total_cost=float(self.total_cost),
+                )
+                if self.total_tokens > 0
+                else None
+            ),
         )
 
     def get_chat_history_yaml(self) -> str:
@@ -75,20 +77,18 @@ class Conversation(models.Model):
         Format: User: ... / Assistant: ...
         """
         lines = []
-        for msg in self.messages.all().order_by('created_at'):
+        for msg in self.messages.all().order_by("created_at"):
             role_label = "User" if msg.role == "user" else "Assistant"
             text_content = self._extract_text_from_content(msg.content)
             if text_content:
                 lines.append(f"{role_label}: {text_content}")
         return "\n".join(lines)
 
-    def _extract_text_from_content(
-        self,
-        content: dict
-    ) -> Optional[str]:
+    def _extract_text_from_content(self, content: dict) -> Optional[str]:
         """Extract text from Content, skipping buttons and images."""
         if isinstance(content, str):
             import json
+
             content = json.loads(content)
         content_format = content.get("content_format", "plain")
         if content_format == "plain" or content_format == "markdown":
@@ -105,10 +105,7 @@ class Conversation(models.Model):
             return self._extract_text_from_ui_answer(content.get("ui_answer", {}))
         return content.get("text", "")
 
-    def _extract_text_from_ui_answer(
-        self,
-        ui_answer: dict
-    ) -> str:
+    def _extract_text_from_ui_answer(self, ui_answer: dict) -> str:
         """Extract text from UIAnswer, skipping buttons and images."""
         texts = []
         intro = ui_answer.get("intro_text", {})
@@ -126,10 +123,7 @@ class Conversation(models.Model):
                 texts.append(self._extract_text_from_table(item_content))
         return "\n".join(filter(None, texts))
 
-    def _extract_text_from_card_grid(
-        self,
-        card_grid: dict
-    ) -> str:
+    def _extract_text_from_card_grid(self, card_grid: dict) -> str:
         """Extract text from CardGrid, skipping buttons and image_prompt."""
         texts = []
         for card in card_grid.get("cards", []):
@@ -146,10 +140,7 @@ class Conversation(models.Model):
                 texts.append(" - ".join(card_texts))
         return "\n".join(texts)
 
-    def _extract_text_from_table(
-        self,
-        table: dict
-    ) -> str:
+    def _extract_text_from_table(self, table: dict) -> str:
         """Extract text from Table."""
         lines = []
         if table.get("title"):
@@ -164,21 +155,21 @@ class Conversation(models.Model):
 
 class Message(models.Model):
     """Django model for storing chat messages in PostgreSQL"""
-    
+
     message_id = models.CharField(max_length=255, primary_key=True, db_index=True)
     conversation = models.ForeignKey(
-        Conversation, 
-        on_delete=models.CASCADE, 
-        related_name='messages',
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name="messages",
         db_index=True,
-        to_field='conversation_id'
+        to_field="conversation_id",
     )
     role = models.CharField(max_length=20)
     content = models.JSONField(default=dict)
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     previous_message_id = models.CharField(max_length=255, null=True, blank=True)
     model = models.TextField(null=True, blank=True)
-    
+
     # LLM Trace fields - expanded set
     llm_model = models.TextField(null=True, blank=True)
     llm_trace = models.JSONField(null=True, blank=True)
@@ -188,47 +179,60 @@ class Message(models.Model):
     output_reasoning_tokens = models.IntegerField(default=0)
     total_tokens = models.IntegerField(null=True, blank=True)
     total_cost = models.FloatField(null=True, blank=True)
-    
+
     class Meta:
-        db_table = 'ai_assistant_message'
-        ordering = ['created_at']
+        db_table = "ai_assistant_message"
+        ordering = ["created_at"]
         indexes = [
-            models.Index(fields=['conversation', 'created_at']),
-            models.Index(fields=['message_id']),
-            models.Index(fields=['role']),
-            models.Index(fields=['-created_at']),
+            models.Index(fields=["conversation", "created_at"]),
+            models.Index(fields=["message_id"]),
+            models.Index(fields=["role"]),
+            models.Index(fields=["-created_at"]),
         ]
-    
+
     def __str__(self):
         content_str = str(self.content) if self.content else ""
-        return f"{self.role}: {content_str[:50]}..." if len(content_str) > 50 else f"{self.role}: {content_str}"
-    
+        return (
+            f"{self.role}: {content_str[:50]}..."
+            if len(content_str) > 50
+            else f"{self.role}: {content_str}"
+        )
+
     def to_chat_message(self):
         """Convert Django model to Pydantic model"""
         import json
-        
+
         llm_trace = None
         if self.input_tokens is not None and self.output_tokens is not None:
             llm_trace = LllmTrace(
                 model=self.llm_model or "",
                 input_tokens=self.input_tokens,
-                input_tokens_details=InputTokensDetails(cached_tokens=self.input_cached_tokens),
+                input_tokens_details=InputTokensDetails(
+                    cached_tokens=self.input_cached_tokens
+                ),
                 output_tokens=self.output_tokens,
-                output_tokens_details=OutputTokensDetails(reasoning_tokens=self.output_reasoning_tokens),
-                total_tokens=self.total_tokens or (self.input_tokens + self.output_tokens),
-                total_cost=float(self.total_cost) if self.total_cost else 0.0
+                output_tokens_details=OutputTokensDetails(
+                    reasoning_tokens=self.output_reasoning_tokens
+                ),
+                total_tokens=self.total_tokens
+                or (self.input_tokens + self.output_tokens),
+                total_cost=float(self.total_cost) if self.total_cost else 0.0,
             )
-        
-        content_dict = json.loads(self.content) if isinstance(self.content, str) else self.content
+
+        content_dict = (
+            json.loads(self.content) if isinstance(self.content, str) else self.content
+        )
         content_obj = Content(**content_dict)
-        
+
         return ChatMessage(
             message_id=str(self.message_id),
             role=self.role,
             content=content_obj,
             created_at=self.created_at,
             conversation_id=str(self.conversation.conversation_id),
-            previous_message_id=str(self.previous_message_id) if self.previous_message_id else None,
+            previous_message_id=(
+                str(self.previous_message_id) if self.previous_message_id else None
+            ),
             model=self.model,
-            llm_trace=llm_trace
+            llm_trace=llm_trace,
         )

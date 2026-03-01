@@ -6,17 +6,20 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ai_assistant', '0005_remove_message_metadata_json_remove_message_text_and_more'),
+        (
+            "ai_assistant",
+            "0005_remove_message_metadata_json_remove_message_text_and_more",
+        ),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='message',
-            name='text_format',
+            model_name="message",
+            name="text_format",
         ),
         migrations.AlterField(
-            model_name='message',
-            name='role',
+            model_name="message",
+            name="role",
             field=models.CharField(max_length=20),
         ),
     ]

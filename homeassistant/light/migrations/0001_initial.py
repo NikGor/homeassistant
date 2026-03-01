@@ -9,75 +9,219 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='LightDevice',
+            name="LightDevice",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, verbose_name='Название')),
-                ('device_type', models.CharField(choices=[('yeelight', 'Yeelight'), ('philips_hue', 'Philips Hue'), ('generic', 'Generic Smart Light')], default='yeelight', max_length=20, verbose_name='Тип устройства')),
-                ('ip_address', models.GenericIPAddressField(verbose_name='IP адрес')),
-                ('port', models.PositiveIntegerField(default=55443, verbose_name='Порт')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Активен')),
-                ('room', models.CharField(blank=True, max_length=50, verbose_name='Комната')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=100, verbose_name="Название")),
+                (
+                    "device_type",
+                    models.CharField(
+                        choices=[
+                            ("yeelight", "Yeelight"),
+                            ("philips_hue", "Philips Hue"),
+                            ("generic", "Generic Smart Light"),
+                        ],
+                        default="yeelight",
+                        max_length=20,
+                        verbose_name="Тип устройства",
+                    ),
+                ),
+                ("ip_address", models.GenericIPAddressField(verbose_name="IP адрес")),
+                (
+                    "port",
+                    models.PositiveIntegerField(default=55443, verbose_name="Порт"),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Активен"),
+                ),
+                (
+                    "room",
+                    models.CharField(blank=True, max_length=50, verbose_name="Комната"),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name': 'Устройство освещения',
-                'verbose_name_plural': 'Устройства освещения',
+                "verbose_name": "Устройство освещения",
+                "verbose_name_plural": "Устройства освещения",
             },
         ),
         migrations.CreateModel(
-            name='LightGroup',
+            name="LightGroup",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, verbose_name='Название группы')),
-                ('room', models.CharField(blank=True, max_length=50, verbose_name='Комната')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('devices', models.ManyToManyField(related_name='groups', to='light.lightdevice', verbose_name='Устройства')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(max_length=100, verbose_name="Название группы"),
+                ),
+                (
+                    "room",
+                    models.CharField(blank=True, max_length=50, verbose_name="Комната"),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "devices",
+                    models.ManyToManyField(
+                        related_name="groups",
+                        to="light.lightdevice",
+                        verbose_name="Устройства",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Группа освещения',
-                'verbose_name_plural': 'Группы освещения',
+                "verbose_name": "Группа освещения",
+                "verbose_name_plural": "Группы освещения",
             },
         ),
         migrations.CreateModel(
-            name='LightSchedule',
+            name="LightSchedule",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, verbose_name='Название расписания')),
-                ('time', models.TimeField(verbose_name='Время')),
-                ('days_of_week', models.JSONField(default=list, verbose_name='Дни недели')),
-                ('action', models.CharField(choices=[('turn_on', 'Включить'), ('turn_off', 'Выключить')], max_length=10, verbose_name='Действие')),
-                ('brightness', models.PositiveIntegerField(blank=True, null=True, validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(100)], verbose_name='Яркость (%)')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Активно')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('device', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='light.lightdevice', verbose_name='Устройство')),
-                ('group', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='light.lightgroup', verbose_name='Группа')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        max_length=100, verbose_name="Название расписания"
+                    ),
+                ),
+                ("time", models.TimeField(verbose_name="Время")),
+                (
+                    "days_of_week",
+                    models.JSONField(default=list, verbose_name="Дни недели"),
+                ),
+                (
+                    "action",
+                    models.CharField(
+                        choices=[("turn_on", "Включить"), ("turn_off", "Выключить")],
+                        max_length=10,
+                        verbose_name="Действие",
+                    ),
+                ),
+                (
+                    "brightness",
+                    models.PositiveIntegerField(
+                        blank=True,
+                        null=True,
+                        validators=[
+                            django.core.validators.MinValueValidator(1),
+                            django.core.validators.MaxValueValidator(100),
+                        ],
+                        verbose_name="Яркость (%)",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Активно"),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "device",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="light.lightdevice",
+                        verbose_name="Устройство",
+                    ),
+                ),
+                (
+                    "group",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="light.lightgroup",
+                        verbose_name="Группа",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Расписание освещения',
-                'verbose_name_plural': 'Расписания освещения',
+                "verbose_name": "Расписание освещения",
+                "verbose_name_plural": "Расписания освещения",
             },
         ),
         migrations.CreateModel(
-            name='LightState',
+            name="LightState",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_on', models.BooleanField(default=False, verbose_name='Включен')),
-                ('brightness', models.PositiveIntegerField(default=100, validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(100)], verbose_name='Яркость (%)')),
-                ('color_temp', models.PositiveIntegerField(default=4000, validators=[django.core.validators.MinValueValidator(1700), django.core.validators.MaxValueValidator(6500)], verbose_name='Цветовая температура (K)')),
-                ('rgb_color', models.CharField(default='#FFFFFF', max_length=7, verbose_name='RGB цвет')),
-                ('last_updated', models.DateTimeField(auto_now=True)),
-                ('device', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='state', to='light.lightdevice')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("is_on", models.BooleanField(default=False, verbose_name="Включен")),
+                (
+                    "brightness",
+                    models.PositiveIntegerField(
+                        default=100,
+                        validators=[
+                            django.core.validators.MinValueValidator(1),
+                            django.core.validators.MaxValueValidator(100),
+                        ],
+                        verbose_name="Яркость (%)",
+                    ),
+                ),
+                (
+                    "color_temp",
+                    models.PositiveIntegerField(
+                        default=4000,
+                        validators=[
+                            django.core.validators.MinValueValidator(1700),
+                            django.core.validators.MaxValueValidator(6500),
+                        ],
+                        verbose_name="Цветовая температура (K)",
+                    ),
+                ),
+                (
+                    "rgb_color",
+                    models.CharField(
+                        default="#FFFFFF", max_length=7, verbose_name="RGB цвет"
+                    ),
+                ),
+                ("last_updated", models.DateTimeField(auto_now=True)),
+                (
+                    "device",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="state",
+                        to="light.lightdevice",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Состояние освещения',
-                'verbose_name_plural': 'Состояния освещения',
+                "verbose_name": "Состояние освещения",
+                "verbose_name_plural": "Состояния освещения",
             },
         ),
     ]

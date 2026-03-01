@@ -7,27 +7,34 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='WeatherData',
+            name="WeatherData",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('city', models.CharField(max_length=100)),
-                ('country', models.CharField(max_length=100)),
-                ('temperature', models.FloatField()),
-                ('description', models.CharField(max_length=200)),
-                ('humidity', models.IntegerField()),
-                ('pressure', models.FloatField()),
-                ('wind_speed', models.FloatField()),
-                ('icon', models.CharField(max_length=10)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("city", models.CharField(max_length=100)),
+                ("country", models.CharField(max_length=100)),
+                ("temperature", models.FloatField()),
+                ("description", models.CharField(max_length=200)),
+                ("humidity", models.IntegerField()),
+                ("pressure", models.FloatField()),
+                ("wind_speed", models.FloatField()),
+                ("icon", models.CharField(max_length=10)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'unique_together': {('city', 'country')},
+                "unique_together": {("city", "country")},
             },
         ),
     ]
