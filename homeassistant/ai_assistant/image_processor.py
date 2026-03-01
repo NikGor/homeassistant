@@ -104,7 +104,7 @@ async def process_images_in_ui_answer(
                     logger.info("image_proc_007: Replaced image prompt")
                 images_generated += 1
             else:
-                logger.warning(
+                logger.error(
                     f"image_proc_warning_001: Generation unsuccessful for {metadata['type']}"
                 )
 
