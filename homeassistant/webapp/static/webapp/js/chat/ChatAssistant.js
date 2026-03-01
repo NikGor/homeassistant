@@ -479,16 +479,16 @@ const IntegratedChatAssistant = () => {
             key: 'messages-area',
             className: `flex-1 overflow-y-auto px-4 ${!isLeftSidebarExpanded ? 'py-4' : 'py-4'}`
         }, [
-            // В свернутом режиме оборачиваем в контейнер который центрирует только если контент меньше экрана
-            !isLeftSidebarExpanded && messagesToShow.length === 1 
+            // В свернутом режиме с одним сообщением — центрируем по вертикали
+            !isLeftSidebarExpanded && messagesToShow.length === 1
                 ? React.createElement('div', {
                     key: 'single-message-container',
                     className: 'min-h-full flex flex-col justify-center'
                 }, [
                     React.createElement('div', {
                         key: 'centered-message',
-                        className: 'w-full max-w-4xl mx-auto'
-                    }, messagesToShow.map(message => 
+                        className: 'w-full max-w-3xl mx-auto'
+                    }, messagesToShow.map(message =>
                         React.createElement(ChatMessage, {
                             key: message.message_id,
                             message: message,
@@ -496,16 +496,19 @@ const IntegratedChatAssistant = () => {
                         })
                     ))
                 ])
-                : messagesToShow.map(message => 
+                : React.createElement('div', {
+                    key: 'messages-container',
+                    className: 'w-full max-w-3xl mx-auto'
+                }, messagesToShow.map(message =>
                     React.createElement(ChatMessage, {
                         key: message.message_id,
                         message: message,
                         onExecute: executeCommand
                     })
-                ),
+                )),
             isLoading && React.createElement('div', {
                 key: 'loading',
-                className: `flex ${!isLeftSidebarExpanded ? 'justify-center' : 'justify-start'} mb-6`
+                className: 'w-full max-w-3xl mx-auto flex justify-start mb-6'
             }, [
                 React.createElement('div', {
                     key: 'loading-bubble',

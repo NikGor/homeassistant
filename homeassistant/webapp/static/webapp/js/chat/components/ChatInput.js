@@ -546,7 +546,7 @@ const ChatInput = ({
     
     return React.createElement('div', {
         ref: containerRef,
-        className: 'w-full max-w-4xl mx-auto px-4'
+        className: 'w-full max-w-3xl mx-auto px-4'
     }, [
         React.createElement('div', {
             key: 'input-wrapper',
