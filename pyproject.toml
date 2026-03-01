@@ -35,6 +35,11 @@ sounddevice = "^0.4.7"
 simpleaudio = "^1.0.4"
 
 
+
+[tool.poetry.group.dev.dependencies]
+black = "^26.1.0"
+isort = "^8.0.1"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

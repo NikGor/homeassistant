@@ -1,4 +1,4 @@
-.PHONY: run install install-voice migrate shell superuser voice bump-archie-shared
+.PHONY: run install install-voice migrate shell superuser voice bump-archie-shared format
 
 # Run development server
 run:
@@ -30,6 +30,11 @@ voice:
 	AI_AGENT_URL=http://localhost:8005 \
 	WAKE_WORD_FILE=archie-voice/hey-archie_en_linux_v3_0_0.ppn \
 	poetry run python manage.py start_voice_assistant
+
+# Format code
+format:
+	poetry run black .
+	poetry run isort .
 
 docker-clean:
 	@echo "🧹 Cleaning Docker system..."
