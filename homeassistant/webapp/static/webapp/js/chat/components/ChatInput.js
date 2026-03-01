@@ -21,6 +21,12 @@ const ChatInput = ({
         window.demoMode = value;
         return value;
     });
+    const [debugMode, setDebugMode] = useState(() => {
+        const stored = localStorage.getItem('debugMode');
+        const value = stored === 'true';
+        window.debugMode = value;
+        return value;
+    });
     const [selectedStyle, setSelectedStyle] = useState(() => {
         return localStorage.getItem('selectedStyle') || 'Butler';
     });
@@ -157,6 +163,13 @@ const ChatInput = ({
         localStorage.setItem('demoMode', String(newValue));
         window.demoMode = newValue;
     }, [demoMode]);
+
+    const handleDebugModeToggle = useCallback(() => {
+        const newValue = !debugMode;
+        setDebugMode(newValue);
+        localStorage.setItem('debugMode', String(newValue));
+        window.debugMode = newValue;
+    }, [debugMode]);
     
     const handleStyleSelect = useCallback(async (style) => {
         setSelectedStyle(style);
@@ -376,6 +389,12 @@ const ChatInput = ({
                         checked: demoMode,
                         onChange: handleDemoModeToggle,
                         label: 'Demo Mode'
+                    }),
+                    React.createElement(ToggleSwitch, {
+                        key: 'debug-mode',
+                        checked: debugMode,
+                        onChange: handleDebugModeToggle,
+                        label: 'Debug Mode'
                     }),
                     React.createElement('div', {
                         key: 'divider',

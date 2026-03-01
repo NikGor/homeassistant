@@ -21,6 +21,14 @@ class OutputTokensDetails(BaseModel):
     )
 
 
+class PipelineStep(BaseModel):
+    """Single pipeline step timing record"""
+
+    step: str = Field(description="Name of the pipeline step")
+    status: str = Field(description="Status of the step")
+    duration_ms: int = Field(description="Duration of the step in milliseconds")
+
+
 class LllmTrace(BaseModel):
     """Complete LLM usage trace for cost tracking and analytics"""
 
@@ -64,6 +72,10 @@ class ChatMessage(BaseModel):
     )
     llm_trace: Optional[LllmTrace] = Field(
         default=None, description="LLM usage trace for this message"
+    )
+    pipeline_steps: list[PipelineStep] = Field(
+        default_factory=list,
+        description="Pipeline step timings for this message",
     )
 
 

@@ -134,20 +134,40 @@ const IntegratedChatAssistant = () => {
             const wsUrl = getWebSocketUrl();
             console.log('ChatAssistant: Opening WebSocket to', wsUrl);
             const ws = new WebSocket(wsUrl);
+            const pipelineSteps = [];
+            let currentStep = null;
+            let currentStepStart = null;
             ws.onopen = () => {
                 console.log('ChatAssistant: WebSocket connected, sending payload', payload);
                 ws.send(JSON.stringify(payload));
             };
             ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
+                const now = Date.now();
                 console.log('ChatAssistant: WebSocket message', msg);
                 switch (msg.type) {
                     case 'status':
+                        if (currentStep !== null) {
+                            pipelineSteps.push({
+                                step: currentStep.step,
+                                status: currentStep.status,
+                                duration_ms: now - currentStepStart
+                            });
+                        }
+                        currentStep = { step: msg.step || msg.message, status: msg.status || 'running' };
+                        currentStepStart = now;
                         setStatusMessage(msg.message || `${msg.step}: ${msg.status}`);
                         break;
                     case 'final':
+                        if (currentStep !== null) {
+                            pipelineSteps.push({
+                                step: currentStep.step,
+                                status: currentStep.status,
+                                duration_ms: now - currentStepStart
+                            });
+                        }
                         setStatusMessage('');
-                        resolve(msg.data);
+                        resolve({ result: msg.data, pipeline_steps: pipelineSteps });
                         break;
                     case 'error':
                         setStatusMessage('');
@@ -221,7 +241,7 @@ const IntegratedChatAssistant = () => {
             // Build chat history for context
             const chatHistory = buildChatHistory(messages);
             
-            const result = await sendMessageViaWebSocket({
+            const { result, pipeline_steps } = await sendMessageViaWebSocket({
                 user_name: userName,
                 response_format: backendFormat,
                 input: messageText,
@@ -252,7 +272,8 @@ const IntegratedChatAssistant = () => {
                 role: 'assistant',
                 content: assistantContent,
                 created_at: result.created_at || new Date().toISOString(),
-                llm_trace: result.llm_trace || {}
+                llm_trace: result.llm_trace || {},
+                pipeline_steps: pipeline_steps || []
             };
 
             console.log('ChatAssistant: assistantMessage', assistantMessage);
@@ -328,7 +349,7 @@ const IntegratedChatAssistant = () => {
             // Build chat history for context
             const chatHistoryForExecute = buildChatHistory(messages);
             
-            const result = await sendMessageViaWebSocket({
+            const { result, pipeline_steps } = await sendMessageViaWebSocket({
                 user_name: userName,
                 response_format: backendFormat,
                 input: assistantRequest,
@@ -356,7 +377,8 @@ const IntegratedChatAssistant = () => {
                 role: 'assistant',
                 content: assistantContent,
                 created_at: result.created_at || new Date().toISOString(),
-                llm_trace: result.llm_trace || {}
+                llm_trace: result.llm_trace || {},
+                pipeline_steps: pipeline_steps || []
             };
 
             // Save assistant message to DB

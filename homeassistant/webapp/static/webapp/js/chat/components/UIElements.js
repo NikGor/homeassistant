@@ -1192,8 +1192,48 @@ const ChatContent = ({ content, onExecute }) => {
 };
 
 const ChatMessage = ({ message, onExecute }) => {
+    const { useState } = React;
     const isUser = message.role === 'user';
-    
+    const [debugOpen, setDebugOpen] = useState(false);
+    const hasDebugData = message.llm_trace || (message.pipeline_steps && message.pipeline_steps.length > 0);
+    const showDebugButton = window.debugMode && hasDebugData;
+
+    const renderDebugPanel = () => React.createElement('div', {
+        key: 'debug-panel',
+        className: 'mt-2 bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/60'
+    }, [
+        message.llm_trace && React.createElement('div', { key: 'llm-trace' }, [
+            React.createElement('div', {
+                key: 'llm-header',
+                className: 'text-white/40 uppercase tracking-wider text-[10px] mb-1'
+            }, 'LLM Trace'),
+            React.createElement('div', { key: 'model' }, `model: ${message.llm_trace.model || '—'}`),
+            React.createElement('div', { key: 'tokens' },
+                `tokens: ${message.llm_trace.input_tokens || 0} in / ${message.llm_trace.output_tokens || 0} out / ${message.llm_trace.total_tokens || 0} total`
+            ),
+            message.llm_trace.input_tokens_details && message.llm_trace.input_tokens_details.cached_tokens > 0
+                && React.createElement('div', { key: 'cached' },
+                    `cached: ${message.llm_trace.input_tokens_details.cached_tokens}`
+                ),
+            React.createElement('div', { key: 'cost' }, `cost: $${(message.llm_trace.total_cost || 0).toFixed(6)}`)
+        ]),
+        message.pipeline_steps && message.pipeline_steps.length > 0 && React.createElement('div', { key: 'pipeline' }, [
+            React.createElement('div', {
+                key: 'pipeline-header',
+                className: 'text-white/40 uppercase tracking-wider text-[10px] mt-2 mb-1'
+            }, 'Pipeline'),
+            ...message.pipeline_steps.map((step, i) =>
+                React.createElement('div', {
+                    key: i,
+                    className: 'flex justify-between gap-4'
+                }, [
+                    React.createElement('span', { key: 'name' }, step.step || step.status),
+                    React.createElement('span', { key: 'dur', className: 'text-white/40' }, `${step.duration_ms}ms`)
+                ])
+            )
+        ])
+    ]);
+
     return React.createElement('div', {
         className: `mb-6 flex ${isUser ? 'justify-end' : 'justify-start'}`
     }, [
@@ -1204,8 +1244,8 @@ const ChatMessage = ({ message, onExecute }) => {
             React.createElement('div', {
                 key: 'message-bubble',
                 className: `backdrop-blur-lg rounded-3xl p-6 border shadow-2xl relative group ${
-                    isUser 
-                        ? 'bg-gradient-to-r from-slate-600 to-slate-700 border-slate-500/30 text-white' 
+                    isUser
+                        ? 'bg-gradient-to-r from-slate-600 to-slate-700 border-slate-500/30 text-white'
                         : 'bg-white/10 border-white/20 text-white'
                 }`
             }, [
@@ -1241,7 +1281,22 @@ const ChatMessage = ({ message, onExecute }) => {
                     content: message.content,
                     onExecute: onExecute
                 }))
-            ])
+            ]),
+            showDebugButton && React.createElement('div', {
+                key: 'debug-toggle',
+                className: `flex ${isUser ? 'justify-end' : 'justify-start'} mt-1`
+            }, React.createElement('button', {
+                className: 'text-white/30 hover:text-white/60 transition-colors text-xs flex items-center gap-1 px-2 py-0.5',
+                onClick: () => setDebugOpen(prev => !prev)
+            }, [
+                React.createElement('i', {
+                    key: 'icon',
+                    'data-lucide': debugOpen ? 'chevron-up' : 'chevron-right',
+                    className: 'w-3 h-3'
+                }),
+                React.createElement('span', { key: 'label' }, 'debug')
+            ])),
+            showDebugButton && debugOpen && renderDebugPanel()
         ])
     ]);
 };
