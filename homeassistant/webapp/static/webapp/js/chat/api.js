@@ -108,10 +108,10 @@ class ChatAPI {
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const result = await response.json();
-            return result.ui_answer;
+            return { ui_answer: result.ui_answer, imageCost: result.image_cost || 0 };
         } catch (error) {
             console.error('Failed to process images:', error);
-            return uiAnswer;
+            return { ui_answer: uiAnswer, imageCost: 0 };
         }
     }
 

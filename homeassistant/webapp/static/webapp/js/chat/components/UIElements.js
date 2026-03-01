@@ -1228,7 +1228,7 @@ const ChatMessage = ({ message, onExecute }) => {
                     className: 'flex justify-between gap-4'
                 }, [
                     React.createElement('span', { key: 'name' }, step.step || step.status),
-                    React.createElement('span', { key: 'dur', className: 'text-white/40' }, `${step.duration_ms}ms`)
+                    React.createElement('span', { key: 'dur', className: 'text-white/40' }, `${(step.duration_ms / 1000).toFixed(2)}s`)
                 ])
             )
         ])
@@ -1291,7 +1291,7 @@ const ChatMessage = ({ message, onExecute }) => {
             }, [
                 React.createElement('i', {
                     key: 'icon',
-                    'data-lucide': debugOpen ? 'chevron-up' : 'chevron-right',
+                    'data-lucide': debugOpen ? 'chevron-down' : 'chevron-right',
                     className: 'w-3 h-3'
                 }),
                 React.createElement('span', { key: 'label' }, 'debug')
