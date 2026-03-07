@@ -12,7 +12,7 @@ class Button(BaseModel):
     style: Optional[Literal["primary", "secondary", "success", "warning", "danger"]] = (
         Field(
             default="secondary",
-            description="Visual prominence: 'primary' for main action, 'secondary' for alternatives, etc. Use all styles consistently within the context.",
+            description="Button visual style. 'primary' for main action, 'secondary' for alternatives.",
         )
     )
     icon: Optional[str] = Field(
@@ -77,29 +77,7 @@ class Card(BaseModel):
     )
     image_prompt: Optional[str] = Field(
         default=None,
-        description="""
-        A prompt for optional card's title image illustration. 
-
-        VISUAL STYLES[Literal]:
-        
-        1. MOST OF THE CASES:
-        Photorealistic render of a single subject on a clean white background with soft shadows and even lighting.
-        
-        2. PERSONS:
-        Professional headshot portrait with neutral background, soft lighting, and natural expression.
-
-        3. MULTI-SUBJECT SCENES:
-        Clean, photorealistic style with balanced composition.
-        
-        4. Chit-chat / Fun:
-        Memes, Comics, Visual Puns/Wordplay in a simple, black-and-white line art style or minimalist flat design.
-        
-        All cards **MUST** have the identical style for title images in the same response. Control it via this prompt and details in it.
-        Use yaml-like structure for clarity.
-        Describe objects, background, lighting, and other important visual details.
-        **DO NOT** use complex scenes or busy backgrounds.
-        **DO NOT** use text in images, even in memes.
-        """,
+        description="Image generation prompt for card illustration. Follow card image style instructions from system prompt.",
     )
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None,
@@ -126,12 +104,7 @@ class LocationCard(BaseModel):
     )
     buttons: List[Union[FrontendButton, AssistantButton]] = Field(
         default=None,
-        description="""
-        Action buttons specific to the location
-        Always use the frontend button "open_map"
-        Add 1-2 assistant buttons for another relevant quick action
-        Maximum 3 buttons per location
-        """,
+        description="Action buttons for location navigation and quick actions. Max 3.",
     )
 
 
@@ -164,13 +137,7 @@ class ProductCard(BaseModel):
     # Actions
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None,
-        description="""
-        Action buttons specific to the product
-        Always include: frontend button "check_amazon" for product details
-        Add assistant button for finding other stores/retailers
-        Add assistant button for price comparison or similar products
-        Maximum 3 buttons per product
-        """,
+        description="Action buttons for product: purchase, compare, find alternatives. Max 3.",
     )
 
 
@@ -207,12 +174,7 @@ class MovieCard(BaseModel):
     # Actions
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None,
-        description="""
-        Action buttons specific to the movie
-        Include frontend button "open_on_youtube_video" for trailers
-        Add assistant buttons for recommendations or streaming info
-        Maximum 3 buttons per movie
-        """,
+        description="Action buttons for movie: trailer, streaming, recommendations. Max 3.",
     )
 
 
@@ -252,12 +214,7 @@ class SeriesCard(BaseModel):
     # Actions
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None,
-        description="""
-        Action buttons specific to the series
-        Include frontend button "open_on_youtube_video" for trailers/clips
-        Add assistant buttons for episode guides or streaming info
-        Maximum 3 buttons per series
-        """,
+        description="Action buttons for series: trailer, episode guide, streaming. Max 3.",
     )
 
 
@@ -287,12 +244,7 @@ class MusicCard(BaseModel):
     # Actions
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None,
-        description="""
-        Action buttons specific to the music
-        Include frontend button "open_on_youtube_music" for listening
-        Add assistant buttons for similar music or artist info
-        Maximum 3 buttons per music card
-        """,
+        description="Action buttons for music: listen, similar tracks, artist info. Max 3.",
     )
 
 
@@ -311,12 +263,7 @@ class ArticleCard(BaseModel):
     )
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None,
-        description="""
-        Action buttons specific to the article
-        Always include: frontend button "url_to" for the most relevant link.
-        Add assistant button for summarizing or sharing
-        Maximum 3 buttons per article
-        """,
+        description="Action buttons for article: open link, summarize, share. Max 3.",
     )
 
 
@@ -375,12 +322,7 @@ class DocumentCard(BaseModel):
     # Actions
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None,
-        description="""
-        Action buttons specific to the document
-        Add assistant button "Подробнее" to get full document content
-        Add assistant button "Найти похожие" for related documents
-        Maximum 2 buttons per document
-        """,
+        description="Action buttons for document: view details, find similar. Max 2.",
     )
 
 
@@ -393,23 +335,14 @@ class ShoppingListCard(BaseModel):
     title: str = Field(description="List title")
     items_by_department: Optional[Dict[str, List[str]]] = Field(
         default=None,
-        description="""
-        Dictionary organized by German store departments.
-        Don't use recipe units like: '90g pancetta', '3 large eggs', '50g pecorino cheese'
-        Round up quantities to nearest store unit: kg, g, L, ml, pieces, packs, bottles, cans
-        """,
+        description="Shopping items grouped by store department. Use store units (kg, g, L, packs), not recipe units.",
     )
     total_cost: int = Field(
         default=0, description="Total estimated cost of all items in the list"
     )
     buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
         default=None,
-        description="""
-        Action buttons specific to the shopping list
-        Always include: frontend button "export_to_notes" for saving
-        Add assistant button for modifying or optimizing the list
-        Maximum 2 buttons per shopping list
-        """,
+        description="Action buttons for shopping list: save to notes, modify. Max 2.",
     )
 
 
@@ -488,14 +421,7 @@ class ContactCard(BaseModel):
     )
     buttons: List[Union[FrontendButton, AssistantButton]] = Field(
         default=None,
-        description="""
-        Action buttons specific to contacting the person
-        If the contact has a phone number — add a frontend button 'call' (and an assistant button for clarifying the best time to call)
-        If the contact has an email — add a frontend button 'email' (and an assistant button for sending a template email)
-        If the contact has a messenger — add a frontend button 'message'
-        For each contact, add 1 assistant button for a quick action (e.g., 'Book an appointment', 'Request details')
-        Maximum 3 buttons per contact
-    """,
+        description="Action buttons for contact: call, email, message, schedule. Max 3.",
     )
 
 
@@ -589,25 +515,19 @@ class TextAnswer(BaseModel):
     """Rich text content with appropriate formatting for optimal readability"""
 
     type: Literal["plain", "markdown", "html", "voice"] = Field(
-        description="Content format: 'markdown' for structured text, 'plain' for simple responses, 'html' for rich formatting"
+        description="Text format: 'markdown' for structured, 'plain' for simple, 'html' for rich"
     )
-    text: str = Field(
-        description="Well-structured content with clear paragraphs. With markdown and html use bold, cursive, headers, bullet points for lists, and conversational tone."
-    )
+    text: str = Field(description="Main text content in the specified format.")
 
 
 class Chart(BaseModel):
     """Chart.js compatible chart configuration for data visualization"""
 
     chart_type: Literal["bar", "line", "pie", "doughnut", "area", "scatter"] = Field(
-        description="Chart.js chart type: 'pie'/'doughnut' for parts-of-whole, 'bar' for comparisons, 'line'/'area' for trends"
+        description="Chart.js chart type"
     )
     chart_config: str = Field(
-        description=(
-            "Complete Chart.js configuration as JSON string ready for frontend parsing. "
-            "Must include 'type', 'data' with labels and datasets, and mobile-optimized 'options'. "
-            "Use proper Chart.js format with backgroundColor, responsive: true, maintainAspectRatio: false"
-        )
+        description="Chart.js configuration JSON string. Must include type, data (labels, datasets), and mobile-optimized options."
     )
     title: Optional[str] = Field(
         default=None,
@@ -626,48 +546,16 @@ class Chart(BaseModel):
 class Image(BaseModel):
     """Standalone image component for visual content display"""
 
-    image_prompt: str = Field(description="""
-            Generate image prompt in English. Match user request to ONE format from Visual Library below.
-            **ALWAYS PREFER** to include this type of ui elements in your response at least once to clarify user intent and enhance UX.
-
-            CONSTRAINTS:
-            - NO statistical charts (bar, pie, line, scatter)
-            - NO generic stock photos
-            - Style: clean, professional, informative
-            - Use pseudo-text or legible labels where appropriate
-
-            VISUAL LIBRARY:
-
-            1. STRUCTURES & CONNECTIONS
-            Mind Map | Flowchart | Tree/Genealogy | Concept Map | Org Chart
-
-            2. MAPS & ARCHITECTURE
-            Fantasy Map (vintage parchment) | Transit Map | Floor Plan | Isometric Section | Landscape Plan | Evacuation/Seating Plan
-
-            3. ENGINEERING & TECH
-            Exploded View | Patent Illustration (B&W line art) | Circuit Diagram | Cutaway View | Network Topology
-
-            4. SCIENCE & NATURE
-            Anatomical Atlas | Botanical Illustration | Chemical Structure | Geological Cross-Section | Celestial Map | Educational Poster
-
-            5. INSTRUCTIONS & SEQUENCES
-            Assembly Instruction (IKEA style) | Knolling (top-down 90°) | Storyboard | User Journey | Visual Recipe
-            
-            7. NEWS & WEATHER
-            Infographic | Data Visualization | Political Cartoon | Timeline | Visual Summary
-            
-            8. CHITCHAT & FUN
-            Infographic | Visual Pun/Wordplay | Character Design Sheet | Memes | Comics
-
-            STYLES: Technical illustration, Vintage map, Blueprint, Isometric vector, Hand-drawn diagram, Whiteboard, Flat design, Minimalist, Realistic rendering with white background
-        """)
+    image_prompt: str = Field(
+        description="AI image generation prompt in English. Follow image format instructions from system prompt."
+    )
 
 
 class AdvancedAnswerItem(BaseModel):
     """Strategic UI component with clear hierarchy and user flow optimization"""
 
     order: int = Field(
-        description="Visual sequence (1-based). Lower numbers appear first. Use 10, 20, 30 for easy reordering."
+        description="Display order (1-based). Use increments of 10 for easy reordering."
     )
     type: Literal[
         "text_answer",
@@ -679,7 +567,7 @@ class AdvancedAnswerItem(BaseModel):
         "email_form",
         "note_form",
     ] = Field(
-        description="Component type - choose based on user intent: 'card' for actions, 'table' for comparison, 'text_answer' for explanation, 'chart' for data visualization, 'image' for visual content"
+        description="UI component type. Follow component selection instructions from system prompt."
     )
     content: Union[
         TextAnswer,
@@ -690,18 +578,16 @@ class AdvancedAnswerItem(BaseModel):
         EventForm,
         EmailForm,
         InternalNoteForm,
-    ] = Field(
-        description="Component payload - ensure content matches type and supports user's immediate next action"
-    )
+    ] = Field(description="Component content payload matching the selected type.")
     layout_hint: Optional[Literal["full_width", "half_width", "inline", "emphasis"]] = (
         Field(
             default="full_width",
-            description="Visual layout guidance: 'emphasis' for critical items, 'inline' for quick actions, 'half_width' for comparisons",
+            description="Visual layout: 'emphasis' for critical, 'inline' for quick, 'half_width' for side-by-side",
         )
     )
     spacing: Optional[Literal["tight", "normal", "loose"]] = Field(
         default="normal",
-        description="Vertical spacing around component: 'tight' for related items, 'loose' for section breaks",
+        description="Vertical spacing: 'tight' for related items, 'loose' for section breaks",
     )
 
 
@@ -709,7 +595,7 @@ class QuickActionButtons(BaseModel):
     """Persistent action bar for immediate user needs and conversation flow"""
 
     buttons: List[AssistantButton] = Field(
-        description="2-3 action buttons representing most likely next steps. Order by user priority, include 1 primary action."
+        description="2-3 quick action buttons for likely next steps."
     )
 
 
@@ -847,68 +733,6 @@ class ClimateWidget(BaseModel):
 # =============================================================================
 # FOOTBALL WIDGET
 # =============================================================================
-
-
-class PlayerStats(BaseModel):
-    """FIFA-style player statistics"""
-
-    pace: int = Field(description="Pace rating 1-99", ge=1, le=99)
-    shooting: int = Field(description="Shooting rating 1-99", ge=1, le=99)
-    passing: int = Field(description="Passing rating 1-99", ge=1, le=99)
-    dribbling: int = Field(description="Dribbling rating 1-99", ge=1, le=99)
-    defending: int = Field(description="Defending rating 1-99", ge=1, le=99)
-    physical: int = Field(description="Physical rating 1-99", ge=1, le=99)
-
-
-class PlayerCard(BaseModel):
-    """Football player card with FIFA-style attributes"""
-
-    type: Literal["player_card"] = Field(
-        "player_card", description="Card type identifier"
-    )
-    player_id: str = Field(description="Unique player identifier")
-    name: str = Field(description="Player full name")
-    position: Literal[
-        "GK", "CB", "LB", "RB", "CDM", "CM", "CAM", "LM", "RM", "LW", "RW", "ST", "CF"
-    ] = Field(description="Playing position abbreviation")
-    overall_rating: int = Field(description="Overall FIFA rating 1-99", ge=1, le=99)
-    stats: PlayerStats = Field(description="Six FIFA-style stat categories")
-    club_name: str = Field(description="Current club name")
-    club_logo_url: Optional[str] = Field(
-        default=None, description="URL to club logo image"
-    )
-    national_team: Optional[str] = Field(
-        default=None, description="National team if applicable"
-    )
-    nationality: str = Field(description="Player nationality")
-    age: int = Field(description="Player age")
-    photo_url: Optional[str] = Field(default=None, description="URL to player photo")
-
-
-class TeamCard(BaseModel):
-    """Football team card with details"""
-
-    type: Literal["team_card"] = Field("team_card", description="Card type identifier")
-    team_id: str = Field(description="Unique team identifier")
-    name: str = Field(description="Team full name")
-    short_name: str = Field(description="Team short name (e.g., 'MUN', 'BAR')")
-    city: str = Field(description="Home city")
-    country: str = Field(description="Country")
-    stadium: str = Field(description="Home stadium name")
-    stadium_capacity: Optional[int] = Field(
-        default=None, description="Stadium capacity"
-    )
-    home_kit_color: str = Field(
-        description="Primary home kit color (hex, e.g., '#DA291C')"
-    )
-    away_kit_color: str = Field(
-        description="Primary away kit color (hex, e.g., '#FFFFFF')"
-    )
-    coach: str = Field(description="Head coach name")
-    logo_url: Optional[str] = Field(default=None, description="URL to team logo")
-    squad: Optional[List[str]] = Field(
-        default=None, description="List of player names in squad"
-    )
 
 
 class MatchInfo(BaseModel):
@@ -1196,137 +1020,23 @@ class DeviceIcon(BaseModel):
     tooltip: str = Field(description="Device status details for hover display")
 
 
-class DashboardTile(BaseModel):
-    """Dashboard tile representing a smart home category or app"""
+class DashboardTileState(BaseModel):
+    """Smart home dashboard tile state"""
 
-    category: str = Field(
-        description="Category identifier for routing (e.g., 'light', 'climate')"
+    type: Literal["light", "climate", "music", "documents", "apps", "settings"] = Field(
+        description="Tile type identifier"
     )
-    title: str = Field(description="Tile title (e.g., 'Свет', 'Климат')")
-    subtitle: str = Field(
-        description="Status summary (e.g., '2 из 3 включены', 'средняя 21.8°C')"
-    )
-    icon: str = Field(description="Lucide icon name for the tile")
-    status_color: Literal[
-        "orange", "green", "blue", "red", "purple", "yellow", "gray"
-    ] = Field(description="Color indicating overall tile status")
-    quick_actions: Optional[List[str]] = Field(
-        default=None, description="Quick action button labels"
-    )
-    devices: Optional[List[DeviceIcon]] = Field(
-        default=None, description="List of device icons to display within the tile"
-    )
-
-
-class LightTile(BaseModel):
-    """Light control dashboard tile"""
-
-    type: Literal["light"] = Field("light", description="Tile type identifier")
-    title: str = Field(default="Light", description="Tile title")
-    subtitle: str = Field(description="Status summary (e.g., '2 of 3 on')")
-    icon: str = Field(default="lightbulb", description="Lucide icon name")
+    title: str = Field(description="Tile title")
+    subtitle: str = Field(description="Status summary")
+    icon: str = Field(description="Lucide icon name")
     status_color: Literal[
         "orange", "green", "blue", "red", "purple", "yellow", "gray"
     ] = Field(description="Color indicating overall status")
     quick_actions: Optional[List[AssistantButton]] = Field(
-        default=None, description="2 quick action buttons for immediate light control"
+        default=None, description="2 quick action buttons"
     )
     devices: Optional[List[DeviceIcon]] = Field(
-        default=None, description="List of light device icons"
-    )
-
-
-class ClimateTile(BaseModel):
-    """Climate control dashboard tile"""
-
-    type: Literal["climate"] = Field("climate", description="Tile type identifier")
-    title: str = Field(default="Climate", description="Tile title")
-    subtitle: str = Field(description="Status summary (e.g., 'average home 21.8°C')")
-    icon: str = Field(default="thermometer", description="Lucide icon name")
-    status_color: Literal[
-        "orange", "green", "blue", "red", "purple", "yellow", "gray"
-    ] = Field(description="Color indicating overall status")
-    quick_actions: Optional[List[AssistantButton]] = Field(
-        default=None, description="2 quick action buttons for immediate climate control"
-    )
-    devices: Optional[List[DeviceIcon]] = Field(
-        default=None, description="List of climate device icons"
-    )
-
-
-class MusicTile(BaseModel):
-    """Music player dashboard tile"""
-
-    type: Literal["music"] = Field("music", description="Tile type identifier")
-    title: str = Field(default="Music", description="Tile title")
-    subtitle: str = Field(description="Currently playing track and artist")
-    icon: str = Field(default="music", description="Lucide icon name")
-    status_color: Literal[
-        "orange", "green", "blue", "red", "purple", "yellow", "gray"
-    ] = Field(default="purple", description="Color indicating player status")
-    quick_actions: Optional[List[AssistantButton]] = Field(
-        default=None, description="2 quick action buttons for music control"
-    )
-    devices: Optional[List[DeviceIcon]] = Field(
-        default=None, description="Playback controls as device icons"
-    )
-
-
-class DocumentsTile(BaseModel):
-    """Documents dashboard tile"""
-
-    type: Literal["documents"] = Field("documents", description="Tile type identifier")
-    title: str = Field(default="Documents", description="Tile title")
-    subtitle: str = Field(
-        description="Document status (e.g., 'new today: 2, source: Gmail')"
-    )
-    icon: str = Field(default="file-text", description="Lucide icon name")
-    status_color: Literal[
-        "orange", "green", "blue", "red", "purple", "yellow", "gray"
-    ] = Field(default="blue", description="Color indicating document status")
-    quick_actions: Optional[List[AssistantButton]] = Field(
-        default=None, description="2 quick action buttons for document management"
-    )
-    devices: Optional[List[DeviceIcon]] = Field(
-        default=None, description="Optional document source icons"
-    )
-
-
-class AppsTile(BaseModel):
-    """AI-powered apps dashboard tile"""
-
-    type: Literal["apps"] = Field("apps", description="Tile type identifier")
-    title: str = Field(default="Apps", description="Tile title")
-    subtitle: str = Field(
-        description="Apps description (e.g., 'AI-generated utilities')"
-    )
-    icon: str = Field(default="grid-3x3", description="Lucide icon name")
-    status_color: Literal[
-        "orange", "green", "blue", "red", "purple", "yellow", "gray"
-    ] = Field(default="green", description="Color indicating apps status")
-    quick_actions: Optional[List[AssistantButton]] = Field(
-        default=None, description="2 quick action buttons for launching apps"
-    )
-    devices: Optional[List[DeviceIcon]] = Field(
-        default=None, description="Optional app icons"
-    )
-
-
-class SettingsTile(BaseModel):
-    """Settings dashboard tile"""
-
-    type: Literal["settings"] = Field("settings", description="Tile type identifier")
-    title: str = Field(default="Settings", description="Tile title")
-    subtitle: str = Field(description="Settings summary (e.g., 'Configuration')")
-    icon: str = Field(default="settings", description="Lucide icon name")
-    status_color: Literal[
-        "orange", "green", "blue", "red", "purple", "yellow", "gray"
-    ] = Field(default="gray", description="Color indicating settings status")
-    quick_actions: Optional[List[AssistantButton]] = Field(
-        default=None, description="2 quick action buttons for settings access"
-    )
-    devices: Optional[List[DeviceIcon]] = Field(
-        default=None, description="Optional settings icons"
+        default=None, description="Device icons within the tile"
     )
 
 
@@ -1340,27 +1050,15 @@ class Dashboard(BaseModel):
     type: Literal["dashboard"] = Field(
         "dashboard", description="Type identifier for frontend rendering"
     )
-    light: LightTile = Field(
-        description="Light control tile with device states and quick actions"
-    )
-    climate: ClimateTile = Field(
-        description="Climate control tile with temperature states and quick actions"
-    )
-    music: MusicTile = Field(
-        description="Music player tile with playback state and quick actions"
-    )
-    documents: DocumentsTile = Field(
-        description="Documents tile with sync status and quick actions"
-    )
-    apps: AppsTile = Field(
-        description="AI apps tile with available utilities and quick actions"
-    )
-    settings: SettingsTile = Field(
-        description="Settings tile with configuration access and quick actions"
-    )
+    light: DashboardTileState = Field(description="Light control tile")
+    climate: DashboardTileState = Field(description="Climate control tile")
+    music: DashboardTileState = Field(description="Music player tile")
+    documents: DashboardTileState = Field(description="Documents tile")
+    apps: DashboardTileState = Field(description="AI apps tile")
+    settings: DashboardTileState = Field(description="Settings tile")
     quick_actions: Optional[List[AssistantButton]] = Field(
         default=None,
-        description="3 Global quick action buttons below tiles for common tasks",
+        description="3 global quick action buttons for common tasks",
     )
 
 
