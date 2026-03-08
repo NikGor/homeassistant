@@ -14,14 +14,11 @@ Use the Jira MCP tools (`mcp__jira-mcp__*`) or `python scripts/jira_tool.py` CLI
    - `issuetype`: `task` | `bug` | `story` | `subtask` | `epic`
    - `parent`: epic key for subtasks
 
-**Step 3 — create branch:**
-`git checkout -b <JIRA-KEY>-<short-english-description>` (e.g. `ARCHIE-42-add-token-cost-calc`)
+**Step 6 — git push:**
+`git push origin main`
 
-**Step 7 — git push + PR:**
-Use `/git:pr` command.
-
-**Step 8 — update after PR is open:**
-1. Transition to PR OPEN: `mcp__jira-mcp__jira_post` to `/rest/api/3/issue/{key}/transitions` with `{"transition": {"id": "2"}}`
+**Step 7 — update after push:**
+1. Transition to Done: `mcp__jira-mcp__jira_post` to `/rest/api/3/issue/{key}/transitions` with `{"transition": {"id": "41"}}`
 2. Comment: add brief report — what was done, key decisions, issues encountered
 
 JIRA project: **ARCHIE** on `badich.atlassian.net`
