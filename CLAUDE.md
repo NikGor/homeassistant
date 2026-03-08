@@ -52,16 +52,16 @@ AI_AGENT_URL          # http://archie-ai-agent:8005
 
 ## Task Workflow
 
-When receiving a task, follow this strict 8-step process:
+Use `/jira:workflow` to run through the full checklist. Steps:
 
 1. **Analyze** — Study the task. Analyze the codebase and estimate the required diff. Define acceptance criteria. If the task is large enough, break it into subtasks.
-2. **JIRA** — Check existing JIRA tasks. If matching tasks exist, use them (update if needed). If not, create tasks of the appropriate type via `scripts/jira_tool.py`. Each JIRA task must have: description, affected modules, acceptance criteria.
+2. **JIRA** → `/jira:task` — Check existing JIRA tasks. If matching tasks exist, use them (update if needed). If not, create tasks of the appropriate type. Each JIRA task must have: description, affected modules, acceptance criteria.
 3. **Branch** — Create a git branch named `<JIRA-KEY>-<short-english-description>` (e.g. `ARCHIE-42-add-token-cost-calc`). If there is no JIRA task, use just a short English description. Switch to the branch before any code changes.
 4. **Implement** — Implement according to plan and coding rules. Create necessary and sufficient unit and smoke tests (temporary or permanent).
-5. **Review** — Review relevant modules post-implementation. Ensure no dead code was left behind.
-6. **Test** — Run `poetry run python manage.py test` and any task-specific temporary unit tests.
-7. **Git** — If the task is done and meets acceptance criteria: `git add` changed/created modules one by one with a short commit message each. Then `git push` and open a PR via `gh pr create`.
-8. **JIRA update** — Transition the JIRA task to `PR OPEN` (id `2`). Add a comment to the task with: any issues encountered during implementation, and a brief final report (what was done, what changed, key decisions made).
+5. **Review** → agent `code-reviewer` — Review relevant modules post-implementation. Ensure no dead code was left behind.
+6. **Test** → `/test:run` — Run `./execute_tests.sh` and any task-specific temporary unit tests.
+7. **Git** → `/git:commit` then `/git:pr` — Stage changed modules one by one with a short commit message each. Then push and open a PR.
+8. **JIRA update** → `/jira:task` — Transition the JIRA task to `PR OPEN` (id `2`). Add a comment to the task with: any issues encountered during implementation, and a brief final report (what was done, what changed, key decisions made).
 
 ### JIRA Integration
 
@@ -85,14 +85,37 @@ poetry run python manage.py makemigrations  # After model changes
 
 ### Running Tests
 
+Use `/test:run` or directly:
+
 ```bash
-poetry run python manage.py test        # All tests
-poetry run python manage.py test <app>  # Single app
+./execute_tests.sh                      # All tests
+./execute_tests.sh -m "not llm"         # Unit tests only (no API keys needed)
+./execute_tests.sh -m llm               # Smoke tests (requires .env with API keys)
+./execute_tests.sh -v -k <test_name>    # Specific test
 ```
 
 Mock external APIs in tests: `@patch('requests.get')` for weather service, etc.
 
 Developer scripts (not production code): `scripts/`
+
+### Skills & Agents
+
+| Skill | Purpose |
+|-------|---------|
+| `/jira:workflow` | Full 8-step task checklist |
+| `/jira:task` | JIRA task management |
+| `/git:commit` | Stage + commit by convention |
+| `/git:pr` | Create PR via gh |
+| `/test:run` | Run test suite |
+| `/docs:lookup` | Library docs via context7 MCP |
+| `/django:migrate` | Safe migration workflow |
+| `/archie-shared:release` | Release archie-shared package |
+
+| Agent | Purpose |
+|-------|---------|
+| `backend-developer` | Django models/views/API/tests in isolation |
+| `frontend-developer` | Templates/static/URL routing in isolation |
+| `code-reviewer` | Review diff before commit (step 5) |
 
 ---
 
