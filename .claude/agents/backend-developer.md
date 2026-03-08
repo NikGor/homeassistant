@@ -22,21 +22,9 @@ response = requests.post(f'{AI_AGENT_URL}/chat', json=data)
 
 **Device controller pattern** — `light/light_controller.py` manages connection pooling, thread-safety, auto-discovery via `yeelight`.
 
-## Code style rules
+## Code style
 
-- Python 3.11+, PEP8, type annotations on all signatures
-- `str | None` union syntax (not `Optional`)
-- f-strings, `"""` docstrings, `"` single-line strings
-- Multi-parameter functions: each parameter on its own line
-- Pydantic: `BaseModel`, use `model_dump()` / `model_validate()`
-- No `print()` — use `logger.info()` / `logger.error()` only
-- Logging format: `logger.info(f"module_001: Description \033[34m{id}\033[0m")`
-  - Blue `\033[34m` — IDs, URLs
-  - Yellow `\033[33m` — numbers
-  - Red `\033[31m` — errors
-- No global state, no hardcoded values, no wildcard imports
-- Functions: `get_`, `create_`, `update_`, `execute_`, `parse_` prefixes
-- Modules: `*_tool.py`, `*_service.py`, `*_utils.py`, `*_controller.py`
+Follow `agent_docs/code_style.md` and `agent_docs/logging.md`.
 
 ## Environment variables
 
