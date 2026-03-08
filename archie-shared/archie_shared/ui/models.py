@@ -86,7 +86,7 @@ class Card(BaseModel):
 
 
 class LocationCard(BaseModel):
-    """Location-focused card for places with optional navigation capabilities"""
+    """Use for physical locations, addresses, restaurants, and venues — never for abstract concepts. Always include an `open_map` FrontendButton."""
 
     type: Literal["location_card"] = Field(
         "location_card", description="Type of the card for frontend rendering"
@@ -109,7 +109,7 @@ class LocationCard(BaseModel):
 
 
 class ProductCard(BaseModel):
-    """Product-focused card for items with specifications and purchase options"""
+    """Use for physical/digital products. Include `show_details` FrontendButton. Provide price, rating, and 3-5 key specs."""
 
     type: Literal["product_card"] = Field(
         "product_card", description="Type of the card for frontend rendering"
@@ -142,7 +142,7 @@ class ProductCard(BaseModel):
 
 
 class MovieCard(BaseModel):
-    """Movie-focused informational card with key details"""
+    """Use for movies. Include `open_on_youtube_video` FrontendButton for trailer/watching."""
 
     type: Literal["movie_card"] = Field(
         "movie_card", description="Type of the card for frontend rendering"
@@ -179,7 +179,7 @@ class MovieCard(BaseModel):
 
 
 class SeriesCard(BaseModel):
-    """TV series-focused informational card with show details"""
+    """Use for TV shows and series. Include `open_on_youtube_video` FrontendButton."""
 
     type: Literal["series_card"] = Field(
         "series_card", description="Type of the card for frontend rendering"
@@ -219,7 +219,7 @@ class SeriesCard(BaseModel):
 
 
 class MusicCard(BaseModel):
-    """Music-focused card with track, album, and artist information"""
+    """Use for music tracks, artists, and albums. Include `open_on_youtube_music` FrontendButton for listening."""
 
     type: Literal["music_card"] = Field(
         "music_card", description="Type of the card for frontend rendering"
@@ -249,7 +249,7 @@ class MusicCard(BaseModel):
 
 
 class ArticleCard(BaseModel):
-    """Article-focused card for news and blog content"""
+    """Use for news articles and blog posts. Include `export_to_notes` FrontendButton for saving."""
 
     type: Literal["article_card"] = Field(
         "article_card", description="Type of the card for frontend rendering"
@@ -268,7 +268,7 @@ class ArticleCard(BaseModel):
 
 
 class DocumentCard(BaseModel):
-    """Document search result card for displaying found documents from vector search"""
+    """Use for document search results (invoices, contracts, insurance, receipts). Show filename, snippet, relevance score, extracted date/amount."""
 
     type: Literal["document_card"] = Field(
         "document_card", description="Type of the card for frontend rendering"
@@ -327,7 +327,7 @@ class DocumentCard(BaseModel):
 
 
 class ShoppingListCard(BaseModel):
-    """Shopping list card with items organized by store departments"""
+    """Use for grocery and shopping lists grouped by department. Include `export_to_notes` FrontendButton."""
 
     type: Literal["shopping_list_card"] = Field(
         "shopping_list_card", description="Type of the card for frontend rendering"
@@ -347,7 +347,7 @@ class ShoppingListCard(BaseModel):
 
 
 class WeatherCard(BaseModel):
-    """Weather-focused card with current conditions and forecast"""
+    """ALWAYS use for weather queries — NEVER use a generic Card for weather. Include temperature, condition, forecast, and clothing advice."""
 
     type: Literal["weather_card"] = Field(
         "weather_card", description="Type of the card for frontend rendering"
@@ -391,7 +391,7 @@ class WeatherCard(BaseModel):
 
 
 class ContactCard(BaseModel):
-    """People-focused card optimized for immediate communication actions"""
+    """Use for people and organizations with contact details. Include call/email/message FrontendButtons."""
 
     type: Literal["contact_card"] = Field(
         "contact_card", description="Type of the card for frontend rendering"
@@ -474,7 +474,7 @@ class Table(BaseModel):
 
 
 class EmailForm(BaseModel):
-    """Email composition form with structured fields for clarity and actionability"""
+    """Use for composing emails. ALWAYS render this form for email creation — do not ask clarifying questions. Pre-fill known fields; leave others empty for user input."""
 
     to: Optional[str] = Field(
         description="Recipient email address in standard format (e.g., 'user@example.com')"
@@ -486,7 +486,7 @@ class EmailForm(BaseModel):
 
 
 class EventForm(BaseModel):
-    """Calendar event creation form with essential details for scheduling"""
+    """Use for scheduling/adding calendar events. ALWAYS render this form for event creation. Pre-fill known fields; leave others empty for user input."""
 
     title: str = Field(description="Event title or name")
     date: str = Field(description="Event date in DD.MM.YYYY format")
@@ -505,7 +505,7 @@ class EventForm(BaseModel):
 
 
 class InternalNoteForm(BaseModel):
-    """Internal note creation form for personal organization"""
+    """Use for saving notes. ALWAYS render this form for note creation. Pre-fill known fields; leave others empty for user input."""
 
     title: Optional[str] = Field(default=None, description="Note title or headline")
     content: str = Field(description="Main body content of the note")
@@ -521,7 +521,7 @@ class TextAnswer(BaseModel):
 
 
 class Chart(BaseModel):
-    """Chart.js compatible chart configuration for data visualization"""
+    """Use for data visualization. chart_config must be complete Chart.js JSON: type, data with labels + datasets with backgroundColor, and mobile options: responsive: true, maintainAspectRatio: false."""
 
     chart_type: Literal["bar", "line", "pie", "doughnut", "area", "scatter"] = Field(
         description="Chart.js chart type"
