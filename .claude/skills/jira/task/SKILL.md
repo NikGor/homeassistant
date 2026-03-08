@@ -1,5 +1,6 @@
 ---
 description: Manage JIRA tasks following the project workflow
+disable-model-invocation: true
 ---
 
 Use the Jira MCP tools (`mcp__jira-mcp__*`) or `python scripts/jira_tool.py` CLI.
@@ -17,11 +18,10 @@ Use the Jira MCP tools (`mcp__jira-mcp__*`) or `python scripts/jira_tool.py` CLI
 `git checkout -b <JIRA-KEY>-<short-english-description>` (e.g. `ARCHIE-42-add-token-cost-calc`)
 
 **Step 7 — git push + PR:**
-1. `git push` the branch
-2. Open PR: `gh pr create --title "<JIRA-KEY>: <summary>" --body "..."`
+Use `/git:pr` command.
 
 **Step 8 — update after PR is open:**
-1. Transition to PR OPEN: POST `/rest/api/3/issue/{key}/transitions` with body `{"transition": {"id": "2"}}`
+1. Transition to PR OPEN: `mcp__jira-mcp__jira_post` to `/rest/api/3/issue/{key}/transitions` with `{"transition": {"id": "2"}}`
 2. Comment: add brief report — what was done, key decisions, issues encountered
 
 JIRA project: **ARCHIE** on `badich.atlassian.net`

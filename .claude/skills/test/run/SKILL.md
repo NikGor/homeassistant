@@ -1,5 +1,6 @@
 ---
 description: Run the project test suite
+disable-model-invocation: true
 ---
 
 Run `./execute_tests.sh` with one of these patterns:

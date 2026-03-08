@@ -1,5 +1,6 @@
 ---
 description: Create a git commit following project conventions
+disable-model-invocation: true
 ---
 
 Stage and commit following CLAUDE.md step 6:
