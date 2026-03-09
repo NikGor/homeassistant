@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "archie-shared"
-version = "0.1.62"
+version = "0.1.63"
 description = "Shared Pydantic models and utilities for Archie ecosystem"
 authors = ["NikGor <nicolas.gordienko@example.com>"]
 readme = "README.md"
@@ -30,7 +30,7 @@ profile = "black"
 multi_line_output = 3
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "0.1.63"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
