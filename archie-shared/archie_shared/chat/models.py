@@ -192,6 +192,10 @@ class ChatRequest(BaseModel):
     demo_mode: Optional[bool] = Field(
         default=False, description="Flag to indicate if the request is in demo mode"
     )
+    no_image: Optional[bool] = Field(
+        default=False,
+        description="Skip image generation in response. Use for faster, cheaper responses.",
+    )
     command_model: Optional[str] = Field(
         default=None, description="LLM model to use for command processing"
     )
