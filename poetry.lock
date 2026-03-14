@@ -32,7 +32,7 @@ trio = ["trio (>=0.31.0)"]
 
 [[package]]
 name = "archie-shared"
-version = "0.1.39"
+version = "0.1.63"
 description = "Shared Pydantic models and utilities for Archie ecosystem"
 optional = false
 python-versions = ">=3.11.0rc1,<4.0"
