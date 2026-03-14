@@ -1001,8 +1001,8 @@ class UIAnswer(BaseModel):
     items: List[AdvancedAnswerItem] = Field(
         description="List of items in the generative UI answer"
     )
-    quick_action_buttons: Optional[QuickActionButtons] = Field(
-        default=None, description="Quick action buttons for the UI"
+    quick_action_buttons: QuickActionButtons = Field(
+        description="Quick action buttons for the UI"
     )
 
 
