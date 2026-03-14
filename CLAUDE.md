@@ -67,3 +67,4 @@ See `agent_docs/` for code style and logging conventions.
 | `backend-developer` | Any Django change — models, views, services, URLs, migrations, tests, Redis |
 | `frontend-developer` | Any UI change — templates, static JS/CSS, URL routing |
 | `archie-shared` | Adding or editing shared Pydantic models: chat protocol types, UI components (cards, widgets, response levels), UserState |
+| `ai-agent` | Building or editing UI that consumes AI agent responses — rendering response levels, WebSocket streaming, button discriminator (AssistantButton vs FrontendButton) |

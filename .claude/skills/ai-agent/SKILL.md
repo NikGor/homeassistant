@@ -15,10 +15,11 @@ description: >
 
 ## Schema Sources (always canonical)
 
-- **Swagger UI**: `http://localhost:8005/docs` — live, always in sync with the running service
+- **Swagger UI**: `http://localhost:8005/docs` — HTTP `/chat` endpoint: exact field names, types, required fields
+- **WS Docs**: `http://localhost:8005/ws_docs` — WebSocket `/ws_chat`: full protocol flow, all message envelopes, auto-generated from Pydantic models
 - **Pydantic models**: `archie-shared/` — source of truth for `ChatRequest`, `ChatMessage`, `Content`, all widget and card types, button types
 
-Do not duplicate or memorise schemas here. Check Swagger when you need exact field names, types, or required fields.
+Do not duplicate or memorise schemas here. Check the relevant docs page when you need exact field names, types, or required fields.
 
 ---
 
@@ -70,11 +71,13 @@ The full list of `command` values for `FrontendButton` is in `archie-shared` / S
 
 ## WebSocket Streaming Protocol (`/ws_chat`)
 
+See **`http://localhost:8005/ws_docs`** for the full auto-generated protocol reference.
+
 Send the `ChatRequest` payload as JSON on `ws.onopen`. The server then pushes a sequence of messages:
 
 ```
-{ "type": "status", "step": "<step_name>", "status": "running", "message": "<human label>" }
-  ... one or more status updates ...
+{ "type": "status", "step": "<step_name>", "status": "<status>", "message": "<label>", "detail": "<optional human detail>" }
+  ... zero or more status updates ...
 { "type": "final", "data": { <ChatMessage> } }
 ```
 
@@ -83,9 +86,9 @@ On error:
 { "type": "error", "message": "<error text>" }
 ```
 
-- `status` messages → show loading indicator / pipeline step label
+- `status` messages → show loading indicator / pipeline step label; `detail` (optional) contains a human-readable description of what the agent is doing right now (e.g. `"Ищу в Google: лучшие рестораны"`)
 - `final` → `msg.data` is the full `ChatMessage` — pass it to the normal rendering pipeline
-- `error` → show error state, close the connection
+- `error` → show error state; connection closes after
 
 The WebSocket is one-shot per message: open → send → receive events → close.
 
