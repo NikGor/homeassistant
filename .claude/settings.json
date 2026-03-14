@@ -10,8 +10,45 @@
       "Bash(git diff*)",
       "Bash(git log*)",
       "Bash(git status)",
-      "Bash(python scripts/jira_tool.py list*)",
-      "Bash(python scripts/jira_tool.py get*)"
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git stash list*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(head*)",
+      "Bash(tail*)",
+      "Bash(wc*)",
+      "Bash(find . *)",
+      "Bash(poetry run python manage.py showmigrations*)",
+      "Bash(poetry run python manage.py diffsettings*)",
+      "Bash(poetry run python manage.py shell*)",
+      "Bash(poetry run python -c*)",
+      "Bash(python -c*)",
+      "Bash(grep*)",
+      "Bash(rg*)",
+      "Bash(xargs*)",
+      "Bash(sort*)",
+      "Bash(uniq*)",
+      "Bash(awk*)",
+      "Bash(sed*)",
+      "Bash(cut*)",
+      "Bash(tr*)",
+      "Bash(jq*)",
+      "Bash(echo*)",
+      "Bash(printf*)",
+      "Bash(pwd)",
+      "Bash(which*)",
+      "Bash(type*)",
+      "Bash(file*)",
+      "Bash(stat*)",
+      "Bash(du*)",
+      "Bash(diff*)",
+      "Bash(comm*)",
+      "Bash(column*)",
+      "mcp__github__*",
+      "mcp__jira-mcp__*",
+      "mcp__context7__*",
+      "mcp__ide__*"
     ],
     "deny": [
       "Bash(rm -rf*)",
@@ -33,5 +70,10 @@
       }
     ]
   },
-  "language": "ru"
+  "language": "ru",
+  "mcpServers": {
+    "github": {},
+    "jira-mcp": {},
+    "context7": {}
+  }
 }
