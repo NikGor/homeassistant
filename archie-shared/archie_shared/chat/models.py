@@ -51,6 +51,10 @@ class StepTrace(BaseModel):
     """Timing and LLM usage data for a single pipeline stage"""
 
     duration_ms: int = Field(description="Duration of the stage in milliseconds")
+    ttft_ms: Optional[int] = Field(
+        default=None,
+        description="Time to first token in milliseconds (streaming mode only)",
+    )
     llm_trace: Optional[LllmTrace] = Field(
         default=None,
         description="LLM usage trace for this stage, if it involved an LLM call",
