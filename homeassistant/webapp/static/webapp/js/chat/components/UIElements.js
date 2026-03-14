@@ -865,20 +865,31 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
                 className: 'text-sm text-white/70 mb-2'
             }, card.subtitle));
             
-            // Render image from image_prompt (base64)
+            // Render image from image_prompt (base64) or placeholder while loading
             if (card.image_prompt) {
-                // 2_columns: 1:1 aspect ratio, show full image
-                // 1_column: 16:9 aspect ratio, can use object-cover
-                const imageClass = isTwoColumns
-                    ? 'w-full h-auto rounded-lg mb-3 object-contain aspect-square'
-                    : 'w-full h-auto rounded-lg mb-3 object-cover aspect-video';
-                
-                elements.push(React.createElement('img', {
-                    key: 'image',
-                    src: `data:image/png;base64,${card.image_prompt}`,
-                    alt: card.title || 'Card image',
-                    className: imageClass
-                }));
+                if (card.image_prompt.length < 1000) {
+                    // Still a text prompt — image not yet generated, show placeholder
+                    const aspectRatio = isTwoColumns ? '1/1' : '16/9';
+                    elements.push(React.createElement(ImagePlaceholder, {
+                        key: 'image',
+                        aspectRatio,
+                        className: 'mb-3',
+                        prompt: card.image_prompt
+                    }));
+                } else {
+                    // 2_columns: 1:1 aspect ratio, show full image
+                    // 1_column: 16:9 aspect ratio, can use object-cover
+                    const imageClass = isTwoColumns
+                        ? 'w-full h-auto rounded-lg mb-3 object-contain aspect-square'
+                        : 'w-full h-auto rounded-lg mb-3 object-cover aspect-video';
+
+                    elements.push(React.createElement('img', {
+                        key: 'image',
+                        src: `data:image/png;base64,${card.image_prompt}`,
+                        alt: card.title || 'Card image',
+                        className: imageClass
+                    }));
+                }
             }
             
             card.text && elements.push(React.createElement('div', {
@@ -960,6 +971,16 @@ const ChatTable = ({ table }) => {
     ]);
 };
 
+const ImagePlaceholder = ({ aspectRatio = '16/9', className = '', prompt = '' }) => {
+    return React.createElement('div', {
+        className: `image-placeholder ${className}`,
+        style: { aspectRatio }
+    }, prompt
+        ? React.createElement('span', { className: 'image-placeholder__prompt' }, prompt)
+        : null
+    );
+};
+
 const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
     switch (item.type) {
         case 'text_answer':
@@ -991,17 +1012,19 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
         
         case 'image':
             const imagePrompt = item.content?.image_prompt;
-            
-            if (!imagePrompt || imagePrompt.length < 100) {
-                return React.createElement('div', {
-                    className: 'text-white/70 mb-4'
-                }, 'Изображение не загружено');
-            }
-            
             const widthClass = item.layout_hint === 'half_width' ? 'w-full md:w-1/2' :
                                item.layout_hint === 'inline' ? 'w-full md:w-1/3' :
                                'w-full';
-            
+
+            if (!imagePrompt) return null;
+
+            // base64 data is hundreds of KB; text prompts are always < 1000 chars
+            if (imagePrompt.length < 1000) {
+                return React.createElement('div', {
+                    className: `${widthClass} mx-auto mb-4`
+                }, React.createElement(ImagePlaceholder, { aspectRatio: '16/9', prompt: imagePrompt }));
+            }
+
             return React.createElement('div', {
                 className: `${widthClass} mx-auto mb-4`
             }, React.createElement('img', {
