@@ -42,6 +42,58 @@ body, html {
     z-index: 1; /* Убеждаемся что он под контентом */
 }
 
+/* Анимация пульсации для заглушек изображений (без translate, для inline-элементов) */
+@keyframes image-pulse {
+    0%, 100% {
+        box-shadow: 0 0 20px 4px rgba(0, 191, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 45px 12px rgba(0, 191, 255, 0.6);
+    }
+}
+
+/* Переливающийся текст промпта внутри заглушки */
+@keyframes text-shimmer {
+    0% {
+        background-position: -200% center;
+    }
+    100% {
+        background-position: 200% center;
+    }
+}
+
+.image-placeholder {
+    background: #050505;
+    border-radius: 12px;
+    animation: image-pulse 4s infinite ease-in-out;
+    box-shadow: 0 0 20px 4px rgba(0, 191, 255, 0.3);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.image-placeholder__prompt {
+    font-size: 0.8rem;
+    font-style: italic;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 90%;
+    background: linear-gradient(
+        90deg,
+        rgba(100, 100, 110, 0.5) 20%,
+        rgba(200, 200, 210, 0.85) 50%,
+        rgba(100, 100, 110, 0.5) 80%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: text-shimmer 3s linear infinite;
+    user-select: none;
+}
+
 /* Стили для "Матового стекла" */
 .frosted-glass-card {
     background-color: rgba(255, 255, 255, 0.07);

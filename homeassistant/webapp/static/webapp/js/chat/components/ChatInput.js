@@ -27,8 +27,16 @@ const ChatInput = ({
         window.debugMode = value;
         return value;
     });
+    const [noImage, setNoImage] = useState(() => {
+        const stored = localStorage.getItem('noImage');
+        const value = stored === 'true';
+        window.noImage = value;
+        return value;
+    });
     const [selectedStyle, setSelectedStyle] = useState(() => {
-        return localStorage.getItem('selectedStyle') || 'Butler';
+        const stored = localStorage.getItem('selectedStyle') || 'Butler';
+        window.selectedStyle = stored;
+        return stored;
     });
     const [selectedFormat, setSelectedFormat] = useState(() => {
         const stored = localStorage.getItem('selectedResponseFormat') || 'ui_answer';
@@ -170,7 +178,14 @@ const ChatInput = ({
         localStorage.setItem('debugMode', String(newValue));
         window.debugMode = newValue;
     }, [debugMode]);
-    
+
+    const handleNoImageToggle = useCallback(() => {
+        const newValue = !noImage;
+        setNoImage(newValue);
+        localStorage.setItem('noImage', String(newValue));
+        window.noImage = newValue;
+    }, [noImage]);
+
     const handleStyleSelect = useCallback(async (style) => {
         setSelectedStyle(style);
         localStorage.setItem('selectedStyle', style);
@@ -184,7 +199,7 @@ const ChatInput = ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_name: userName,
-                    persona: style
+                    persona: style.toLowerCase()
                 })
             });
         } catch (error) {
@@ -395,6 +410,12 @@ const ChatInput = ({
                         checked: debugMode,
                         onChange: handleDebugModeToggle,
                         label: 'Debug Mode'
+                    }),
+                    React.createElement(ToggleSwitch, {
+                        key: 'no-image',
+                        checked: noImage,
+                        onChange: handleNoImageToggle,
+                        label: 'No Image'
                     }),
                     React.createElement('div', {
                         key: 'divider',

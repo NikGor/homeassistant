@@ -15,6 +15,7 @@ const IntegratedChatAssistant = () => {
     
     const messagesEndRef = useRef(null);
     const api = useRef(new ChatAPI());
+    const shouldFollowLatest = useRef(true);
 
     // Слушаем изменения состояния левого сайдбара
     useEffect(() => {
@@ -50,8 +51,8 @@ const IntegratedChatAssistant = () => {
             window.updateMessageNavigationButtons(currentIndex, assistantMessages.length);
         }
         
-        // Если индекс не установлен и есть сообщения, показываем последнее
-        if (currentMessageIndex === -1 && assistantMessages.length > 0) {
+        // Если индекс не установлен или нужно следить за последним — показываем последнее
+        if (assistantMessages.length > 0 && (currentMessageIndex === -1 || shouldFollowLatest.current)) {
             setCurrentMessageIndex(assistantMessages.length - 1);
         }
         
@@ -80,6 +81,7 @@ const IntegratedChatAssistant = () => {
     };
 
     const selectConversation = async (conversationId) => {
+        shouldFollowLatest.current = true;
         setCurrentConversation(conversationId);
         setCurrentMessageIndex(-1); // Сбрасываем индекс при смене разговора
         
@@ -190,6 +192,8 @@ const IntegratedChatAssistant = () => {
         e.preventDefault();
         if (!inputValue.trim() || !currentConversation || isLoading) return;
 
+        shouldFollowLatest.current = true;
+
         const messageText = inputValue.trim();
         const isFirstMessage = messages.length === 0;
         const userMessage = {
@@ -211,6 +215,8 @@ const IntegratedChatAssistant = () => {
             const selectedFinalOutputModel = window.selectedFinalOutputModel || localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
             const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
             const demoMode = window.demoMode || localStorage.getItem('demoMode') === 'true';
+            const noImage = window.noImage || localStorage.getItem('noImage') === 'true';
+            const persona = (window.selectedStyle || localStorage.getItem('selectedStyle') || 'butler').toLowerCase();
             const userName = window.CURRENT_USER_NAME || "guest";
             
             // Map frontend format to backend format
@@ -250,37 +256,21 @@ const IntegratedChatAssistant = () => {
                 final_output_model: selectedFinalOutputModel,
                 previous_message_id: previousMessageId,
                 chat_history: chatHistory || null,
-                demo_mode: demoMode
+                demo_mode: demoMode,
+                no_image: noImage,
+                persona: persona
             });
 
             console.log('ChatAssistant: WebSocket result', result);
 
-            // Process images if ui_answer exists
-            let assistantContent = result.content || {};
-            let imageCost = 0;
-            if (assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer) {
-                console.log('ChatAssistant: Processing images in ui_answer');
-                setStatusMessage('Generating images');
-                const imageGenStart = Date.now();
-                const imageResult = await api.current.processImages(assistantContent.ui_answer);
-                pipeline_steps.push({
-                    step: 'image_generation',
-                    status: 'done',
-                    duration_ms: Date.now() - imageGenStart
-                });
-                const processedUiAnswer = imageResult?.ui_answer ?? imageResult;
-                assistantContent = {
-                    ...assistantContent,
-                    ui_answer: processedUiAnswer
-                };
-                imageCost = imageResult?.imageCost || 0;
-            }
-
+            // Show message immediately — images will load in background
+            const assistantContent = result.content || {};
+            const messageId = result.message_id || `temp-assistant-${Date.now()}`;
             const llmTrace = result.llm_trace || {};
-            llmTrace.total_cost = (llmTrace.total_cost || 0) + imageCost;
+            const hasImages = assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer;
 
             const assistantMessage = {
-                message_id: result.message_id || `temp-assistant-${Date.now()}`,
+                message_id: messageId,
                 role: 'assistant',
                 content: assistantContent,
                 created_at: result.created_at || new Date().toISOString(),
@@ -289,26 +279,62 @@ const IntegratedChatAssistant = () => {
             };
 
             console.log('ChatAssistant: assistantMessage', assistantMessage);
-
-            // Save assistant message to DB
-            await api.current.saveMessage(currentConversation, assistantMessage);
-
             setMessages(prev => [...prev, assistantMessage]);
-            
-            // Now that conversation exists in DB, update title if generated
+
+            // Update title while images load in background
             const title = await titlePromise;
             if (title) {
                 try {
                     await api.current.updateConversationTitle(currentConversation, title);
-                    setConversations(prev => prev.map(c => 
-                        c.conversation_id === currentConversation 
-                            ? { ...c, title } 
+                    setConversations(prev => prev.map(c =>
+                        c.conversation_id === currentConversation
+                            ? { ...c, title }
                             : c
                     ));
                 } catch (e) {
                     console.error('Failed to update title:', e);
                 }
             }
+
+            // Process images and save to DB in background (non-blocking)
+            ;(async () => {
+                let finalContent = assistantContent;
+                let finalSteps = [...(pipeline_steps || [])];
+                let finalTrace = { ...llmTrace };
+
+                if (hasImages) {
+                    try {
+                        console.log('ChatAssistant: Processing images in background');
+                        const imageGenStart = Date.now();
+                        const imageResult = await api.current.processImages(assistantContent.ui_answer);
+                        finalSteps.push({
+                            step: 'image_generation',
+                            status: 'done',
+                            duration_ms: Date.now() - imageGenStart
+                        });
+                        const processedUiAnswer = imageResult?.ui_answer ?? imageResult;
+                        const imageCost = imageResult?.imageCost || 0;
+                        finalTrace = { ...llmTrace, total_cost: (llmTrace.total_cost || 0) + imageCost };
+                        finalContent = { ...assistantContent, ui_answer: processedUiAnswer };
+
+                        // Replace placeholders with real images
+                        setMessages(prev => prev.map(msg =>
+                            msg.message_id === messageId
+                                ? { ...msg, content: finalContent, llm_trace: finalTrace, pipeline_steps: finalSteps }
+                                : msg
+                        ));
+                    } catch (err) {
+                        console.error('ChatAssistant: Image generation failed', err);
+                    }
+                }
+
+                try {
+                    const finalMessage = { ...assistantMessage, content: finalContent, llm_trace: finalTrace, pipeline_steps: finalSteps };
+                    await api.current.saveMessage(currentConversation, finalMessage);
+                } catch (err) {
+                    console.error('ChatAssistant: Failed to save message', err);
+                }
+            })();
         } catch (err) {
             setError(`Не удалось отправить сообщение: ${err.message}`);
         } finally {
@@ -318,6 +344,8 @@ const IntegratedChatAssistant = () => {
 
     const executeCommand = async (assistantRequest) => {
         if (!currentConversation || isLoading) return;
+
+        shouldFollowLatest.current = true;
 
         // Add user message to chat
         const userMessage = {
@@ -338,6 +366,8 @@ const IntegratedChatAssistant = () => {
             const selectedFinalOutputModel = window.selectedFinalOutputModel || localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
             const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
             const demoMode = window.demoMode || localStorage.getItem('demoMode') === 'true';
+            const noImage = window.noImage || localStorage.getItem('noImage') === 'true';
+            const persona = (window.selectedStyle || localStorage.getItem('selectedStyle') || 'butler').toLowerCase();
             const userName = window.CURRENT_USER_NAME || "guest";
             
             // Map frontend format to backend format
@@ -370,34 +400,19 @@ const IntegratedChatAssistant = () => {
                 final_output_model: selectedFinalOutputModel,
                 previous_message_id: prevMessageId,
                 chat_history: chatHistoryForExecute || null,
-                demo_mode: demoMode
+                demo_mode: demoMode,
+                no_image: noImage,
+                persona: persona
             });
 
-            // Process images if ui_answer exists
-            let assistantContent = result.content || {};
-            let imageCost = 0;
-            if (assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer) {
-                setStatusMessage('Generating images');
-                const imageGenStart = Date.now();
-                const imageResult = await api.current.processImages(assistantContent.ui_answer);
-                pipeline_steps.push({
-                    step: 'image_generation',
-                    status: 'done',
-                    duration_ms: Date.now() - imageGenStart
-                });
-                const processedUiAnswer = imageResult?.ui_answer ?? imageResult;
-                assistantContent = {
-                    ...assistantContent,
-                    ui_answer: processedUiAnswer
-                };
-                imageCost = imageResult?.imageCost || 0;
-            }
-
+            // Show message immediately — images will load in background
+            const assistantContent = result.content || {};
+            const messageId = result.message_id || `temp-assistant-${Date.now()}`;
             const llmTrace = result.llm_trace || {};
-            llmTrace.total_cost = (llmTrace.total_cost || 0) + imageCost;
+            const hasImages = assistantContent.content_format === 'ui_answer' && assistantContent.ui_answer;
 
             const assistantMessage = {
-                message_id: result.message_id || `temp-assistant-${Date.now()}`,
+                message_id: messageId,
                 role: 'assistant',
                 content: assistantContent,
                 created_at: result.created_at || new Date().toISOString(),
@@ -405,10 +420,45 @@ const IntegratedChatAssistant = () => {
                 pipeline_steps: pipeline_steps || []
             };
 
-            // Save assistant message to DB
-            await api.current.saveMessage(currentConversation, assistantMessage);
-
             setMessages(prev => [...prev, assistantMessage]);
+
+            // Process images and save to DB in background (non-blocking)
+            ;(async () => {
+                let finalContent = assistantContent;
+                let finalSteps = [...(pipeline_steps || [])];
+                let finalTrace = { ...llmTrace };
+
+                if (hasImages) {
+                    try {
+                        const imageGenStart = Date.now();
+                        const imageResult = await api.current.processImages(assistantContent.ui_answer);
+                        finalSteps.push({
+                            step: 'image_generation',
+                            status: 'done',
+                            duration_ms: Date.now() - imageGenStart
+                        });
+                        const processedUiAnswer = imageResult?.ui_answer ?? imageResult;
+                        const imageCost = imageResult?.imageCost || 0;
+                        finalTrace = { ...llmTrace, total_cost: (llmTrace.total_cost || 0) + imageCost };
+                        finalContent = { ...assistantContent, ui_answer: processedUiAnswer };
+
+                        setMessages(prev => prev.map(msg =>
+                            msg.message_id === messageId
+                                ? { ...msg, content: finalContent, llm_trace: finalTrace, pipeline_steps: finalSteps }
+                                : msg
+                        ));
+                    } catch (err) {
+                        console.error('ChatAssistant: Image generation failed', err);
+                    }
+                }
+
+                try {
+                    const finalMessage = { ...assistantMessage, content: finalContent, llm_trace: finalTrace, pipeline_steps: finalSteps };
+                    await api.current.saveMessage(currentConversation, finalMessage);
+                } catch (err) {
+                    console.error('ChatAssistant: Failed to save message', err);
+                }
+            })();
         } catch (err) {
             setError(`Ошибка выполнения команды: ${err.message}`);
         } finally {
@@ -420,6 +470,7 @@ const IntegratedChatAssistant = () => {
         const assistantMessages = messages.filter(msg => msg.role === 'assistant');
         if (assistantMessages.length === 0) return;
 
+        shouldFollowLatest.current = false;
         let newIndex = currentMessageIndex;
         
         if (direction === 'prev') {

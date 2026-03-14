@@ -58,8 +58,8 @@ function renderLeftSidebar() {
     leftSidebarExpandedMenu.appendChild(profileExpanded);
 
     // Разделитель после профиля
-    leftSidebarCollapsedIcons.innerHTML += '<hr class="border-t border-white/10 my-2">';
-    leftSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
+    const hr1c = document.createElement('hr'); hr1c.className = 'border-t border-white/10 my-2'; leftSidebarCollapsedIcons.appendChild(hr1c);
+    const hr1e = document.createElement('hr'); hr1e.className = 'border-t border-white/10 my-2'; leftSidebarExpandedMenu.appendChild(hr1e);
 
     // Кнопка "Новый чат"
     const newChatCollapsed = document.createElement('a');
@@ -134,7 +134,7 @@ function renderLeftSidebar() {
     leftSidebarExpandedMenu.appendChild(newChatExpanded);
 
     // Разделитель только в развернутом виде
-    leftSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
+    const hr2e = document.createElement('hr'); hr2e.className = 'border-t border-white/10 my-2'; leftSidebarExpandedMenu.appendChild(hr2e);
 
     // Список чатов (только в развернутом виде)
     const chatsContainerExpanded = document.createElement('div');
@@ -144,7 +144,7 @@ function renderLeftSidebar() {
     leftSidebarExpandedMenu.appendChild(chatsContainerExpanded);
 
     // Разделитель внизу только в развернутом виде
-    leftSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
+    const hr3e = document.createElement('hr'); hr3e.className = 'border-t border-white/10 my-2'; leftSidebarExpandedMenu.appendChild(hr3e);
 
     // Кнопка "Поиск"
     const searchCollapsed = document.createElement('a');
