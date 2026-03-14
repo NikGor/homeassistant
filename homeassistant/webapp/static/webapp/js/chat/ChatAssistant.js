@@ -1,3 +1,75 @@
+// Streaming status banner shown while agent is processing
+const StreamingStatusBanner = ({ statusInfo }) => {
+    const { useEffect } = React;
+
+    useEffect(() => {
+        if (typeof lucide !== 'undefined') {
+            setTimeout(() => lucide.createIcons(), 0);
+        }
+    }, [statusInfo.step]);
+
+    const toolIconMap = {
+        'web_search': 'search',
+        'google': 'search',
+        'search': 'search',
+        'llm': 'brain',
+        'think': 'brain',
+        'reason': 'brain',
+        'image': 'image',
+        'fetch': 'globe',
+        'browse': 'globe',
+        'web': 'globe',
+        'memory': 'database',
+        'plan': 'list-checks',
+        'tool': 'wrench',
+        'code': 'code-2',
+        'file': 'file-text',
+    };
+
+    const getIcon = (step) => {
+        if (!step) return 'zap';
+        const lower = step.toLowerCase();
+        for (const [key, icon] of Object.entries(toolIconMap)) {
+            if (lower.includes(key)) return icon;
+        }
+        return 'zap';
+    };
+
+    const icon = getIcon(statusInfo.step);
+    const text = statusInfo.message || 'Обрабатываю...';
+
+    return React.createElement('div', {
+        className: 'w-full max-w-[60rem] mx-auto mb-4 streaming-status-banner'
+    },
+        React.createElement('div', {
+            className: 'flex items-center gap-3 backdrop-blur-lg rounded-2xl px-5 py-4 bg-white/8 border border-white/15'
+        }, [
+            React.createElement('div', {
+                key: 'pulse',
+                className: 'relative flex-shrink-0 w-2.5 h-2.5'
+            }, [
+                React.createElement('div', {
+                    key: 'pulse-ring',
+                    className: 'absolute inset-0 rounded-full bg-blue-400/50 animate-ping'
+                }),
+                React.createElement('div', {
+                    key: 'pulse-dot',
+                    className: 'absolute inset-0 rounded-full bg-blue-400'
+                })
+            ]),
+            React.createElement('i', {
+                key: 'icon',
+                'data-lucide': icon,
+                className: 'w-4 h-4 text-white/50 flex-shrink-0'
+            }),
+            React.createElement('span', {
+                key: 'text',
+                className: 'text-white/70 text-sm truncate'
+            }, text)
+        ])
+    );
+};
+
 // IntegratedChatAssistant - полноценный чат с AI-driven UI
 const IntegratedChatAssistant = () => {
     const { useState, useRef, useEffect } = React;
@@ -8,7 +80,7 @@ const IntegratedChatAssistant = () => {
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [statusMessage, setStatusMessage] = useState('');
+    const [statusInfo, setStatusInfo] = useState({ message: '', step: '', status: '' });
     const [error, setError] = useState(null);
     const [isLeftSidebarExpanded, setIsLeftSidebarExpanded] = useState(false);
     const [currentMessageIndex, setCurrentMessageIndex] = useState(-1);
@@ -158,7 +230,11 @@ const IntegratedChatAssistant = () => {
                         }
                         currentStep = { step: msg.step || msg.message, status: msg.status || 'running' };
                         currentStepStart = now;
-                        setStatusMessage(msg.message || `${msg.step}: ${msg.status}`);
+                        setStatusInfo({
+                            message: msg.message || `${msg.step}: ${msg.status}`,
+                            step: msg.step || '',
+                            status: msg.status || 'running'
+                        });
                         break;
                     case 'final':
                         if (currentStep !== null) {
@@ -168,18 +244,18 @@ const IntegratedChatAssistant = () => {
                                 duration_ms: now - currentStepStart
                             });
                         }
-                        setStatusMessage('');
+                        setStatusInfo({ message: '', step: '', status: '' });
                         resolve({ result: msg.data, pipeline_steps: pipelineSteps });
                         break;
                     case 'error':
-                        setStatusMessage('');
+                        setStatusInfo({ message: '', step: '', status: '' });
                         reject(new Error(msg.message || 'WebSocket error'));
                         break;
                 }
             };
             ws.onerror = (error) => {
                 console.error('ChatAssistant: WebSocket error', error);
-                setStatusMessage('');
+                setStatusInfo({ message: '', step: '', status: '' });
                 reject(new Error('WebSocket connection failed'));
             };
             ws.onclose = (event) => {
@@ -603,24 +679,10 @@ const IntegratedChatAssistant = () => {
                         onExecute: executeCommand
                     })
                 )),
-            isLoading && React.createElement('div', {
-                key: 'loading',
-                className: 'w-full max-w-[60rem] mx-auto flex justify-start mb-6'
-            }, [
-                React.createElement('div', {
-                    key: 'loading-bubble',
-                    className: 'backdrop-blur-lg rounded-3xl px-6 py-4 bg-white/10 border border-white/20'
-                }, [
-                    React.createElement('span', {
-                        key: 'loading-text',
-                        className: 'text-white/60'
-                    }, statusMessage || 'Thinking'),
-                    React.createElement('span', {
-                        key: 'loading-dots',
-                        className: 'text-white/60 ml-1'
-                    }, '...')
-                ])
-            ]),
+            isLoading && React.createElement(StreamingStatusBanner, {
+                key: `loading-${statusInfo.step}`,
+                statusInfo: statusInfo
+            }),
             React.createElement('div', {
                 key: 'messages-end',
                 ref: messagesEndRef
