@@ -1349,76 +1349,77 @@ const ChatMessage = ({ message, onExecute }) => {
                 }), {})
                 : topTrace;
 
-        const row = (key, left, right, opts = {}) => React.createElement('div', {
+        const sec = (key, label) => React.createElement('div', {
             key,
-            className: `flex justify-between gap-4 ${opts.muted ? 'text-white/35' : ''} ${opts.mt ? 'mt-1' : ''}`
+            className: 'text-white/40 uppercase tracking-wider text-[10px] mt-3 mb-1'
+        }, label);
+
+        const row = (key, left, right, dim = false) => React.createElement('div', {
+            key,
+            className: `flex justify-between gap-4 leading-5 ${dim ? 'text-white/35' : ''}`
         }, [
             React.createElement('span', { key: 'l' }, left),
-            React.createElement('span', { key: 'r', className: opts.rightMuted ? 'text-white/40' : '' }, right),
+            React.createElement('span', { key: 'r', className: 'text-right' }, right),
         ]);
 
         const divider = (key) => React.createElement('div', {
-            key,
-            className: 'border-t border-white/10 my-2'
+            key, className: 'border-t border-white/10 mt-3 mb-1'
         });
 
-        // 1. Model + tokens + cost (top-level summary)
-        const modelSection = effectiveLlmTrace && [
-            row('model', effectiveLlmTrace.model || '—', `$${(effectiveLlmTrace.total_cost || 0).toFixed(6)}`),
-            row('tokens',
-                `${effectiveLlmTrace.input_tokens || 0} in → ${effectiveLlmTrace.output_tokens || 0} out`,
-                `${effectiveLlmTrace.total_tokens || 0} total`,
-                { rightMuted: true }
+        const ms = (n) => `${(n / 1000).toFixed(2)}s`;
+
+        // ── LLM TRACE ──────────────────────────────────────────────────────────
+        const llmSection = effectiveLlmTrace && [
+            sec('llm-hdr', 'LLM Trace'),
+            row('model',  'model',  effectiveLlmTrace.model || '—'),
+            row('tokens', 'tokens',
+                `${effectiveLlmTrace.input_tokens || 0} in / ${effectiveLlmTrace.output_tokens || 0} out / ${effectiveLlmTrace.total_tokens || 0} total`
             ),
             effectiveLlmTrace.input_tokens_details?.cached_tokens > 0 &&
-                row('cached', `cached: ${effectiveLlmTrace.input_tokens_details.cached_tokens}`, '', { muted: true }),
+                row('cached', 'cached', String(effectiveLlmTrace.input_tokens_details.cached_tokens), true),
+            row('cost', 'cost', `$${(effectiveLlmTrace.total_cost || 0).toFixed(6)}`),
         ].filter(Boolean);
 
-        // 2. Pipeline trace — chronological: command_call → tool_execution → create_output
-        const STAGE_LABELS = {
-            command_call:  'command_call',
-            tool_execution: 'tool_execution',
-            create_output:  'create_output',
-        };
+        // ── TIMELINE  (command_call → tool_execution → create_output) ──────────
+        const STAGES = [
+            ['command_call',   'command_call'],
+            ['tool_execution', 'tool_execution'],
+            ['create_output',  'create_output'],
+        ];
         const traceSection = pt && [
             divider('div1'),
-            React.createElement('div', {
-                key: 'trace-header',
-                className: 'text-white/40 uppercase tracking-wider text-[10px] mb-1'
-            }, 'Timeline'),
-            ...['command_call', 'tool_execution', 'create_output']
-                .filter(k => pt[k])
-                .map(k => {
-                    const stage = pt[k];
-                    const ttft = stage.ttft_ms != null ? `  ttft ${stage.ttft_ms}ms` : '';
-                    const stageLlm = stage.llm_trace;
-                    return [
-                        row(k, STAGE_LABELS[k],
-                            `${(stage.duration_ms / 1000).toFixed(2)}s${ttft}`,
-                            { rightMuted: true }
-                        ),
-                        stageLlm && row(`${k}-llm`, '',
-                            `${stageLlm.input_tokens}→${stageLlm.output_tokens} tok  $${(stageLlm.total_cost || 0).toFixed(6)}`,
-                            { muted: true }
-                        ),
-                    ].filter(Boolean);
-                }).flat(),
+            sec('tl-hdr', 'Timeline'),
+            ...STAGES.map(([k, label]) => {
+                const stage = pt[k];
+                if (!stage) return row(k, label, '—', true);
+                const ttft = stage.ttft_ms != null ? `  ·  ttft ${stage.ttft_ms}ms` : '';
+                const lm = stage.llm_trace;
+                const hasLlm = lm && lm.total_tokens > 0;
+                return [
+                    row(k, label, `${ms(stage.duration_ms)}${ttft}`),
+                    hasLlm && row(`${k}-lm`, '',
+                        `${lm.input_tokens} / ${lm.output_tokens} tok  ·  $${(lm.total_cost || 0).toFixed(6)}`,
+                        true
+                    ),
+                ].filter(Boolean);
+            }).flat(),
             divider('div2'),
-            row('total', 'total', `${(pt.total_ms / 1000).toFixed(2)}s`),
+            row('total', 'total', ms(pt.total_ms)),
         ];
 
-        // 3. Granular pipeline steps (detail, secondary)
-        const stepsSection = message.pipeline_steps?.length > 0 && [
+        // ── STEPS  (deduplicated: group by name, sum durations) ────────────────
+        const rawSteps = message.pipeline_steps || [];
+        const stepsMap = rawSteps.reduce((acc, s) => {
+            const name = s.step || s.status || '?';
+            acc[name] = (acc[name] || 0) + (s.duration_ms || 0);
+            return acc;
+        }, {});
+        const dedupedSteps = Object.entries(stepsMap);
+        const stepsSection = dedupedSteps.length > 0 && [
             divider('div3'),
-            React.createElement('div', {
-                key: 'steps-header',
-                className: 'text-white/40 uppercase tracking-wider text-[10px] mb-1'
-            }, 'Steps (detail)'),
-            ...message.pipeline_steps.map((step, i) =>
-                row(`step-${i}`, step.step || step.status,
-                    `${(step.duration_ms / 1000).toFixed(2)}s`,
-                    { rightMuted: true, muted: true }
-                )
+            sec('steps-hdr', 'Steps'),
+            ...dedupedSteps.map(([name, dur], i) =>
+                row(`step-${i}`, name, ms(dur), true)
             ),
         ];
 
@@ -1426,7 +1427,7 @@ const ChatMessage = ({ message, onExecute }) => {
             key: 'debug-panel',
             className: 'mt-2 bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/60'
         }, [
-            ...(modelSection || []),
+            ...(llmSection  || []),
             ...(traceSection || []),
             ...(stepsSection || []),
         ]);
