@@ -1413,6 +1413,7 @@ const ChatMessage = ({ message, onExecute }) => {
             }).flat(),
             HR('div2'),
             Row('total', 'total', sec(pt.total_ms)),
+            pt.ttft_ms != null && Row('pipeline-ttft', 'ttft (pipeline)', sec(pt.ttft_ms)),
         ];
 
         // ── STEPS  (deduplicated: group by name, sum durations) ────────────────
