@@ -301,26 +301,31 @@ def proxy_send_message(request):
         # AI Agent returns a Message object structure
         assistant_message_id = ai_data.get("message_id", str(uuid.uuid4()))
         assistant_llm_trace = ai_data.get("llm_trace", {})
+        assistant_pipeline_trace = ai_data.get("pipeline_trace")
+
+        # Real tokens are often in command_call.llm_trace, not in the top-level llm_trace
+        effective_trace = assistant_llm_trace or {}
+        if not effective_trace.get("total_tokens") and assistant_pipeline_trace:
+            for stage_key in ("command_call", "tool_execution", "create_output"):
+                stage = assistant_pipeline_trace.get(stage_key) or {}
+                stage_trace = stage.get("llm_trace") or {}
+                if stage_trace.get("total_tokens"):
+                    effective_trace = stage_trace
+                    break
 
         # Extract token usage if available
-        input_tokens = None
-        output_tokens = None
-        total_tokens = None
-        total_cost = None
+        input_tokens = effective_trace.get("input_tokens")
+        output_tokens = effective_trace.get("output_tokens")
+        total_tokens = effective_trace.get("total_tokens")
+        total_cost = effective_trace.get("total_cost")
 
-        if assistant_llm_trace:
-            input_tokens = assistant_llm_trace.get("input_tokens")
-            output_tokens = assistant_llm_trace.get("output_tokens")
-            total_tokens = assistant_llm_trace.get("total_tokens")
-            total_cost = assistant_llm_trace.get("total_cost")
-
-            # Update conversation stats
-            if total_tokens:
-                conversation.total_tokens += total_tokens
-                conversation.total_input_tokens += input_tokens or 0
-                conversation.total_output_tokens += output_tokens or 0
-                conversation.total_cost += total_cost or 0.0
-                conversation.save()
+        # Update conversation stats
+        if total_tokens:
+            conversation.total_tokens += total_tokens
+            conversation.total_input_tokens += input_tokens or 0
+            conversation.total_output_tokens += output_tokens or 0
+            conversation.total_cost += total_cost or 0.0
+            conversation.save()
 
         Message.objects.create(
             message_id=assistant_message_id,
@@ -333,6 +338,7 @@ def proxy_send_message(request):
             output_tokens=output_tokens,
             total_tokens=total_tokens,
             total_cost=total_cost,
+            pipeline_trace=assistant_pipeline_trace,
         )
         logger.info(f"ai_assistant_016: Saved assistant message {assistant_message_id}")
 
@@ -547,6 +553,18 @@ def save_message(request):
         content = message_data.get("content", {})
         llm_trace = message_data.get("llm_trace", {})
         pipeline_steps = message_data.get("pipeline_steps", [])
+        pipeline_trace = message_data.get("pipeline_trace")
+
+        # Real tokens are often in command_call.llm_trace, not in the top-level llm_trace
+        effective_trace = llm_trace or {}
+        if not effective_trace.get("total_tokens") and pipeline_trace:
+            for stage_key in ("command_call", "tool_execution", "create_output"):
+                stage = pipeline_trace.get(stage_key) or {}
+                stage_trace = stage.get("llm_trace") or {}
+                if stage_trace.get("total_tokens"):
+                    effective_trace = stage_trace
+                    break
+
         Message.objects.create(
             message_id=message_id,
             conversation=conversation,
@@ -554,17 +572,18 @@ def save_message(request):
             content=content,
             created_at=timezone.now(),
             llm_trace=llm_trace,
-            input_tokens=llm_trace.get("input_tokens"),
-            output_tokens=llm_trace.get("output_tokens"),
-            total_tokens=llm_trace.get("total_tokens"),
-            total_cost=llm_trace.get("total_cost"),
+            input_tokens=effective_trace.get("input_tokens"),
+            output_tokens=effective_trace.get("output_tokens"),
+            total_tokens=effective_trace.get("total_tokens"),
+            total_cost=effective_trace.get("total_cost"),
             pipeline_steps=pipeline_steps,
+            pipeline_trace=pipeline_trace,
         )
-        if llm_trace.get("total_tokens"):
-            conversation.total_tokens += llm_trace.get("total_tokens", 0)
-            conversation.total_input_tokens += llm_trace.get("input_tokens", 0)
-            conversation.total_output_tokens += llm_trace.get("output_tokens", 0)
-            conversation.total_cost += llm_trace.get("total_cost", 0.0)
+        if effective_trace.get("total_tokens"):
+            conversation.total_tokens += effective_trace.get("total_tokens", 0)
+            conversation.total_input_tokens += effective_trace.get("input_tokens", 0)
+            conversation.total_output_tokens += effective_trace.get("output_tokens", 0)
+            conversation.total_cost += effective_trace.get("total_cost", 0.0)
             conversation.save()
         logger.info(f"ai_assistant_052: Saved {role} message {message_id}")
         json_response = JsonResponse({"success": True, "message_id": message_id})

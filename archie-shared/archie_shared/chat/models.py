@@ -64,13 +64,13 @@ class StepTrace(BaseModel):
 class PipelineTrace(BaseModel):
     """Aggregated trace for all stages of a single agent request"""
 
-    stage1: Optional[StepTrace] = Field(
+    command_call: Optional[StepTrace] = Field(
         default=None, description="Command call stage trace"
     )
-    stage2: Optional[StepTrace] = Field(
+    tool_execution: Optional[StepTrace] = Field(
         default=None, description="Tool execution stage trace"
     )
-    stage3: Optional[StepTrace] = Field(
+    create_output: Optional[StepTrace] = Field(
         default=None, description="Output generation stage trace"
     )
     total_ms: int = Field(
