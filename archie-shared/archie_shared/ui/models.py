@@ -997,7 +997,9 @@ class Level3Answer(BaseModel):
 class UIAnswer(BaseModel):
     """Level 4 response: full generative UI with all components except Dashboard"""
 
-    intro_text: TextAnswer = Field(default=None, description="Introductory paragraph")
+    intro_text: TextAnswer | None = Field(
+        default=None, description="Introductory paragraph"
+    )
     items: List[AdvancedAnswerItem] = Field(
         description="List of items in the generative UI answer"
     )
