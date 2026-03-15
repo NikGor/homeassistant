@@ -65,18 +65,23 @@ No re-exports via `__init__.py` — always import from the submodule directly.
 The package is installed as editable (`develop = true` in `pyproject.toml`).
 Changes to `.py` files are live immediately — no reinstall needed.
 
-After adding or changing models:
+After adding or changing models — **always complete all steps**:
 1. Bump the version in `archie-shared/pyproject.toml` (increment patch: `0.1.x` → `0.1.x+1`)
-2. Commit and push the changes
-3. Run `make bump` to publish the new version
+2. Commit: `git add archie-shared/ && git commit`
+3. Push: `git push`
+4. Run `make bump` to publish the new version (creates and pushes the tag)
+5. Update JIRA task to **Готово** (transition id `"41"`)
 
 ```bash
 # Example release flow
 # 1. Edit models
 # 2. Bump version in archie-shared/pyproject.toml
-# 3. git add -p && git commit && git push
+# 3. git add archie-shared/ && git commit && git push
 make bump
+# 4. POST /rest/api/3/issue/ARCHIE-XXX/transitions {"transition": {"id": "41"}}
 ```
+
+> **CRITICAL**: Never stop after editing models. Push + bump + JIRA update are mandatory parts of every archie-shared task.
 
 No migrations needed — this is pure Pydantic, no database.
 
