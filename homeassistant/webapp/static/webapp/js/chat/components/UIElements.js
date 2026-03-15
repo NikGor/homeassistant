@@ -1327,13 +1327,15 @@ const ChatMessage = ({ message, onExecute }) => {
     const showDebugButton = window.debugMode && hasDebugData;
 
     const renderDebugPanel = () => {
-        // Prefer pipeline_trace stage llm_traces over top-level llm_trace if it has no tokens
+        const pt = message.pipeline_trace;
         const topTrace = message.llm_trace;
         const hasTopTraceData = topTrace && (topTrace.total_tokens > 0 || topTrace.total_cost > 0);
-        const stageLlmTraces = message.pipeline_trace
+
+        // Aggregate LLM trace from stages when top-level is empty (frontend fallback, not new data)
+        const stageLlmTraces = pt
             ? ['command_call', 'tool_execution', 'create_output']
-                .filter(k => message.pipeline_trace[k]?.llm_trace)
-                .map(k => ({ stage: k, trace: message.pipeline_trace[k].llm_trace }))
+                .filter(k => pt[k]?.llm_trace)
+                .map(k => ({ stage: k, trace: pt[k].llm_trace }))
             : [];
         const effectiveLlmTrace = hasTopTraceData ? topTrace
             : stageLlmTraces.length > 0
@@ -1347,71 +1349,87 @@ const ChatMessage = ({ message, onExecute }) => {
                 }), {})
                 : topTrace;
 
-        return React.createElement('div', {
-        key: 'debug-panel',
-        className: 'mt-2 bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/60'
-    }, [
-        effectiveLlmTrace && React.createElement('div', { key: 'llm-trace' }, [
-            React.createElement('div', {
-                key: 'llm-header',
-                className: 'text-white/40 uppercase tracking-wider text-[10px] mb-1'
-            }, 'LLM Trace'),
-            React.createElement('div', { key: 'model' }, `model: ${effectiveLlmTrace.model || '—'}`),
-            React.createElement('div', { key: 'tokens' },
-                `tokens: ${effectiveLlmTrace.input_tokens || 0} in / ${effectiveLlmTrace.output_tokens || 0} out / ${effectiveLlmTrace.total_tokens || 0} total`
+        const row = (key, left, right, opts = {}) => React.createElement('div', {
+            key,
+            className: `flex justify-between gap-4 ${opts.muted ? 'text-white/35' : ''} ${opts.mt ? 'mt-1' : ''}`
+        }, [
+            React.createElement('span', { key: 'l' }, left),
+            React.createElement('span', { key: 'r', className: opts.rightMuted ? 'text-white/40' : '' }, right),
+        ]);
+
+        const divider = (key) => React.createElement('div', {
+            key,
+            className: 'border-t border-white/10 my-2'
+        });
+
+        // 1. Model + tokens + cost (top-level summary)
+        const modelSection = effectiveLlmTrace && [
+            row('model', effectiveLlmTrace.model || '—', `$${(effectiveLlmTrace.total_cost || 0).toFixed(6)}`),
+            row('tokens',
+                `${effectiveLlmTrace.input_tokens || 0} in → ${effectiveLlmTrace.output_tokens || 0} out`,
+                `${effectiveLlmTrace.total_tokens || 0} total`,
+                { rightMuted: true }
             ),
-            effectiveLlmTrace.input_tokens_details && effectiveLlmTrace.input_tokens_details.cached_tokens > 0
-                && React.createElement('div', { key: 'cached' },
-                    `cached: ${effectiveLlmTrace.input_tokens_details.cached_tokens}`
-                ),
-            React.createElement('div', { key: 'cost' }, `cost: $${(effectiveLlmTrace.total_cost || 0).toFixed(6)}`)
-        ]),
-        message.pipeline_steps && message.pipeline_steps.length > 0 && React.createElement('div', { key: 'pipeline' }, [
+            effectiveLlmTrace.input_tokens_details?.cached_tokens > 0 &&
+                row('cached', `cached: ${effectiveLlmTrace.input_tokens_details.cached_tokens}`, '', { muted: true }),
+        ].filter(Boolean);
+
+        // 2. Pipeline trace — chronological: command_call → tool_execution → create_output
+        const STAGE_LABELS = {
+            command_call:  'command_call',
+            tool_execution: 'tool_execution',
+            create_output:  'create_output',
+        };
+        const traceSection = pt && [
+            divider('div1'),
             React.createElement('div', {
-                key: 'pipeline-header',
-                className: 'text-white/40 uppercase tracking-wider text-[10px] mt-2 mb-1'
-            }, 'Pipeline'),
+                key: 'trace-header',
+                className: 'text-white/40 uppercase tracking-wider text-[10px] mb-1'
+            }, 'Timeline'),
+            ...['command_call', 'tool_execution', 'create_output']
+                .filter(k => pt[k])
+                .map(k => {
+                    const stage = pt[k];
+                    const ttft = stage.ttft_ms != null ? `  ttft ${stage.ttft_ms}ms` : '';
+                    const stageLlm = stage.llm_trace;
+                    return [
+                        row(k, STAGE_LABELS[k],
+                            `${(stage.duration_ms / 1000).toFixed(2)}s${ttft}`,
+                            { rightMuted: true }
+                        ),
+                        stageLlm && row(`${k}-llm`, '',
+                            `${stageLlm.input_tokens}→${stageLlm.output_tokens} tok  $${(stageLlm.total_cost || 0).toFixed(6)}`,
+                            { muted: true }
+                        ),
+                    ].filter(Boolean);
+                }).flat(),
+            divider('div2'),
+            row('total', 'total', `${(pt.total_ms / 1000).toFixed(2)}s`),
+        ];
+
+        // 3. Granular pipeline steps (detail, secondary)
+        const stepsSection = message.pipeline_steps?.length > 0 && [
+            divider('div3'),
+            React.createElement('div', {
+                key: 'steps-header',
+                className: 'text-white/40 uppercase tracking-wider text-[10px] mb-1'
+            }, 'Steps (detail)'),
             ...message.pipeline_steps.map((step, i) =>
-                React.createElement('div', {
-                    key: i,
-                    className: 'flex justify-between gap-4'
-                }, [
-                    React.createElement('span', { key: 'name' }, step.step || step.status),
-                    React.createElement('span', { key: 'dur', className: 'text-white/40' }, `${(step.duration_ms / 1000).toFixed(2)}s`)
-                ])
-            )
-        ]),
-        message.pipeline_trace && React.createElement('div', { key: 'pipeline-trace' }, [
-            React.createElement('div', {
-                key: 'pt-header',
-                className: 'text-white/40 uppercase tracking-wider text-[10px] mt-2 mb-1'
-            }, 'Pipeline Trace'),
-            ...[
-                ['command_call', 'cmd'],
-                ['tool_execution', 'tool'],
-                ['create_output', 'gen'],
-            ].filter(([key]) => message.pipeline_trace[key]).map(([key, label]) => {
-                const stage = message.pipeline_trace[key];
-                const ttft = stage.ttft_ms != null ? ` · ttft ${stage.ttft_ms}ms` : '';
-                return React.createElement('div', {
-                    key,
-                    className: 'flex justify-between gap-4'
-                }, [
-                    React.createElement('span', { key: 'name' }, label),
-                    React.createElement('span', { key: 'dur', className: 'text-white/40' },
-                        `${(stage.duration_ms / 1000).toFixed(2)}s${ttft}`
-                    )
-                ]);
-            }),
-            React.createElement('div', {
-                key: 'pt-total',
-                className: 'flex justify-between gap-4 mt-1 text-white/50'
-            }, [
-                React.createElement('span', { key: 'name' }, 'total'),
-                React.createElement('span', { key: 'dur' }, `${(message.pipeline_trace.total_ms / 1000).toFixed(2)}s`)
-            ])
-        ])
-    ]);
+                row(`step-${i}`, step.step || step.status,
+                    `${(step.duration_ms / 1000).toFixed(2)}s`,
+                    { rightMuted: true, muted: true }
+                )
+            ),
+        ];
+
+        return React.createElement('div', {
+            key: 'debug-panel',
+            className: 'mt-2 bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/60'
+        }, [
+            ...(modelSection || []),
+            ...(traceSection || []),
+            ...(stepsSection || []),
+        ]);
     };
 
     return React.createElement('div', {
