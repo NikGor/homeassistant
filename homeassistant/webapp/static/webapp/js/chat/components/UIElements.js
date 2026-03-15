@@ -1357,20 +1357,20 @@ const ChatMessage = ({ message, onExecute }) => {
         // ── helpers ─────────────────────────────────────────────────────────────
         const H = (key, label) => React.createElement('div', {
             key,
-            className: 'text-white/40 uppercase tracking-wider text-[10px] mt-3 mb-1'
+            className: 'uppercase tracking-wider text-[10px] mt-3 mb-1'
         }, label);
 
         const Row = (key, label, value) => React.createElement('div', {
             key,
-            className: 'flex justify-between gap-4 leading-[1.6] text-white/60'
+            className: 'flex justify-between gap-4 leading-[1.6]'
         }, [
-            React.createElement('span', { key: 'l', className: 'text-white/40' }, label),
+            React.createElement('span', { key: 'l' }, label),
             React.createElement('span', { key: 'r' }, value),
         ]);
 
         const Sub = (key, value) => React.createElement('div', {
             key,
-            className: 'text-right text-white/35 leading-[1.4] -mt-0.5 mb-0.5 text-[11px]'
+            className: 'text-right leading-[1.4] -mt-0.5 mb-0.5 text-[11px]'
         }, value);
 
         const HR = (key) => React.createElement('div', {
