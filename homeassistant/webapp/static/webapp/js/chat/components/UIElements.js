@@ -1407,13 +1407,13 @@ const ChatMessage = ({ message, onExecute }) => {
                 const hasLm = stageLm && stageLm.total_tokens > 0;
                 return [
                     Row(k, k, sec(stage.duration_ms)),
-                    stage.ttft_ms != null && Row(`${k}-ttft`, 'ttft', sec(stage.ttft_ms)),
+                    stage.ttft_ms != null && Row(`${k}-ttft`, 'time to first token', sec(stage.ttft_ms)),
                     hasLm && Sub(`${k}-lm`, `↳ ${stageLm.input_tokens}→${stageLm.output_tokens} tok · $${(stageLm.total_cost || 0).toFixed(6)}`),
                 ].filter(Boolean);
             }).flat(),
             HR('div2'),
             Row('total', 'total', sec(pt.total_ms)),
-            pt.ttft_ms != null && Row('pipeline-ttft', 'ttft (pipeline)', sec(pt.ttft_ms)),
+            pt.ttft_ms != null && Row('pipeline-ttft', 'time to first token', sec(pt.ttft_ms)),
         ];
 
         // ── STEPS  (deduplicated: group by name, sum durations) ────────────────
