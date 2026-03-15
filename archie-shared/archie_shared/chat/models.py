@@ -73,6 +73,10 @@ class PipelineTrace(BaseModel):
     create_output: Optional[StepTrace] = Field(
         default=None, description="Output generation stage trace"
     )
+    ttft_ms: Optional[int] = Field(
+        default=None,
+        description="Time to first token from pipeline start (stage1 + stage2 + create_output ttft), milliseconds",
+    )
     total_ms: int = Field(
         description="Total duration of the arun() call in milliseconds"
     )
