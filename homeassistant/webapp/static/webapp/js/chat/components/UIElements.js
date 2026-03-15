@@ -1342,69 +1342,75 @@ const ChatMessage = ({ message, onExecute }) => {
                 ? stageLlmTraces.reduce((acc, { trace }) => ({
                     model: acc.model || trace.model,
                     input_tokens: (acc.input_tokens || 0) + (trace.input_tokens || 0),
+                    input_tokens_details: {
+                        cached_tokens: ((acc.input_tokens_details?.cached_tokens) || 0) + ((trace.input_tokens_details?.cached_tokens) || 0),
+                    },
                     output_tokens: (acc.output_tokens || 0) + (trace.output_tokens || 0),
+                    output_tokens_details: {
+                        reasoning_tokens: ((acc.output_tokens_details?.reasoning_tokens) || 0) + ((trace.output_tokens_details?.reasoning_tokens) || 0),
+                    },
                     total_tokens: (acc.total_tokens || 0) + (trace.total_tokens || 0),
                     total_cost: (acc.total_cost || 0) + (trace.total_cost || 0),
-                    input_tokens_details: acc.input_tokens_details || trace.input_tokens_details,
                 }), {})
                 : topTrace;
 
-        const sec = (key, label) => React.createElement('div', {
+        // ── helpers ─────────────────────────────────────────────────────────────
+        const H = (key, label) => React.createElement('div', {
             key,
             className: 'text-white/40 uppercase tracking-wider text-[10px] mt-3 mb-1'
         }, label);
 
-        const row = (key, left, right, dim = false) => React.createElement('div', {
+        const Row = (key, label, value) => React.createElement('div', {
             key,
-            className: `flex justify-between gap-4 leading-5 ${dim ? 'text-white/35' : ''}`
+            className: 'flex justify-between gap-4 leading-[1.6] text-white/60'
         }, [
-            React.createElement('span', { key: 'l' }, left),
-            React.createElement('span', { key: 'r', className: 'text-right' }, right),
+            React.createElement('span', { key: 'l', className: 'text-white/40' }, label),
+            React.createElement('span', { key: 'r' }, value),
         ]);
 
-        const divider = (key) => React.createElement('div', {
-            key, className: 'border-t border-white/10 mt-3 mb-1'
+        const Sub = (key, value) => React.createElement('div', {
+            key,
+            className: 'text-right text-white/35 leading-[1.4] -mt-0.5 mb-0.5 text-[11px]'
+        }, value);
+
+        const HR = (key) => React.createElement('div', {
+            key, className: 'border-t border-white/10 mt-2 mb-2'
         });
 
-        const ms = (n) => `${(n / 1000).toFixed(2)}s`;
+        const sec = (n) => `${(n / 1000).toFixed(2)}s`;
 
         // ── LLM TRACE ──────────────────────────────────────────────────────────
-        const llmSection = effectiveLlmTrace && [
-            sec('llm-hdr', 'LLM Trace'),
-            row('model',  'model',  effectiveLlmTrace.model || '—'),
-            row('tokens', 'tokens',
-                `${effectiveLlmTrace.input_tokens || 0} in / ${effectiveLlmTrace.output_tokens || 0} out / ${effectiveLlmTrace.total_tokens || 0} total`
-            ),
-            effectiveLlmTrace.input_tokens_details?.cached_tokens > 0 &&
-                row('cached', 'cached', String(effectiveLlmTrace.input_tokens_details.cached_tokens), true),
-            row('cost', 'cost', `$${(effectiveLlmTrace.total_cost || 0).toFixed(6)}`),
+        const lm = effectiveLlmTrace;
+        const cached = lm?.input_tokens_details?.cached_tokens || 0;
+        const reasoning = lm?.output_tokens_details?.reasoning_tokens || 0;
+        const llmSection = lm && [
+            H('llm-hdr', 'LLM Trace'),
+            Row('lm-model',  'model',  lm.model || '—'),
+            Row('lm-input',  'input',  `${lm.input_tokens || 0} tokens`),
+            cached > 0   && Sub('lm-cached',    `↳ cached: ${cached}`),
+            Row('lm-output', 'output', `${lm.output_tokens || 0} tokens`),
+            reasoning > 0 && Sub('lm-reasoning', `↳ reasoning: ${reasoning}`),
+            Row('lm-total',  'total',  `${lm.total_tokens || 0} tokens`),
+            Row('lm-cost',   'cost',   `$${(lm.total_cost || 0).toFixed(6)}`),
         ].filter(Boolean);
 
         // ── TIMELINE  (command_call → tool_execution → create_output) ──────────
-        const STAGES = [
-            ['command_call',   'command_call'],
-            ['tool_execution', 'tool_execution'],
-            ['create_output',  'create_output'],
-        ];
         const traceSection = pt && [
-            divider('div1'),
-            sec('tl-hdr', 'Timeline'),
-            ...STAGES.map(([k, label]) => {
+            HR('div1'),
+            H('tl-hdr', 'Timeline'),
+            ...['command_call', 'tool_execution', 'create_output'].map(k => {
                 const stage = pt[k];
-                if (!stage) return row(k, label, '—', true);
-                const ttft = stage.ttft_ms != null ? `  ·  ttft ${stage.ttft_ms}ms` : '';
-                const lm = stage.llm_trace;
-                const hasLlm = lm && lm.total_tokens > 0;
+                if (!stage) return Row(k, k, '—');
+                const stageLm = stage.llm_trace;
+                const hasLm = stageLm && stageLm.total_tokens > 0;
                 return [
-                    row(k, label, `${ms(stage.duration_ms)}${ttft}`),
-                    hasLlm && row(`${k}-lm`, '',
-                        `${lm.input_tokens} / ${lm.output_tokens} tok  ·  $${(lm.total_cost || 0).toFixed(6)}`,
-                        true
-                    ),
+                    Row(k, k, sec(stage.duration_ms)),
+                    stage.ttft_ms != null && Sub(`${k}-ttft`, `↳ ttft: ${stage.ttft_ms}ms`),
+                    hasLm && Sub(`${k}-lm`, `↳ ${stageLm.input_tokens}→${stageLm.output_tokens} tok · $${(stageLm.total_cost || 0).toFixed(6)}`),
                 ].filter(Boolean);
             }).flat(),
-            divider('div2'),
-            row('total', 'total', ms(pt.total_ms)),
+            HR('div2'),
+            Row('total', 'total', sec(pt.total_ms)),
         ];
 
         // ── STEPS  (deduplicated: group by name, sum durations) ────────────────
@@ -1416,18 +1422,16 @@ const ChatMessage = ({ message, onExecute }) => {
         }, {});
         const dedupedSteps = Object.entries(stepsMap);
         const stepsSection = dedupedSteps.length > 0 && [
-            divider('div3'),
-            sec('steps-hdr', 'Steps'),
-            ...dedupedSteps.map(([name, dur], i) =>
-                row(`step-${i}`, name, ms(dur), true)
-            ),
+            HR('div3'),
+            H('steps-hdr', 'Steps'),
+            ...dedupedSteps.map(([name, dur], i) => Row(`step-${i}`, name, sec(dur))),
         ];
 
         return React.createElement('div', {
             key: 'debug-panel',
-            className: 'mt-2 bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/60'
+            className: 'mt-2 bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono'
         }, [
-            ...(llmSection  || []),
+            ...(llmSection   || []),
             ...(traceSection || []),
             ...(stepsSection || []),
         ]);
