@@ -203,7 +203,8 @@ const IntegratedChatAssistant = () => {
         }).filter(Boolean).join('\n');
     };
 
-    const sendMessageViaWebSocket = (payload) => {
+    const sendMessageViaWebSocket = (payload, callbacks = {}) => {
+        const { onStreamDelta, onPlaceholder, onStreamReasoning, onStatus } = callbacks;
         return new Promise((resolve, reject) => {
             const wsUrl = getWebSocketUrl();
             console.log('ChatAssistant: Opening WebSocket to', wsUrl);
@@ -235,6 +236,24 @@ const IntegratedChatAssistant = () => {
                             step: msg.step || '',
                             status: msg.status || 'running'
                         });
+                        if (onStatus) onStatus({ message: msg.message || '', step: msg.step || '' });
+                        break;
+                    case 'stream_delta':
+                    case 'stream_text':
+                        if (onStreamDelta) onStreamDelta(msg.text || msg.delta || '');
+                        break;
+                    case 'stream_placeholder':
+                    case 'placeholder':
+                        if (onPlaceholder) onPlaceholder();
+                        break;
+                    case 'stream_reasoning':
+                        if (onStreamReasoning) onStreamReasoning(msg.text || msg.reasoning || '');
+                        break;
+                    case 'stream_complete':
+                        break;
+                    case 'stream_error':
+                        setStatusInfo({ message: '', step: '', status: '' });
+                        reject(new Error(msg.message || 'Stream error'));
                         break;
                     case 'final':
                         if (currentStep !== null) {
@@ -283,6 +302,13 @@ const IntegratedChatAssistant = () => {
         };
 
         setMessages(prev => [...prev, userMessage]);
+        const streamingMsgId = `streaming-${Date.now()}`;
+        setMessages(prev => [...prev, {
+            message_id: streamingMsgId,
+            role: 'assistant',
+            content: { content_format: 'plain', text: '', _streaming: true },
+            created_at: new Date().toISOString(),
+        }]);
         setInputValue('');
         setIsLoading(true);
 
@@ -335,7 +361,38 @@ const IntegratedChatAssistant = () => {
                 demo_mode: demoMode,
                 no_image: noImage,
                 persona: persona
+            }, {
+                onStreamDelta: (text) => {
+                    setMessages(prev => prev.map(msg =>
+                        msg.message_id === streamingMsgId
+                            ? { ...msg, content: { ...msg.content, text: (msg.content.text || '') + text } }
+                            : msg
+                    ));
+                },
+                onPlaceholder: () => {
+                    setMessages(prev => prev.map(msg =>
+                        msg.message_id === streamingMsgId
+                            ? { ...msg, content: { content_format: 'ui_answer', _streaming: true, _placeholder: true, _reasoning: '' } }
+                            : msg
+                    ));
+                },
+                onStreamReasoning: (text) => {
+                    setMessages(prev => prev.map(msg =>
+                        msg.message_id === streamingMsgId
+                            ? { ...msg, content: { ...msg.content, _reasoning: (msg.content._reasoning || '') + text } }
+                            : msg
+                    ));
+                },
+                onStatus: ({ message, step }) => {
+                    setMessages(prev => prev.map(msg =>
+                        msg.message_id === streamingMsgId
+                            ? { ...msg, content: { ...msg.content, _statusMessage: message, _statusStep: step } }
+                            : msg
+                    ));
+                }
             });
+
+            setMessages(prev => prev.filter(msg => msg.message_id !== streamingMsgId));
 
             console.log('ChatAssistant: WebSocket result', result);
 
@@ -351,7 +408,8 @@ const IntegratedChatAssistant = () => {
                 content: assistantContent,
                 created_at: result.created_at || new Date().toISOString(),
                 llm_trace: llmTrace,
-                pipeline_steps: pipeline_steps || []
+                pipeline_steps: pipeline_steps || [],
+                pipeline_trace: result.pipeline_trace || null
             };
 
             console.log('ChatAssistant: assistantMessage', assistantMessage);
@@ -435,6 +493,13 @@ const IntegratedChatAssistant = () => {
         };
 
         setMessages(prev => [...prev, userMessage]);
+        const streamingMsgId = `streaming-${Date.now()}`;
+        setMessages(prev => [...prev, {
+            message_id: streamingMsgId,
+            role: 'assistant',
+            content: { content_format: 'plain', text: '', _streaming: true },
+            created_at: new Date().toISOString(),
+        }]);
         setIsLoading(true);
 
         try {
@@ -445,7 +510,7 @@ const IntegratedChatAssistant = () => {
             const noImage = window.noImage || localStorage.getItem('noImage') === 'true';
             const persona = (window.selectedStyle || localStorage.getItem('selectedStyle') || 'butler').toLowerCase();
             const userName = window.CURRENT_USER_NAME || "guest";
-            
+
             // Map frontend format to backend format
             const formatMap = {
                 'plain': 'plain',
@@ -453,20 +518,20 @@ const IntegratedChatAssistant = () => {
                 'ui_answer': 'ui_answer'
             };
             const backendFormat = formatMap[selectedFormat] || selectedFormat;
-            
+
             // Save user message to DB
             await api.current.saveMessage(currentConversation, userMessage);
-            
+
             // Find last assistant message for threading
             let prevMessageId = null;
             const assistantMsgs = messages.filter(msg => msg.role === 'assistant');
             if (assistantMsgs.length > 0) {
                 prevMessageId = assistantMsgs[assistantMsgs.length - 1].message_id;
             }
-            
+
             // Build chat history for context
             const chatHistoryForExecute = buildChatHistory(messages);
-            
+
             const { result, pipeline_steps } = await sendMessageViaWebSocket({
                 user_name: userName,
                 response_format: backendFormat,
@@ -479,7 +544,38 @@ const IntegratedChatAssistant = () => {
                 demo_mode: demoMode,
                 no_image: noImage,
                 persona: persona
+            }, {
+                onStreamDelta: (text) => {
+                    setMessages(prev => prev.map(msg =>
+                        msg.message_id === streamingMsgId
+                            ? { ...msg, content: { ...msg.content, text: (msg.content.text || '') + text } }
+                            : msg
+                    ));
+                },
+                onPlaceholder: () => {
+                    setMessages(prev => prev.map(msg =>
+                        msg.message_id === streamingMsgId
+                            ? { ...msg, content: { content_format: 'ui_answer', _streaming: true, _placeholder: true, _reasoning: '' } }
+                            : msg
+                    ));
+                },
+                onStreamReasoning: (text) => {
+                    setMessages(prev => prev.map(msg =>
+                        msg.message_id === streamingMsgId
+                            ? { ...msg, content: { ...msg.content, _reasoning: (msg.content._reasoning || '') + text } }
+                            : msg
+                    ));
+                },
+                onStatus: ({ message, step }) => {
+                    setMessages(prev => prev.map(msg =>
+                        msg.message_id === streamingMsgId
+                            ? { ...msg, content: { ...msg.content, _statusMessage: message, _statusStep: step } }
+                            : msg
+                    ));
+                }
             });
+
+            setMessages(prev => prev.filter(msg => msg.message_id !== streamingMsgId));
 
             // Show message immediately — images will load in background
             const assistantContent = result.content || {};
@@ -493,7 +589,8 @@ const IntegratedChatAssistant = () => {
                 content: assistantContent,
                 created_at: result.created_at || new Date().toISOString(),
                 llm_trace: llmTrace,
-                pipeline_steps: pipeline_steps || []
+                pipeline_steps: pipeline_steps || [],
+                pipeline_trace: result.pipeline_trace || null
             };
 
             setMessages(prev => [...prev, assistantMessage]);
@@ -679,7 +776,7 @@ const IntegratedChatAssistant = () => {
                         onExecute: executeCommand
                     })
                 )),
-            isLoading && React.createElement(StreamingStatusBanner, {
+            isLoading && !messages.some(m => m.content?._streaming || m.content?._placeholder) && React.createElement(StreamingStatusBanner, {
                 key: `loading-${statusInfo.step}`,
                 statusInfo: statusInfo
             }),
