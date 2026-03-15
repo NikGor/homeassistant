@@ -63,9 +63,9 @@ StepTrace
   └── llm_trace: Optional[LllmTrace]
 
 PipelineTrace
-  ├── stage1: Optional[StepTrace]   # command call
-  ├── stage2: Optional[StepTrace]   # tool execution
-  ├── stage3: Optional[StepTrace]   # output generation
+  ├── command_call: Optional[StepTrace]    # command call
+  ├── tool_execution: Optional[StepTrace]  # tool execution
+  ├── create_output: Optional[StepTrace]   # output generation
   └── total_ms: int
 ```
 

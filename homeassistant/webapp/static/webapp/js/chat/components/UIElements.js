@@ -1113,12 +1113,116 @@ const ChatUIAnswer = ({ uiAnswer, onExecute }) => {
     ]);
 };
 
+const StreamingStatusInline = ({ message, step }) => {
+    const { useEffect } = React;
+
+    useEffect(() => {
+        if (typeof lucide !== 'undefined') {
+            setTimeout(() => lucide.createIcons(), 0);
+        }
+    }, [step]);
+
+    const toolIconMap = {
+        'web_search': 'search', 'google': 'search', 'search': 'search',
+        'llm': 'brain', 'think': 'brain', 'reason': 'brain',
+        'image': 'image', 'fetch': 'globe', 'browse': 'globe', 'web': 'globe',
+        'memory': 'database', 'plan': 'list-checks', 'tool': 'wrench',
+        'code': 'code-2', 'file': 'file-text',
+    };
+    const getIcon = (s) => {
+        if (!s) return 'zap';
+        const lower = s.toLowerCase();
+        for (const [key, icon] of Object.entries(toolIconMap)) {
+            if (lower.includes(key)) return icon;
+        }
+        return 'zap';
+    };
+
+    return React.createElement('div', {
+        className: 'flex items-center gap-2 mb-4 pb-3 border-b border-white/10'
+    }, [
+        React.createElement('div', {
+            key: 'pulse',
+            className: 'relative flex-shrink-0 w-2 h-2'
+        }, [
+            React.createElement('div', { key: 'ring', className: 'absolute inset-0 rounded-full bg-blue-400/50 animate-ping' }),
+            React.createElement('div', { key: 'dot', className: 'absolute inset-0 rounded-full bg-blue-400' })
+        ]),
+        React.createElement('i', {
+            key: 'icon',
+            'data-lucide': getIcon(step),
+            className: 'w-3.5 h-3.5 text-white/40 flex-shrink-0'
+        }),
+        React.createElement('span', {
+            key: 'text',
+            className: 'text-white/50 text-xs truncate'
+        }, message || 'Обрабатываю...')
+    ]);
+};
+
+const StreamingPlaceholder = ({ reasoning, statusMessage, statusStep }) => {
+    return React.createElement('div', {
+        className: 'space-y-4'
+    }, [
+        statusMessage && React.createElement(StreamingStatusInline, {
+            key: 'status',
+            message: statusMessage,
+            step: statusStep
+        }),
+        reasoning && React.createElement('div', {
+            key: 'reasoning',
+            className: 'text-white/50 text-xs italic border-l-2 border-white/20 pl-3 mb-3'
+        }, reasoning),
+        React.createElement('div', {
+            key: 'skeleton-lines',
+            className: 'space-y-2'
+        }, [
+            React.createElement('div', { key: 's1', className: 'skeleton-line', style: { width: '75%' } }),
+            React.createElement('div', { key: 's2', className: 'skeleton-line', style: { width: '100%' } }),
+            React.createElement('div', { key: 's3', className: 'skeleton-line', style: { width: '83%' } }),
+        ]),
+        React.createElement('div', {
+            key: 'skeleton-cards',
+            className: 'grid grid-cols-2 gap-3 mt-3'
+        }, [
+            React.createElement('div', { key: 'c1', className: 'skeleton-card', style: { height: '6rem' } }),
+            React.createElement('div', { key: 'c2', className: 'skeleton-card', style: { height: '6rem' } }),
+        ])
+    ]);
+};
+
 const ChatContent = ({ content, onExecute }) => {
     console.log('ChatContent: Rendering content', content);
     console.log('ChatContent: content.text', content?.text);
     console.log('ChatContent: content.ui_answer', content?.ui_answer);
     console.log('ChatContent: content.content_format', content?.content_format);
-    
+
+    if (content._streaming && !content._placeholder) {
+        return React.createElement('div', { className: 'space-y-0' }, [
+            content._statusMessage && React.createElement(StreamingStatusInline, {
+                key: 'status',
+                message: content._statusMessage,
+                step: content._statusStep || ''
+            }),
+            React.createElement('div', {
+                key: 'text',
+                className: 'prose prose-invert max-w-none'
+            }, [
+                React.createElement('span', { key: 'text' }, content.text || ''),
+                React.createElement('span', { key: 'cursor', className: 'streaming-cursor' })
+            ])
+        ]);
+    }
+
+    if (content._placeholder) {
+        return React.createElement(StreamingPlaceholder, {
+            key: 'placeholder',
+            reasoning: content._reasoning || '',
+            statusMessage: content._statusMessage || '',
+            statusStep: content._statusStep || ''
+        });
+    }
+
     // Check for ui_answer first, regardless of content_format
     if (content.ui_answer) {
         console.log('ChatContent: Rendering ui_answer');
@@ -1217,28 +1321,50 @@ const ChatContent = ({ content, onExecute }) => {
 const ChatMessage = ({ message, onExecute }) => {
     const { useState } = React;
     const isUser = message.role === 'user';
+    const isStreaming = !isUser && (message.content?._streaming || message.content?._placeholder);
     const [debugOpen, setDebugOpen] = useState(false);
-    const hasDebugData = message.llm_trace || (message.pipeline_steps && message.pipeline_steps.length > 0);
+    const hasDebugData = message.llm_trace || (message.pipeline_steps && message.pipeline_steps.length > 0) || message.pipeline_trace;
     const showDebugButton = window.debugMode && hasDebugData;
 
-    const renderDebugPanel = () => React.createElement('div', {
+    const renderDebugPanel = () => {
+        // Prefer pipeline_trace stage llm_traces over top-level llm_trace if it has no tokens
+        const topTrace = message.llm_trace;
+        const hasTopTraceData = topTrace && (topTrace.total_tokens > 0 || topTrace.total_cost > 0);
+        const stageLlmTraces = message.pipeline_trace
+            ? ['command_call', 'tool_execution', 'create_output']
+                .filter(k => message.pipeline_trace[k]?.llm_trace)
+                .map(k => ({ stage: k, trace: message.pipeline_trace[k].llm_trace }))
+            : [];
+        const effectiveLlmTrace = hasTopTraceData ? topTrace
+            : stageLlmTraces.length > 0
+                ? stageLlmTraces.reduce((acc, { trace }) => ({
+                    model: acc.model || trace.model,
+                    input_tokens: (acc.input_tokens || 0) + (trace.input_tokens || 0),
+                    output_tokens: (acc.output_tokens || 0) + (trace.output_tokens || 0),
+                    total_tokens: (acc.total_tokens || 0) + (trace.total_tokens || 0),
+                    total_cost: (acc.total_cost || 0) + (trace.total_cost || 0),
+                    input_tokens_details: acc.input_tokens_details || trace.input_tokens_details,
+                }), {})
+                : topTrace;
+
+        return React.createElement('div', {
         key: 'debug-panel',
         className: 'mt-2 bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/60'
     }, [
-        message.llm_trace && React.createElement('div', { key: 'llm-trace' }, [
+        effectiveLlmTrace && React.createElement('div', { key: 'llm-trace' }, [
             React.createElement('div', {
                 key: 'llm-header',
                 className: 'text-white/40 uppercase tracking-wider text-[10px] mb-1'
             }, 'LLM Trace'),
-            React.createElement('div', { key: 'model' }, `model: ${message.llm_trace.model || '—'}`),
+            React.createElement('div', { key: 'model' }, `model: ${effectiveLlmTrace.model || '—'}`),
             React.createElement('div', { key: 'tokens' },
-                `tokens: ${message.llm_trace.input_tokens || 0} in / ${message.llm_trace.output_tokens || 0} out / ${message.llm_trace.total_tokens || 0} total`
+                `tokens: ${effectiveLlmTrace.input_tokens || 0} in / ${effectiveLlmTrace.output_tokens || 0} out / ${effectiveLlmTrace.total_tokens || 0} total`
             ),
-            message.llm_trace.input_tokens_details && message.llm_trace.input_tokens_details.cached_tokens > 0
+            effectiveLlmTrace.input_tokens_details && effectiveLlmTrace.input_tokens_details.cached_tokens > 0
                 && React.createElement('div', { key: 'cached' },
-                    `cached: ${message.llm_trace.input_tokens_details.cached_tokens}`
+                    `cached: ${effectiveLlmTrace.input_tokens_details.cached_tokens}`
                 ),
-            React.createElement('div', { key: 'cost' }, `cost: $${(message.llm_trace.total_cost || 0).toFixed(6)}`)
+            React.createElement('div', { key: 'cost' }, `cost: $${(effectiveLlmTrace.total_cost || 0).toFixed(6)}`)
         ]),
         message.pipeline_steps && message.pipeline_steps.length > 0 && React.createElement('div', { key: 'pipeline' }, [
             React.createElement('div', {
@@ -1254,15 +1380,46 @@ const ChatMessage = ({ message, onExecute }) => {
                     React.createElement('span', { key: 'dur', className: 'text-white/40' }, `${(step.duration_ms / 1000).toFixed(2)}s`)
                 ])
             )
+        ]),
+        message.pipeline_trace && React.createElement('div', { key: 'pipeline-trace' }, [
+            React.createElement('div', {
+                key: 'pt-header',
+                className: 'text-white/40 uppercase tracking-wider text-[10px] mt-2 mb-1'
+            }, 'Pipeline Trace'),
+            ...[
+                ['command_call', 'cmd'],
+                ['tool_execution', 'tool'],
+                ['create_output', 'gen'],
+            ].filter(([key]) => message.pipeline_trace[key]).map(([key, label]) => {
+                const stage = message.pipeline_trace[key];
+                const ttft = stage.ttft_ms != null ? ` · ttft ${stage.ttft_ms}ms` : '';
+                return React.createElement('div', {
+                    key,
+                    className: 'flex justify-between gap-4'
+                }, [
+                    React.createElement('span', { key: 'name' }, label),
+                    React.createElement('span', { key: 'dur', className: 'text-white/40' },
+                        `${(stage.duration_ms / 1000).toFixed(2)}s${ttft}`
+                    )
+                ]);
+            }),
+            React.createElement('div', {
+                key: 'pt-total',
+                className: 'flex justify-between gap-4 mt-1 text-white/50'
+            }, [
+                React.createElement('span', { key: 'name' }, 'total'),
+                React.createElement('span', { key: 'dur' }, `${(message.pipeline_trace.total_ms / 1000).toFixed(2)}s`)
+            ])
         ])
     ]);
+    };
 
     return React.createElement('div', {
         className: `mb-6 flex ${isUser ? 'justify-end' : 'justify-start'}`
     }, [
         React.createElement('div', {
             key: 'message-container',
-            className: `max-w-[85%] ${isUser ? 'order-2' : 'order-1'}`
+            className: `${isStreaming ? 'w-[85%]' : 'max-w-[85%]'} ${isUser ? 'order-2' : 'order-1'}`
         }, [
             React.createElement('div', {
                 key: 'message-bubble',
