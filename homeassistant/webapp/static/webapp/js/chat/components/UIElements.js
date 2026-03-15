@@ -1405,9 +1405,9 @@ const ChatMessage = ({ message, onExecute }) => {
                 if (!stage) return Row(k, k, '—');
                 const stageLm = stage.llm_trace;
                 const hasLm = stageLm && stageLm.total_tokens > 0;
-                const ttft = stage.ttft_ms != null ? `  ttft ${sec(stage.ttft_ms)}` : '';
                 return [
-                    Row(k, k, `${sec(stage.duration_ms)}${ttft}`),
+                    Row(k, k, sec(stage.duration_ms)),
+                    stage.ttft_ms != null && Row(`${k}-ttft`, 'ttft', sec(stage.ttft_ms)),
                     hasLm && Sub(`${k}-lm`, `↳ ${stageLm.input_tokens}→${stageLm.output_tokens} tok · $${(stageLm.total_cost || 0).toFixed(6)}`),
                 ].filter(Boolean);
             }).flat(),
