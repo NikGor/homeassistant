@@ -1337,22 +1337,24 @@ const ChatMessage = ({ message, onExecute }) => {
                 .filter(k => pt[k]?.llm_trace)
                 .map(k => ({ stage: k, trace: pt[k].llm_trace }))
             : [];
-        const effectiveLlmTrace = hasTopTraceData ? topTrace
-            : stageLlmTraces.length > 0
-                ? stageLlmTraces.reduce((acc, { trace }) => ({
-                    model: acc.model || trace.model,
-                    input_tokens: (acc.input_tokens || 0) + (trace.input_tokens || 0),
-                    input_tokens_details: {
-                        cached_tokens: ((acc.input_tokens_details?.cached_tokens) || 0) + ((trace.input_tokens_details?.cached_tokens) || 0),
-                    },
-                    output_tokens: (acc.output_tokens || 0) + (trace.output_tokens || 0),
-                    output_tokens_details: {
-                        reasoning_tokens: ((acc.output_tokens_details?.reasoning_tokens) || 0) + ((trace.output_tokens_details?.reasoning_tokens) || 0),
-                    },
-                    total_tokens: (acc.total_tokens || 0) + (trace.total_tokens || 0),
-                    total_cost: (acc.total_cost || 0) + (trace.total_cost || 0),
-                }), {})
-                : topTrace;
+        const aggregated = stageLlmTraces.length > 0
+            ? stageLlmTraces.reduce((acc, { trace }) => ({
+                model: acc.model || trace.model,
+                input_tokens: (acc.input_tokens || 0) + (trace.input_tokens || 0),
+                input_tokens_details: {
+                    cached_tokens: ((acc.input_tokens_details?.cached_tokens) || 0) + ((trace.input_tokens_details?.cached_tokens) || 0),
+                },
+                output_tokens: (acc.output_tokens || 0) + (trace.output_tokens || 0),
+                output_tokens_details: {
+                    reasoning_tokens: ((acc.output_tokens_details?.reasoning_tokens) || 0) + ((trace.output_tokens_details?.reasoning_tokens) || 0),
+                },
+                total_tokens: (acc.total_tokens || 0) + (trace.total_tokens || 0),
+                total_cost: (acc.total_cost || 0) + (trace.total_cost || 0),
+            }), {})
+            : null;
+        const effectiveLlmTrace = hasTopTraceData ? topTrace : (aggregated || topTrace);
+        // model may be missing from top-level trace — fall back to stage model
+        const effectiveModel = effectiveLlmTrace?.model || aggregated?.model || stageLlmTraces[0]?.trace?.model || '—';
 
         // ── helpers ─────────────────────────────────────────────────────────────
         const H = (key, label) => React.createElement('div', {
@@ -1385,7 +1387,7 @@ const ChatMessage = ({ message, onExecute }) => {
         const reasoning = lm?.output_tokens_details?.reasoning_tokens || 0;
         const llmSection = lm && [
             H('llm-hdr', 'LLM Trace'),
-            Row('lm-model',  'model',  lm.model || '—'),
+            Row('lm-model',  'model',  effectiveModel),
             Row('lm-input',  'input',  `${lm.input_tokens || 0} tokens`),
             cached > 0   && Sub('lm-cached',    `↳ cached: ${cached}`),
             Row('lm-output', 'output', `${lm.output_tokens || 0} tokens`),
@@ -1403,9 +1405,9 @@ const ChatMessage = ({ message, onExecute }) => {
                 if (!stage) return Row(k, k, '—');
                 const stageLm = stage.llm_trace;
                 const hasLm = stageLm && stageLm.total_tokens > 0;
+                const ttft = stage.ttft_ms != null ? `  ttft ${sec(stage.ttft_ms)}` : '';
                 return [
-                    Row(k, k, sec(stage.duration_ms)),
-                    stage.ttft_ms != null && Sub(`${k}-ttft`, `↳ ttft: ${stage.ttft_ms}ms`),
+                    Row(k, k, `${sec(stage.duration_ms)}${ttft}`),
                     hasLm && Sub(`${k}-lm`, `↳ ${stageLm.input_tokens}→${stageLm.output_tokens} tok · $${(stageLm.total_cost || 0).toFixed(6)}`),
                 ].filter(Boolean);
             }).flat(),
