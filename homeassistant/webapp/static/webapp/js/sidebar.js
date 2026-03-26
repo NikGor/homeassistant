@@ -561,7 +561,7 @@ const GEN_UI_LEVELS = {
     2: {
         name: "Level 2",
         description: "Standard - Text + Quick Actions",
-        modelProviders: ["openai"],
+        modelProviders: ["openai", "openrouter"],
         showCommandModel: true,
         showFinalOutputModel: true,
         responseFormats: [],
@@ -574,7 +574,7 @@ const GEN_UI_LEVELS = {
     3: {
         name: "Level 3",
         description: "Enhanced - Text + Widget + Actions",
-        modelProviders: ["openai"],
+        modelProviders: ["openai", "openrouter"],
         showCommandModel: true,
         showFinalOutputModel: true,
         responseFormats: [],
@@ -586,8 +586,8 @@ const GEN_UI_LEVELS = {
     },
     4: {
         name: "Level 4",
-        description: "Advanced - OpenAI models, UI Answer",
-        modelProviders: ["openai"],
+        description: "Advanced - All models, UI Answer",
+        modelProviders: ["openai", "openrouter"],
         showCommandModel: true,
         showFinalOutputModel: true,
         responseFormats: ["ui_answer"],
@@ -600,7 +600,7 @@ const GEN_UI_LEVELS = {
     5: {
         name: "Level 5",
         description: "Coming soon ;)",
-        modelProviders: ["openai"],
+        modelProviders: ["openai", "openrouter"],
         showCommandModel: true,
         showFinalOutputModel: true,
         responseFormats: ["ui_answer"],

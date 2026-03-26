@@ -86,20 +86,11 @@ const ChatInput = ({
     const allModels = [...openaiModels, ...openrouterModels];
     
     // Models depend on response format
-    const getModelsForFormat = useCallback((format) => {
-        if (format === 'plain') {
-            // Plain text: all models available
-            return {
-                command: allModels,
-                response: allModels
-            };
-        } else {
-            // formatted and ui_answer: only OpenAI models (structured output required)
-            return {
-                command: openaiModels,
-                response: openaiModels
-            };
-        }
+    const getModelsForFormat = useCallback((_format) => {
+        return {
+            command: allModels,
+            response: allModels
+        };
     }, []);
     
     const currentModels = getModelsForFormat(selectedFormat);
