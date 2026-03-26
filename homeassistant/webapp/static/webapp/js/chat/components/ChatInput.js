@@ -74,15 +74,14 @@ const ChatInput = ({
     
     // All available models
     const openaiModels = [
-        'gpt-4o', 'gpt-4o-mini', 
         'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
-        'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5-pro', 'gpt-5.1',
-        'o1', 'o1-pro', 'o3', 'o3-mini', 'o3-pro'
+        'gpt-5.4', 'gpt-5.4-pro', 'gpt-5.4-mini', 'gpt-5.4-nano',
     ];
     const openrouterModels = [
-        'x-ai/grok-4', 'x-ai/grok-4-fast', 'x-ai/grok-4.1-fast',
-        'deepseek/deepseek-v3.2-exp',
-        'meta-llama/llama-4-maverick', 'meta-llama/llama-4-scout'
+        'google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview', 'google/gemini-3.1-flash-lite-preview',
+        'anthropic/claude-opus-4.6', 'anthropic/claude-sonnet-4.6',
+        'anthropic/claude-opus-4.5', 'anthropic/claude-sonnet-4.5', 'anthropic/claude-haiku-4.5',
+        'x-ai/grok-4.20-beta', 'x-ai/grok-4.1-fast',
     ];
     const allModels = [...openaiModels, ...openrouterModels];
     
