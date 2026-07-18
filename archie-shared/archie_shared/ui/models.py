@@ -38,6 +38,7 @@ class FrontendButton(Button):
         "export_to_calendar",
         "open_on_youtube_video",
         "open_on_youtube_music",
+        "play_on_spotify",
         "url_to",
         "check_amazon",
     ] = Field(
