@@ -58,12 +58,12 @@ const handleFrontendCommand = (command, cardData, button) => {
             window.open(url, '_blank');
             break;
         }
-        case 'open_on_youtube_music': {
-            const query = cardData.track_title 
+        case 'open_on_youtube_music':
+        case 'play_on_spotify': {
+            const query = cardData.track_title
                 ? `${cardData.track_title} ${cardData.artist || ''}`.trim()
                 : cardData.title || '';
-            const url = `https://music.youtube.com/search?q=${encodeURIComponent(query)}`;
-            window.open(url, '_blank');
+            if (query) spotifyControl('play_track', query);
             break;
         }
         case 'check_amazon': {

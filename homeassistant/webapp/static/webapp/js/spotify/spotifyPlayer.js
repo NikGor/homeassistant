@@ -1,7 +1,7 @@
 // Spotify Web Playback SDK integration.
 // The browser registers itself as a Spotify Connect device; actual playback
-// control (play/pause/next/previous/volume) is routed through the backend/AI
-// agent, not through this SDK instance directly — see spotifyControl().
+// control (play/pause/next/previous/volume/...) is routed through the backend,
+// which calls the Spotify Web API directly — see spotifyControl().
 
 let spotifyPlayerInstance = null;
 let spotifyDeviceId = null;

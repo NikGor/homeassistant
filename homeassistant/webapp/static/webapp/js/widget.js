@@ -354,6 +354,7 @@ function ensureMusicStateListener() {
             repeat: typeof state.repeat_mode === 'number'
                 ? ['off', 'context', 'track'][state.repeat_mode]
                 : prevPlayback.repeat,
+            has_context: !!(state.context && state.context.uri),
             current_track: track ? {
                 track_id: track.id,
                 title: track.name,
@@ -893,6 +894,7 @@ function renderMusicWidget(data) {
     const isPlaying = !!playback.is_playing;
     const isFavorite = !!(currentTrack && currentTrack.is_favorite);
     const repeatMode = playback.repeat || 'off';
+    const hasContext = playback.has_context !== false;
 
     const nowPlayingHtml = currentTrack ? `
         <div class="rounded-xl p-4 mb-4" style="background: rgba(0,0,0,0.22)">
@@ -935,13 +937,15 @@ function renderMusicWidget(data) {
                         style="color: ${playback.shuffle ? 'var(--vinyl-amber)' : 'var(--vinyl-cream)'}; opacity: ${playback.shuffle ? '1' : '0.5'};">
                     <i data-lucide="shuffle" class="w-4 h-4"></i>
                 </button>
-                <button id="music-prev-btn" class="vinyl-btn w-9 h-9" title="Предыдущий">
+                <button id="music-prev-btn" class="vinyl-btn w-9 h-9" title="${hasContext ? 'Предыдущий' : 'Недоступно без плейлиста/альбома'}"
+                        ${hasContext ? '' : 'disabled'} style="opacity: ${hasContext ? '1' : '0.35'}; cursor: ${hasContext ? 'pointer' : 'not-allowed'};">
                     <i data-lucide="skip-back" class="w-4 h-4"></i>
                 </button>
                 <button id="music-play-btn" class="vinyl-btn vinyl-btn--play w-14 h-14" title="${isPlaying ? 'Пауза' : 'Воспроизвести'}">
                     <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="w-6 h-6 ${isPlaying ? '' : 'ml-0.5'}"></i>
                 </button>
-                <button id="music-next-btn" class="vinyl-btn w-9 h-9" title="Следующий">
+                <button id="music-next-btn" class="vinyl-btn w-9 h-9" title="${hasContext ? 'Следующий' : 'Недоступно без плейлиста/альбома'}"
+                        ${hasContext ? '' : 'disabled'} style="opacity: ${hasContext ? '1' : '0.35'}; cursor: ${hasContext ? 'pointer' : 'not-allowed'};">
                     <i data-lucide="skip-forward" class="w-4 h-4"></i>
                 </button>
                 <button id="music-repeat-btn" class="vinyl-btn w-8 h-8" title="Повтор: ${repeatMode}"
@@ -1022,14 +1026,16 @@ function renderMusicWidget(data) {
 
     if (!currentTrack) return;
 
-    document.getElementById('music-prev-btn').addEventListener('click', () => {
-        suppressMusicPolling(8000);
-        spotifyControl('previous');
-    });
-    document.getElementById('music-next-btn').addEventListener('click', () => {
-        suppressMusicPolling(8000);
-        spotifyControl('next');
-    });
+    if (hasContext) {
+        document.getElementById('music-prev-btn').addEventListener('click', () => {
+            suppressMusicPolling(8000);
+            spotifyControl('previous');
+        });
+        document.getElementById('music-next-btn').addEventListener('click', () => {
+            suppressMusicPolling(8000);
+            spotifyControl('next');
+        });
+    }
     document.getElementById('music-play-btn').addEventListener('click', () => {
         suppressMusicPolling(8000);
         spotifyControl(isPlaying ? 'pause' : 'play');

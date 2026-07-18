@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 
 import requests
 from django.http import JsonResponse
@@ -15,7 +14,6 @@ from .services import token_store
 
 logger = logging.getLogger(__name__)
 
-AI_AGENT_URL = os.getenv("AI_AGENT_URL", "http://archie-ai-agent:8005")
 CONTROL_ACTIONS = {
     "play",
     "pause",
@@ -94,6 +92,7 @@ class SpotifyNowPlayingAPIView(View):
             "volume": (data.get("device") or {}).get("volume_percent"),
             "shuffle": data.get("shuffle_state", False),
             "repeat": data.get("repeat_state", "off"),
+            "has_context": data.get("context") is not None,
             "current_track": {
                 "title": item.get("name"),
                 "artist": ", ".join(a.get("name") for a in item.get("artists", [])),
@@ -165,9 +164,14 @@ class SpotifyDeviceAPIView(View):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class SpotifyControlAPIView(View):
+    """Calls the Spotify Web API directly (no AI-agent relay) for deterministic
+    playback actions — fast, cheap, and doesn't depend on an LLM deciding to
+    invoke a tool."""
+
     def post(self, request, *args, **kwargs):
         data = json.loads(request.body)
         action = data.get("action")
+        value = data.get("value")
         if action not in CONTROL_ACTIONS:
             return JsonResponse(
                 {"success": False, "message": f"Unknown action: {action}"}, status=400
@@ -184,50 +188,137 @@ class SpotifyControlAPIView(View):
                 status=400,
             )
 
-        instruction = self._build_instruction(action, data.get("value"))
-        ai_request = {
-            "user_name": user_name,
-            "response_format": "plain",
-            "input": instruction,
-            "device_id": device_id,
-        }
         try:
-            response = requests.post(
-                f"{AI_AGENT_URL}/chat",
-                json=ai_request,
-                timeout=15,
-            )
+            access_token = token_store.get_valid_access_token()
+        except SpotifyAuthError as e:
+            return JsonResponse({"success": False, "message": str(e)}, status=400)
+
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        try:
+            success, message = self._execute(action, value, device_id, headers)
         except Exception as e:
             logger.error(f"spotify_007: control request failed: {e}")
             return JsonResponse({"success": False, "message": str(e)}, status=502)
 
-        return JsonResponse({"success": response.status_code == 200})
+        if not success:
+            return JsonResponse({"success": False, "message": message}, status=502)
+        return JsonResponse({"success": True})
+
+    def _execute(
+        self, action: str, value, device_id: str, headers: dict
+    ) -> tuple[bool, str | None]:
+        base = "https://api.spotify.com/v1/me/player"
+
+        if action == "play":
+            resp = requests.put(
+                f"{base}/play",
+                params={"device_id": device_id},
+                headers=headers,
+                timeout=10,
+            )
+        elif action == "pause":
+            resp = requests.put(
+                f"{base}/pause",
+                params={"device_id": device_id},
+                headers=headers,
+                timeout=10,
+            )
+        elif action == "next":
+            resp = requests.post(
+                f"{base}/next",
+                params={"device_id": device_id},
+                headers=headers,
+                timeout=10,
+            )
+        elif action == "previous":
+            resp = requests.post(
+                f"{base}/previous",
+                params={"device_id": device_id},
+                headers=headers,
+                timeout=10,
+            )
+        elif action == "volume":
+            resp = requests.put(
+                f"{base}/volume",
+                params={"volume_percent": int(value), "device_id": device_id},
+                headers=headers,
+                timeout=10,
+            )
+        elif action == "shuffle":
+            resp = requests.put(
+                f"{base}/shuffle",
+                params={"state": "true" if value else "false", "device_id": device_id},
+                headers=headers,
+                timeout=10,
+            )
+        elif action == "repeat":
+            resp = requests.put(
+                f"{base}/repeat",
+                params={"state": value, "device_id": device_id},
+                headers=headers,
+                timeout=10,
+            )
+        elif action == "seek":
+            resp = requests.put(
+                f"{base}/seek",
+                params={"position_ms": int(value) * 1000, "device_id": device_id},
+                headers=headers,
+                timeout=10,
+            )
+        elif action == "play_track":
+            track_uri = self._search_track_uri(value, headers)
+            if not track_uri:
+                return False, f"Track not found: {value}"
+            resp = requests.put(
+                f"{base}/play",
+                params={"device_id": device_id},
+                json={"uris": [track_uri]},
+                headers=headers,
+                timeout=10,
+            )
+        elif action in ("favorite", "unfavorite"):
+            track_id = self._current_track_id(headers)
+            if not track_id:
+                return False, "No track is currently playing"
+            method = requests.put if action == "favorite" else requests.delete
+            resp = method(
+                "https://api.spotify.com/v1/me/tracks",
+                params={"ids": track_id},
+                headers=headers,
+                timeout=10,
+            )
+        else:
+            return False, f"Unhandled action: {action}"
+
+        if resp.status_code not in (200, 202, 204):
+            logger.error(
+                f"spotify_012: {action} failed ({resp.status_code}): {resp.text}"
+            )
+            return False, f"Spotify API error ({resp.status_code})"
+        return True, None
 
     @staticmethod
-    def _build_instruction(action: str, value) -> str:
-        if action == "volume":
-            return f"Установи громкость Spotify на {value}%"
-        if action == "shuffle":
-            return (
-                "Включи перемешивание в Spotify"
-                if value
-                else "Выключи перемешивание в Spotify"
-            )
-        if action == "repeat":
-            return {
-                "off": "Выключи повтор в Spotify",
-                "context": "Включи повтор плейлиста в Spotify",
-                "track": "Включи повтор текущего трека в Spotify",
-            }[value]
-        if action == "seek":
-            return f"Перемотай текущий трек в Spotify на {value} секунд"
-        if action == "play_track":
-            return f"Включи в Spotify: {value}"
-        return {
-            "play": "Продолжи воспроизведение в Spotify",
-            "pause": "Поставь Spotify на паузу",
-            "next": "Включи следующий трек в Spotify",
-            "previous": "Включи предыдущий трек в Spotify",
-            "favorite": "Добавь текущий трек в избранное в Spotify",
-            "unfavorite": "Убери текущий трек из избранного в Spotify",
-        }[action]
+    def _current_track_id(headers: dict) -> str | None:
+        resp = requests.get(
+            "https://api.spotify.com/v1/me/player/currently-playing",
+            headers=headers,
+            timeout=10,
+        )
+        if resp.status_code != 200 or not resp.content:
+            return None
+        item = resp.json().get("item")
+        return item.get("id") if item else None
+
+    @staticmethod
+    def _search_track_uri(query: str, headers: dict) -> str | None:
+        resp = requests.get(
+            "https://api.spotify.com/v1/search",
+            params={"q": query, "type": "track", "limit": 1},
+            headers=headers,
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        items = resp.json().get("tracks", {}).get("items", [])
+        return items[0]["uri"] if items else None
