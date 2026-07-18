@@ -491,6 +491,9 @@ async function showWidgetView(widgetType) {
         renderClimateWidget(STATIC_CLIMATE_WIDGET);
     } else if (widgetType === 'music') {
         ensureMusicStateListener();
+        if (typeof ensureSpotifyPlayerConnected === 'function') {
+            ensureSpotifyPlayerConnected();
+        }
         currentWidget = await buildMusicWidgetData();
         renderMusicWidget(currentWidget);
         startMusicPolling();

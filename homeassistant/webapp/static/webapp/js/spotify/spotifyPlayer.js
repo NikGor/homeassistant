@@ -5,6 +5,8 @@
 
 let spotifyPlayerInstance = null;
 let spotifyDeviceId = null;
+let spotifyPlayerReady = false;
+let spotifyPlayerConnecting = false;
 
 async function fetchSpotifyStatus() {
     try {
@@ -59,48 +61,82 @@ async function selectSpotifyDevice(deviceId) {
     await registerSpotifyDevice(deviceId);
 }
 
-window.onSpotifyWebPlaybackSDKReady = () => {
-    fetchSpotifyStatus().then((status) => {
-        if (!status.connected) {
-            return;
-        }
+// Creates (or reconnects) our Web Playback SDK device if we don't already
+// have a working one. Safe to call repeatedly — e.g. every time the music
+// panel is opened — since it no-ops when a ready instance already exists,
+// so it won't spawn duplicate "Archie Web Player" ghost devices.
+async function ensureSpotifyPlayerConnected() {
+    if (spotifyPlayerReady || spotifyPlayerConnecting) {
+        return;
+    }
+    if (typeof Spotify === 'undefined') {
+        // SDK script hasn't finished loading yet; onSpotifyWebPlaybackSDKReady
+        // will call us once it has.
+        return;
+    }
 
-        const player = new Spotify.Player({
-            name: 'Archie Web Player',
-            getOAuthToken: (callback) => {
-                fetchSpotifyAccessToken()
-                    .then(callback)
-                    .catch((error) => console.error('Error getting Spotify token:', error));
-            },
-            volume: 0.5
-        });
+    const status = await fetchSpotifyStatus();
+    if (!status.connected) {
+        return;
+    }
 
-        player.addListener('ready', ({ device_id }) => {
-            spotifyDeviceId = device_id;
-            // Don't steal control back to this browser if the user manually
-            // picked a different Spotify Connect device (e.g. their phone).
-            if (!sessionStorage.getItem('spotifyManualDeviceId')) {
-                registerSpotifyDevice(device_id);
-            }
-        });
+    // A previous attempt (e.g. after an auth error) left a dead instance —
+    // drop it before creating a fresh one.
+    if (spotifyPlayerInstance) {
+        spotifyPlayerInstance.disconnect();
+        spotifyPlayerInstance = null;
+    }
 
-        player.addListener('player_state_changed', (state) => {
-            window.dispatchEvent(new CustomEvent('spotify:state', { detail: state }));
-        });
+    spotifyPlayerConnecting = true;
 
-        player.addListener('initialization_error', ({ message }) => {
-            console.error('Spotify init error:', message);
-        });
-        player.addListener('authentication_error', ({ message }) => {
-            console.error('Spotify auth error:', message);
-        });
-        player.addListener('account_error', ({ message }) => {
-            console.error('Spotify account error:', message);
-        });
-
-        player.connect();
-        spotifyPlayerInstance = player;
+    const player = new Spotify.Player({
+        name: 'Archie Web Player',
+        getOAuthToken: (callback) => {
+            fetchSpotifyAccessToken()
+                .then(callback)
+                .catch((error) => console.error('Error getting Spotify token:', error));
+        },
+        volume: 0.5
     });
+
+    player.addListener('ready', ({ device_id }) => {
+        spotifyDeviceId = device_id;
+        spotifyPlayerReady = true;
+        spotifyPlayerConnecting = false;
+        // Don't steal control back to this browser if the user manually
+        // picked a different Spotify Connect device (e.g. their phone).
+        if (!sessionStorage.getItem('spotifyManualDeviceId')) {
+            registerSpotifyDevice(device_id);
+        }
+    });
+
+    player.addListener('not_ready', () => {
+        spotifyPlayerReady = false;
+    });
+
+    player.addListener('player_state_changed', (state) => {
+        window.dispatchEvent(new CustomEvent('spotify:state', { detail: state }));
+    });
+
+    player.addListener('initialization_error', ({ message }) => {
+        console.error('Spotify init error:', message);
+        spotifyPlayerConnecting = false;
+    });
+    player.addListener('authentication_error', ({ message }) => {
+        console.error('Spotify auth error:', message);
+        spotifyPlayerConnecting = false;
+    });
+    player.addListener('account_error', ({ message }) => {
+        console.error('Spotify account error:', message);
+        spotifyPlayerConnecting = false;
+    });
+
+    player.connect();
+    spotifyPlayerInstance = player;
+}
+
+window.onSpotifyWebPlaybackSDKReady = () => {
+    ensureSpotifyPlayerConnected();
 };
 
 // Cleanly disconnect our SDK device on tab close/reload so it doesn't linger
