@@ -163,6 +163,50 @@ class SpotifyDeviceAPIView(View):
 
 
 @method_decorator(csrf_exempt, name="dispatch")
+class SpotifyDevicesAPIView(View):
+    """Lists real Spotify Connect devices so the user can pick which one
+    playback commands should target, instead of always defaulting to
+    whichever browser tab last registered its Web Playback SDK instance."""
+
+    def get(self, request, *args, **kwargs):
+        try:
+            access_token = token_store.get_valid_access_token()
+        except SpotifyAuthError as e:
+            return JsonResponse({"success": False, "message": str(e)}, status=400)
+
+        try:
+            response = requests.get(
+                "https://api.spotify.com/v1/me/player/devices",
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=10,
+            )
+        except Exception as e:
+            logger.error(f"spotify_013: devices request failed: {e}")
+            return JsonResponse({"success": False, "message": str(e)}, status=502)
+
+        if response.status_code != 200:
+            logger.error(f"spotify_014: devices fetch failed: {response.text}")
+            return JsonResponse(
+                {"success": False, "message": "Failed to fetch devices"}, status=502
+            )
+
+        user_name = _current_user_name(request)
+        selected_device_id = redis_client.get_user_field(user_name, "spotify_device_id")
+        devices = [
+            {
+                "id": d.get("id"),
+                "name": d.get("name"),
+                "type": d.get("type"),
+                "is_active": d.get("is_active", False),
+                "is_selected": d.get("id") == selected_device_id,
+                "volume_percent": d.get("volume_percent"),
+            }
+            for d in response.json().get("devices", [])
+        ]
+        return JsonResponse({"success": True, "devices": devices})
+
+
+@method_decorator(csrf_exempt, name="dispatch")
 class SpotifyControlAPIView(View):
     """Calls the Spotify Web API directly (no AI-agent relay) for deterministic
     playback actions — fast, cheap, and doesn't depend on an LLM deciding to

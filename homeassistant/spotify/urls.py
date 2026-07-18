@@ -9,6 +9,11 @@ urlpatterns = [
     path("callback/", views.SpotifyCallbackView.as_view(), name="callback"),
     path("api/token/", api_views.SpotifyTokenAPIView.as_view(), name="api_token"),
     path("api/device/", api_views.SpotifyDeviceAPIView.as_view(), name="api_device"),
+    path(
+        "api/devices/",
+        api_views.SpotifyDevicesAPIView.as_view(),
+        name="api_devices",
+    ),
     path("api/control/", api_views.SpotifyControlAPIView.as_view(), name="api_control"),
     path("api/status/", api_views.SpotifyStatusAPIView.as_view(), name="api_status"),
     path(

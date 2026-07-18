@@ -262,6 +262,16 @@ async function fetchSpotifyQueue() {
     }
 }
 
+async function fetchSpotifyDevicesList() {
+    try {
+        const response = await fetch('/spotify/api/devices/');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching Spotify devices:', error);
+        return { success: false, devices: [] };
+    }
+}
+
 // Build Music widget data from real Spotify connection + playback state.
 async function buildMusicWidgetData() {
     const status = await fetchSpotifyStatus();
@@ -273,9 +283,10 @@ async function buildMusicWidgetData() {
             subtitle: "Spotify не подключён"
         };
     }
-    const [nowPlaying, queueResult] = await Promise.all([
+    const [nowPlaying, queueResult, devicesResult] = await Promise.all([
         fetchSpotifyNowPlaying(),
-        fetchSpotifyQueue()
+        fetchSpotifyQueue(),
+        fetchSpotifyDevicesList()
     ]);
     const playback = nowPlaying.success ? nowPlaying.playback : null;
     return {
@@ -285,6 +296,7 @@ async function buildMusicWidgetData() {
         subtitle: musicSubtitleFor(playback),
         playback,
         queue: queueResult.success ? queueResult.queue : [],
+        devices: devicesResult.success ? devicesResult.devices : [],
         quick_actions: MUSIC_QUICK_ACTIONS
     };
 }
@@ -307,6 +319,9 @@ function stopMusicPolling() {
 // action so its optimistic UI update isn't immediately clobbered by a poll
 // tick that still reads the pre-command state.
 let musicPollSuppressedUntil = 0;
+// Survives across the 5s poll's full innerHTML rebuild, which would
+// otherwise silently close the device dropdown mid-interaction.
+let musicDeviceMenuOpen = false;
 function suppressMusicPolling(ms) {
     musicPollSuppressedUntil = Date.now() + ms;
 }
@@ -895,6 +910,24 @@ function renderMusicWidget(data) {
     const isFavorite = !!(currentTrack && currentTrack.is_favorite);
     const repeatMode = playback.repeat || 'off';
     const hasContext = playback.has_context !== false;
+    const devices = data.devices || [];
+    const currentDevice = devices.find(d => d.is_selected) || devices.find(d => d.is_active);
+
+    const deviceMenuHtml = devices.length ? `
+        <div id="music-device-menu" class="hidden absolute right-0 top-full mt-2 z-20 rounded-xl overflow-hidden"
+             style="background: #221a10; border: 1px solid rgba(232,169,79,0.3); min-width: 220px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+            ${devices.map(d => `
+                <button class="music-device-option w-full text-left px-4 py-2.5 flex items-center gap-2 transition-colors"
+                        data-device-id="${d.id}"
+                        style="background: ${d.is_selected ? 'rgba(232,169,79,0.15)' : 'transparent'};">
+                    <i data-lucide="${d.type === 'Smartphone' ? 'smartphone' : 'monitor-speaker'}" class="w-4 h-4 flex-shrink-0"
+                       style="color: ${d.is_selected ? 'var(--vinyl-amber)' : 'var(--vinyl-cream)'}; opacity: ${d.is_selected ? '1' : '0.6'};"></i>
+                    <span class="truncate text-sm" style="color: var(--vinyl-cream); opacity: ${d.is_selected ? '1' : '0.75'};">${d.name}</span>
+                    ${d.is_active ? '<span class="ml-auto text-xs" style="color: var(--vinyl-teal)">●</span>' : ''}
+                </button>
+            `).join('')}
+        </div>
+    ` : '';
 
     const nowPlayingHtml = currentTrack ? `
         <div class="rounded-xl p-4 mb-4" style="background: rgba(0,0,0,0.22)">
@@ -1004,7 +1037,17 @@ function renderMusicWidget(data) {
                     <span class="vinyl-card__eyebrow"><span class="vinyl-card__eyebrow-dot${isPlaying ? ' is-live' : ''}"></span>${isPlaying ? 'Сейчас играет' : 'Hi-Fi'}</span>
                     <h2 class="vinyl-card__title text-2xl mt-1" style="color: var(--vinyl-cream)">${data.title}</h2>
                 </div>
-                <i data-lucide="disc-3" class="w-7 h-7" style="color: var(--vinyl-amber)"></i>
+                <div class="relative">
+                    <button id="music-device-btn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors"
+                            title="${currentDevice ? currentDevice.name : 'Устройство не выбрано'}"
+                            style="background: rgba(255,255,255,0.06); border: 1px solid rgba(232,169,79,0.25);">
+                        <i data-lucide="${currentDevice && currentDevice.type === 'Smartphone' ? 'smartphone' : 'monitor-speaker'}"
+                           class="w-4 h-4" style="color: var(--vinyl-amber)"></i>
+                        <span class="text-xs truncate max-w-[90px]" style="color: var(--vinyl-cream)">${currentDevice ? currentDevice.name : 'Устройство'}</span>
+                        <i data-lucide="chevron-down" class="w-3 h-3" style="color: var(--vinyl-cream); opacity: 0.6"></i>
+                    </button>
+                    ${deviceMenuHtml}
+                </div>
             </div>
 
             ${nowPlayingHtml}
@@ -1023,6 +1066,32 @@ function renderMusicWidget(data) {
             spotifyControl('play_track', `${item.title} — ${item.artist}`);
         });
     });
+
+    const deviceBtn = document.getElementById('music-device-btn');
+    const deviceMenu = document.getElementById('music-device-menu');
+    if (deviceBtn && deviceMenu) {
+        if (musicDeviceMenuOpen) deviceMenu.classList.remove('hidden');
+        deviceBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            musicDeviceMenuOpen = !musicDeviceMenuOpen;
+            deviceMenu.classList.toggle('hidden', !musicDeviceMenuOpen);
+        });
+        container.querySelectorAll('.music-device-option').forEach(el => {
+            el.addEventListener('click', async () => {
+                musicDeviceMenuOpen = false;
+                deviceMenu.classList.add('hidden');
+                await selectSpotifyDevice(el.dataset.deviceId);
+                suppressMusicPolling(2000);
+                currentWidget = await buildMusicWidgetData();
+                renderMusicWidget(currentWidget);
+                lucide.createIcons();
+            });
+        });
+        document.addEventListener('click', () => {
+            musicDeviceMenuOpen = false;
+            deviceMenu.classList.add('hidden');
+        }, { once: true });
+    }
 
     if (!currentTrack) return;
 

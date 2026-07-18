@@ -51,6 +51,14 @@ async function registerSpotifyDevice(deviceId) {
     }
 }
 
+// Explicit user pick from the device list (see widget.js) — persists for the
+// tab's lifetime so a later SDK 'ready' event (e.g. after a network blip)
+// doesn't silently steal control back to this browser.
+async function selectSpotifyDevice(deviceId) {
+    sessionStorage.setItem('spotifyManualDeviceId', deviceId);
+    await registerSpotifyDevice(deviceId);
+}
+
 window.onSpotifyWebPlaybackSDKReady = () => {
     fetchSpotifyStatus().then((status) => {
         if (!status.connected) {
@@ -69,7 +77,11 @@ window.onSpotifyWebPlaybackSDKReady = () => {
 
         player.addListener('ready', ({ device_id }) => {
             spotifyDeviceId = device_id;
-            registerSpotifyDevice(device_id);
+            // Don't steal control back to this browser if the user manually
+            // picked a different Spotify Connect device (e.g. their phone).
+            if (!sessionStorage.getItem('spotifyManualDeviceId')) {
+                registerSpotifyDevice(device_id);
+            }
         });
 
         player.addListener('player_state_changed', (state) => {
@@ -90,3 +102,11 @@ window.onSpotifyWebPlaybackSDKReady = () => {
         spotifyPlayerInstance = player;
     });
 };
+
+// Cleanly disconnect our SDK device on tab close/reload so it doesn't linger
+// as a stale "Archie Web Player" entry in Spotify's device list.
+window.addEventListener('pagehide', () => {
+    if (spotifyPlayerInstance) {
+        spotifyPlayerInstance.disconnect();
+    }
+});
