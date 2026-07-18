@@ -27,3 +27,4 @@ class UserState(BaseModel):
     smarthome_light: dict[str, Any] | None = None
     smarthome_climate: dict[str, Any] | None = None
     smarthome_dashboard: dict[str, Any] | None = None
+    spotify_device_id: str | None = None
