@@ -27,4 +27,5 @@ urlpatterns = [
     path("weather/", include("homeassistant.weather.urls")),
     path("ai-assistant/", include("homeassistant.ai_assistant.urls")),
     path("voice/", include("homeassistant.voice_assistant.urls")),
+    path("spotify/", include("homeassistant.spotify.urls")),
 ]
