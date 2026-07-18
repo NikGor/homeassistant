@@ -215,90 +215,162 @@ const STATIC_CLIMATE_WIDGET = {
     ]
 };
 
-const STATIC_MUSIC_WIDGET = {
-    type: "music_widget",
-    title: "Музыка",
-    subtitle: "Воспроизводится: Daft Punk — Get Lucky",
-    playback: {
-        is_playing: true,
-        current_track: {
-            track_id: "track_2",
-            title: "Get Lucky",
-            artist: "Daft Punk",
-            album: "Random Access Memories",
-            duration_seconds: 369,
-            cover_url: null,
-            is_favorite: true
-        },
-        progress_seconds: 127,
-        volume: 65,
-        shuffle: false,
-        repeat: "off"
+const MUSIC_REPEAT_CYCLE = { off: 'context', context: 'track', track: 'off' };
+
+const MUSIC_QUICK_ACTIONS = [
+    {
+        type: "assistant_button",
+        text: "Мои плейлисты",
+        style: "primary",
+        icon: "list-music",
+        assistant_request: "Покажи мои плейлисты"
     },
-    playlist: [
-        {
-            track_id: "track_1",
-            title: "Instant Crush",
-            artist: "Daft Punk ft. Julian Casablancas",
-            album: "Random Access Memories",
-            duration_seconds: 337,
-            cover_url: null,
-            is_favorite: false
-        },
-        {
-            track_id: "track_2",
-            title: "Get Lucky",
-            artist: "Daft Punk",
-            album: "Random Access Memories",
-            duration_seconds: 369,
-            cover_url: null,
-            is_favorite: true
-        },
-        {
-            track_id: "track_3",
-            title: "Lose Yourself to Dance",
-            artist: "Daft Punk ft. Pharrell Williams",
-            album: "Random Access Memories",
-            duration_seconds: 353,
-            cover_url: null,
-            is_favorite: false
-        },
-        {
-            track_id: "track_4",
-            title: "Giorgio by Moroder",
-            artist: "Daft Punk",
-            album: "Random Access Memories",
-            duration_seconds: 544,
-            cover_url: null,
-            is_favorite: true
-        },
-        {
-            track_id: "track_5",
-            title: "Touch",
-            artist: "Daft Punk ft. Paul Williams",
-            album: "Random Access Memories",
-            duration_seconds: 498,
-            cover_url: null,
-            is_favorite: false
+    {
+        type: "assistant_button",
+        text: "Рекомендации",
+        style: "secondary",
+        icon: "sparkles",
+        assistant_request: "Порекомендуй музыку похожую на текущий трек"
+    }
+];
+
+function musicSubtitleFor(playback) {
+    return playback && playback.current_track
+        ? `Воспроизводится: ${playback.current_track.artist} — ${playback.current_track.title}`
+        : "Ничего не воспроизводится";
+}
+
+// Fetch account-wide playback state (whichever device is actually playing),
+// not just our own Web Playback SDK device.
+async function fetchSpotifyNowPlaying() {
+    try {
+        const response = await fetch('/spotify/api/now-playing/');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching Spotify now-playing:', error);
+        return { success: false, playback: null };
+    }
+}
+
+async function fetchSpotifyQueue() {
+    try {
+        const response = await fetch('/spotify/api/queue/');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching Spotify queue:', error);
+        return { success: false, queue: [] };
+    }
+}
+
+// Build Music widget data from real Spotify connection + playback state.
+async function buildMusicWidgetData() {
+    const status = await fetchSpotifyStatus();
+    if (!status.connected) {
+        return {
+            type: "music_widget",
+            connected: false,
+            title: "Музыка",
+            subtitle: "Spotify не подключён"
+        };
+    }
+    const [nowPlaying, queueResult] = await Promise.all([
+        fetchSpotifyNowPlaying(),
+        fetchSpotifyQueue()
+    ]);
+    const playback = nowPlaying.success ? nowPlaying.playback : null;
+    return {
+        type: "music_widget",
+        connected: true,
+        title: "Музыка",
+        subtitle: musicSubtitleFor(playback),
+        playback,
+        queue: queueResult.success ? queueResult.queue : [],
+        quick_actions: MUSIC_QUICK_ACTIONS
+    };
+}
+
+// Periodically refresh from the real Spotify API so the widget reflects
+// playback started on any device (phone, desktop app, another browser tab) —
+// the 'spotify:state' SDK event only covers our own registered device.
+let musicPollIntervalId = null;
+
+function stopMusicPolling() {
+    if (musicPollIntervalId) {
+        clearInterval(musicPollIntervalId);
+        musicPollIntervalId = null;
+    }
+}
+
+// Manual controls (shuffle/repeat/seek/favorite/...) are relayed through the
+// AI agent as natural-language instructions, so they take a few seconds to
+// actually land on Spotify's side. Suppress polling briefly after a manual
+// action so its optimistic UI update isn't immediately clobbered by a poll
+// tick that still reads the pre-command state.
+let musicPollSuppressedUntil = 0;
+function suppressMusicPolling(ms) {
+    musicPollSuppressedUntil = Date.now() + ms;
+}
+
+function startMusicPolling() {
+    stopMusicPolling();
+    musicPollIntervalId = setInterval(async () => {
+        const widgetView = document.getElementById('widget-view');
+        if (!currentWidget || currentWidget.type !== 'music_widget' || widgetView.classList.contains('hidden')) {
+            stopMusicPolling();
+            return;
         }
-    ],
-    quick_actions: [
-        {
-            type: "assistant_button",
-            text: "Мои плейлисты",
-            style: "primary",
-            icon: "list-music",
-            assistant_request: "Покажи мои плейлисты"
-        },
-        {
-            type: "assistant_button",
-            text: "Рекомендации",
-            style: "secondary",
-            icon: "sparkles",
-            assistant_request: "Порекомендуй музыку похожую на текущий трек"
-        }
-    ]
-};
+        if (Date.now() < musicPollSuppressedUntil) return;
+        const [nowPlaying, queueResult] = await Promise.all([
+            fetchSpotifyNowPlaying(),
+            fetchSpotifyQueue()
+        ]);
+        if (!nowPlaying.success || !currentWidget || currentWidget.type !== 'music_widget') return;
+        currentWidget.playback = nowPlaying.playback;
+        currentWidget.subtitle = musicSubtitleFor(nowPlaying.playback);
+        if (queueResult.success) currentWidget.queue = queueResult.queue;
+        renderMusicWidget(currentWidget);
+        lucide.createIcons();
+    }, 5000);
+}
+
+// Keep the music widget in sync with live playback state from our own SDK
+// device instantly (polling above covers other devices, on a 5s delay).
+let musicStateListenerAttached = false;
+function ensureMusicStateListener() {
+    if (musicStateListenerAttached) return;
+    musicStateListenerAttached = true;
+    window.addEventListener('spotify:state', (event) => {
+        if (!currentWidget || currentWidget.type !== 'music_widget' || !currentWidget.connected) return;
+        const state = event.detail;
+        if (!state) return;
+
+        const track = state.track_window && state.track_window.current_track;
+        const prevPlayback = currentWidget.playback || {};
+        currentWidget.playback = {
+            is_playing: !state.paused,
+            progress_seconds: Math.round(state.position / 1000),
+            volume: prevPlayback.volume ?? 65,
+            shuffle: typeof state.shuffle === 'boolean' ? state.shuffle : prevPlayback.shuffle,
+            repeat: typeof state.repeat_mode === 'number'
+                ? ['off', 'context', 'track'][state.repeat_mode]
+                : prevPlayback.repeat,
+            current_track: track ? {
+                track_id: track.id,
+                title: track.name,
+                artist: (track.artists || []).map(a => a.name).join(', '),
+                album: track.album ? track.album.name : null,
+                duration_seconds: Math.round(state.duration / 1000),
+                cover_url: track.album && track.album.images && track.album.images[0]
+                    ? track.album.images[0].url : null,
+                is_favorite: prevPlayback.current_track ? prevPlayback.current_track.is_favorite : false
+            } : null
+        };
+        currentWidget.subtitle = musicSubtitleFor(currentWidget.playback);
+
+        renderMusicWidget(currentWidget);
+        lucide.createIcons();
+    });
+}
 
 const STATIC_DOCUMENTS_WIDGET = {
     type: "documents_widget",
@@ -397,8 +469,10 @@ async function showWidgetView(widgetType) {
         currentWidget = STATIC_CLIMATE_WIDGET;
         renderClimateWidget(STATIC_CLIMATE_WIDGET);
     } else if (widgetType === 'music') {
-        currentWidget = STATIC_MUSIC_WIDGET;
-        renderMusicWidget(STATIC_MUSIC_WIDGET);
+        ensureMusicStateListener();
+        currentWidget = await buildMusicWidgetData();
+        renderMusicWidget(currentWidget);
+        startMusicPolling();
     } else if (widgetType === 'documents') {
         currentWidget = STATIC_DOCUMENTS_WIDGET;
         renderDocumentsWidget(STATIC_DOCUMENTS_WIDGET);
@@ -769,174 +843,237 @@ function renderClimateWidget(data) {
 }
 
 // Helper: format seconds to mm:ss
-function formatTime(seconds) {
+function formatDuration(seconds) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Render Music Widget
+// Build the segmented VU-meter markup for a given fill percentage
+function buildVuMeterHtml(percent, segmentCount) {
+    const litCount = Math.round((percent / 100) * segmentCount);
+    let html = '';
+    for (let i = 0; i < segmentCount; i++) {
+        html += `<div class="vu-meter__segment${i < litCount ? ' is-lit' : ''}"></div>`;
+    }
+    return html;
+}
+
+// Render Music Widget — retro hi-fi / vinyl lounge theme
 function renderMusicWidget(data) {
     const container = document.getElementById('widget-container');
-    const { playback, playlist } = data;
+
+    if (!data.connected) {
+        container.innerHTML = `
+            <div class="vinyl-card rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-5">
+                    <div>
+                        <span class="vinyl-card__eyebrow"><span class="vinyl-card__eyebrow-dot"></span>Hi-Fi</span>
+                        <h2 class="vinyl-card__title text-2xl text-[--vinyl-cream] mt-1" style="color: var(--vinyl-cream)">${data.title}</h2>
+                    </div>
+                    <i data-lucide="disc-3" class="w-7 h-7" style="color: var(--vinyl-amber)"></i>
+                </div>
+                <div class="rounded-xl p-8 text-center" style="background: rgba(0,0,0,0.25); border: 1px dashed rgba(232,169,79,0.3)">
+                    <i data-lucide="music" class="w-14 h-14 mx-auto mb-4" style="color: var(--vinyl-copper)"></i>
+                    <div class="mb-4" style="color: var(--vinyl-cream); opacity: 0.7">${data.subtitle}</div>
+                    <a href="/spotify/authorize/" class="vinyl-btn vinyl-btn--play inline-flex items-center gap-2 px-5 py-3 font-medium" style="border-radius: 999px;">
+                        <i data-lucide="plug-zap" class="w-5 h-5"></i>
+                        Подключить Spotify
+                    </a>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const playback = data.playback || {};
     const currentTrack = playback.current_track;
     const progressPercent = currentTrack ? (playback.progress_seconds / currentTrack.duration_seconds) * 100 : 0;
+    const volume = playback.volume ?? 65;
+    const isPlaying = !!playback.is_playing;
+    const isFavorite = !!(currentTrack && currentTrack.is_favorite);
+    const repeatMode = playback.repeat || 'off';
 
-    // Current track display
     const nowPlayingHtml = currentTrack ? `
-        <div class="glass-tile rounded-xl p-4 mb-4">
+        <div class="rounded-xl p-4 mb-4" style="background: rgba(0,0,0,0.22)">
             <div class="flex items-center gap-4">
-                <!-- Album art placeholder -->
-                <div class="w-20 h-20 rounded-lg bg-gradient-to-br from-purple-600 to-pink-500 flex items-center justify-center shrink-0">
-                    <i data-lucide="music" class="w-10 h-10 text-white/80"></i>
+                <div class="vinyl-disc-wrap">
+                    <div class="vinyl-disc${isPlaying ? ' is-spinning' : ''}">
+                        <div class="vinyl-disc__spindle"></div>
+                        <div class="vinyl-disc__label">
+                            ${currentTrack.cover_url
+                                ? `<img src="${currentTrack.cover_url}">`
+                                : `<i data-lucide="music" class="w-6 h-6" style="color: var(--vinyl-ink)"></i>`
+                            }
+                        </div>
+                    </div>
+                    <div class="vinyl-tonearm${isPlaying ? ' is-down' : ''}"></div>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="text-white font-semibold text-lg truncate">${currentTrack.title}</div>
-                    <div class="text-gray-400 truncate">${currentTrack.artist}</div>
-                    <div class="text-gray-500 text-sm truncate">${currentTrack.album || ''}</div>
+                    <div class="vinyl-card__title text-lg truncate" style="color: var(--vinyl-cream)">${currentTrack.title}</div>
+                    <div class="truncate text-sm mt-0.5" style="color: var(--vinyl-amber)">${currentTrack.artist}</div>
+                    <div class="truncate text-xs mt-0.5" style="color: var(--vinyl-cream); opacity: 0.45">${currentTrack.album || ''}</div>
                 </div>
-                <button class="p-2 text-gray-400 hover:text-pink-500 transition-colors" title="${currentTrack.is_favorite ? 'Убрать из избранного' : 'В избранное'}">
-                    <i data-lucide="${currentTrack.is_favorite ? 'heart' : 'heart'}" class="w-6 h-6 ${currentTrack.is_favorite ? 'text-pink-500 fill-pink-500' : ''}"></i>
+                <button id="music-favorite-btn" title="${isFavorite ? 'Убрать из избранного' : 'В избранное'}"
+                        style="color: ${isFavorite ? '#f472b6' : 'var(--vinyl-cream)'}; opacity: ${isFavorite ? '1' : '0.4'};">
+                    <i data-lucide="heart" class="w-5 h-5${isFavorite ? ' fill-current' : ''}"></i>
                 </button>
             </div>
-            
-            <!-- Progress bar -->
+
+            <!-- VU-meter progress (click to seek) -->
             <div class="mt-4">
-                <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden cursor-pointer">
-                    <div class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all"
-                         style="width: ${progressPercent}%"></div>
-                </div>
-                <div class="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>${formatTime(playback.progress_seconds)}</span>
-                    <span>${formatTime(currentTrack.duration_seconds)}</span>
+                <div id="music-vu-meter" class="vu-meter" style="cursor: pointer;">${buildVuMeterHtml(progressPercent, 36)}</div>
+                <div class="flex justify-between text-xs mt-1.5 font-mono" style="color: var(--vinyl-cream); opacity: 0.5">
+                    <span>${formatDuration(playback.progress_seconds)}</span>
+                    <span>${formatDuration(currentTrack.duration_seconds)}</span>
                 </div>
             </div>
-            
-            <!-- Playback controls -->
-            <div class="flex items-center justify-center gap-4 mt-4">
-                <button class="p-2 text-gray-400 hover:text-white transition-colors ${playback.shuffle ? 'text-purple-500' : ''}" title="Перемешать">
-                    <i data-lucide="shuffle" class="w-5 h-5"></i>
+
+            <!-- Transport controls -->
+            <div class="flex items-center justify-center gap-4 mt-5">
+                <button id="music-shuffle-btn" class="vinyl-btn w-8 h-8" title="Перемешать"
+                        style="color: ${playback.shuffle ? 'var(--vinyl-amber)' : 'var(--vinyl-cream)'}; opacity: ${playback.shuffle ? '1' : '0.5'};">
+                    <i data-lucide="shuffle" class="w-4 h-4"></i>
                 </button>
-                <button class="p-2 text-gray-400 hover:text-white transition-colors" title="Предыдущий">
-                    <i data-lucide="skip-back" class="w-6 h-6"></i>
+                <button id="music-prev-btn" class="vinyl-btn w-9 h-9" title="Предыдущий">
+                    <i data-lucide="skip-back" class="w-4 h-4"></i>
                 </button>
-                <button class="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform" title="${playback.is_playing ? 'Пауза' : 'Воспроизвести'}">
-                    <i data-lucide="${playback.is_playing ? 'pause' : 'play'}" class="w-7 h-7 ${playback.is_playing ? '' : 'ml-1'}"></i>
+                <button id="music-play-btn" class="vinyl-btn vinyl-btn--play w-14 h-14" title="${isPlaying ? 'Пауза' : 'Воспроизвести'}">
+                    <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="w-6 h-6 ${isPlaying ? '' : 'ml-0.5'}"></i>
                 </button>
-                <button class="p-2 text-gray-400 hover:text-white transition-colors" title="Следующий">
-                    <i data-lucide="skip-forward" class="w-6 h-6"></i>
+                <button id="music-next-btn" class="vinyl-btn w-9 h-9" title="Следующий">
+                    <i data-lucide="skip-forward" class="w-4 h-4"></i>
                 </button>
-                <button class="p-2 text-gray-400 hover:text-white transition-colors ${playback.repeat !== 'off' ? 'text-purple-500' : ''}" title="Повтор: ${playback.repeat}">
-                    <i data-lucide="${playback.repeat === 'one' ? 'repeat-1' : 'repeat'}" class="w-5 h-5"></i>
+                <button id="music-repeat-btn" class="vinyl-btn w-8 h-8" title="Повтор: ${repeatMode}"
+                        style="color: ${repeatMode !== 'off' ? 'var(--vinyl-amber)' : 'var(--vinyl-cream)'}; opacity: ${repeatMode !== 'off' ? '1' : '0.5'};">
+                    <i data-lucide="${repeatMode === 'track' ? 'repeat-1' : 'repeat'}" class="w-4 h-4"></i>
                 </button>
             </div>
-            
-            <!-- Volume control -->
-            <div class="flex items-center gap-3 mt-4 px-4">
-                <i data-lucide="${playback.volume === 0 ? 'volume-x' : playback.volume < 50 ? 'volume-1' : 'volume-2'}" class="w-5 h-5 text-gray-400"></i>
-                <input type="range" min="0" max="100" value="${playback.volume}"
-                       class="flex-1 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500">
-                <span class="text-xs text-gray-500 w-8">${playback.volume}%</span>
+
+            <!-- Volume fader -->
+            <div class="flex items-center gap-3 mt-5 px-2">
+                <i data-lucide="${volume === 0 ? 'volume-x' : volume < 50 ? 'volume-1' : 'volume-2'}" class="w-4 h-4" style="color: var(--vinyl-copper)"></i>
+                <input id="music-volume-slider" type="range" min="0" max="100" value="${volume}"
+                       class="vinyl-fader flex-1" style="--vinyl-fill: ${volume}%">
+                <span id="music-volume-label" class="text-xs font-mono w-8" style="color: var(--vinyl-cream); opacity: 0.6">${volume}%</span>
             </div>
         </div>
     ` : `
-        <div class="glass-tile rounded-xl p-8 mb-4 text-center">
-            <i data-lucide="music" class="w-16 h-16 text-gray-600 mx-auto mb-4"></i>
-            <div class="text-gray-400">Ничего не воспроизводится</div>
+        <div class="rounded-xl p-8 mb-4 text-center" style="background: rgba(0,0,0,0.22)">
+            <div class="vinyl-disc mx-auto mb-4" style="width: 4.5rem; height: 4.5rem;">
+                <div class="vinyl-disc__label"><i data-lucide="music" class="w-5 h-5" style="color: var(--vinyl-ink)"></i></div>
+                <div class="vinyl-disc__spindle"></div>
+            </div>
+            <div style="color: var(--vinyl-cream); opacity: 0.6">Ничего не воспроизводится</div>
         </div>
     `;
 
-    // Playlist
-    const playlistHtml = playlist.map((track, index) => {
-        const isCurrentTrack = currentTrack && track.track_id === currentTrack.track_id;
-        return `
-            <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 cursor-pointer transition-colors group ${isCurrentTrack ? 'bg-white/10' : ''}"
-                 data-track-id="${track.track_id}">
-                <div class="w-8 text-center text-gray-500 group-hover:hidden ${isCurrentTrack ? 'hidden' : ''}">
-                    ${index + 1}
-                </div>
-                <div class="w-8 text-center hidden group-hover:block ${isCurrentTrack ? '!block' : ''}">
-                    ${isCurrentTrack && playback.is_playing 
-                        ? '<i data-lucide="pause" class="w-4 h-4 text-purple-500 mx-auto"></i>'
-                        : '<i data-lucide="play" class="w-4 h-4 text-white mx-auto"></i>'
-                    }
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="text-white truncate ${isCurrentTrack ? 'text-purple-400' : ''}">${track.title}</div>
-                    <div class="text-gray-500 text-sm truncate">${track.artist}</div>
-                </div>
-                <button class="p-1.5 text-gray-500 hover:text-pink-500 opacity-0 group-hover:opacity-100 transition-all">
-                    <i data-lucide="heart" class="w-4 h-4 ${track.is_favorite ? 'text-pink-500 fill-pink-500 opacity-100' : ''}"></i>
+    const queue = data.queue || [];
+    const queueHtml = queue.length > 0 ? `
+        <div class="mt-4 pt-4" style="border-top: 1px solid rgba(232,169,79,0.15);">
+            <div class="text-xs uppercase tracking-wide mb-2" style="color: var(--vinyl-cream); opacity: 0.4;">Далее в очереди</div>
+            ${queue.map((item, index) => `
+                <button class="music-queue-item flex items-center gap-2 w-full text-left py-1.5 px-2 -mx-2 rounded-lg transition-colors"
+                        data-index="${index}"
+                        onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                    <span class="text-sm truncate flex-1" style="color: var(--vinyl-cream); opacity: 0.75;">${item.title} — ${item.artist}</span>
+                    <span class="text-xs font-mono flex-shrink-0" style="color: var(--vinyl-cream); opacity: 0.35;">${formatDuration(item.duration_seconds)}</span>
                 </button>
-                <div class="text-gray-500 text-sm w-12 text-right">${formatTime(track.duration_seconds)}</div>
-            </div>
-        `;
-    }).join('');
+            `).join('')}
+        </div>
+    ` : '';
 
-    // Quick actions
-    const quickActionsHtml = data.quick_actions.map(action => {
-        const styleClass = action.style === 'primary'
-            ? 'bg-purple-600 hover:bg-purple-500'
-            : 'bg-gray-700 hover:bg-gray-600';
-        return `
-            <button class="flex-1 px-4 py-3 ${styleClass} text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2">
-                <i data-lucide="${action.icon}" class="w-5 h-5"></i>
-                ${action.text}
-            </button>
-        `;
-    }).join('');
+    const quickActionsHtml = (data.quick_actions || []).map((action, index) => `
+        <button class="flex-1 px-4 py-3 font-medium flex items-center justify-center gap-2 rounded-lg transition-transform hover:scale-[1.02]"
+                style="${index === 0
+                    ? 'background: linear-gradient(135deg, var(--vinyl-amber), var(--vinyl-copper)); color: var(--vinyl-ink);'
+                    : 'background: rgba(255,255,255,0.06); color: var(--vinyl-cream); border: 1px solid rgba(232,169,79,0.2);'}">
+            <i data-lucide="${action.icon}" class="w-5 h-5"></i>
+            ${action.text}
+        </button>
+    `).join('');
 
     container.innerHTML = `
-        <div class="glass-tile rounded-2xl p-6">
+        <div class="vinyl-card rounded-2xl p-6">
             <div class="flex items-center justify-between mb-4">
                 <div>
-                    <h2 class="text-2xl font-bold text-white">${data.title}</h2>
-                    <p class="text-gray-400 text-sm">${data.subtitle}</p>
+                    <span class="vinyl-card__eyebrow"><span class="vinyl-card__eyebrow-dot${isPlaying ? ' is-live' : ''}"></span>${isPlaying ? 'Сейчас играет' : 'Hi-Fi'}</span>
+                    <h2 class="vinyl-card__title text-2xl mt-1" style="color: var(--vinyl-cream)">${data.title}</h2>
                 </div>
-                <div class="flex items-center gap-2">
-                    <i data-lucide="music-2" class="w-8 h-8 text-purple-500"></i>
-                </div>
+                <i data-lucide="disc-3" class="w-7 h-7" style="color: var(--vinyl-amber)"></i>
             </div>
 
             ${nowPlayingHtml}
+            ${queueHtml}
 
-            <!-- Playlist section -->
-            <div class="mb-4">
-                <h3 class="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                    <i data-lucide="list-music" class="w-4 h-4"></i>
-                    Очередь воспроизведения
-                </h3>
-                <div class="max-h-48 overflow-y-auto scrollbar-thin">
-                    ${playlistHtml}
-                </div>
-            </div>
-
-            <div class="flex gap-3">
+            <div class="flex gap-3 mt-4">
                 ${quickActionsHtml}
             </div>
         </div>
     `;
-    
-    // Add click handlers for playlist tracks
-    container.querySelectorAll('[data-track-id]').forEach(trackEl => {
-        trackEl.addEventListener('click', (e) => {
-            if (e.target.closest('button')) return; // Don't trigger on heart button
-            
-            const trackId = trackEl.dataset.trackId;
-            const track = playlist.find(t => t.track_id === trackId);
-            
-            if (track) {
-                // Update playback state
-                data.playback.current_track = track;
-                data.playback.progress_seconds = 0;
-                data.playback.is_playing = true;
-                data.subtitle = `Воспроизводится: ${track.artist} — ${track.title}`;
-                
-                // Re-render
-                renderMusicWidget(data);
-                lucide.createIcons();
-            }
+
+    queue.forEach((item, index) => {
+        const el = container.querySelector(`.music-queue-item[data-index="${index}"]`);
+        if (el) el.addEventListener('click', () => {
+            suppressMusicPolling(8000);
+            spotifyControl('play_track', `${item.title} — ${item.artist}`);
         });
+    });
+
+    if (!currentTrack) return;
+
+    document.getElementById('music-prev-btn').addEventListener('click', () => {
+        suppressMusicPolling(8000);
+        spotifyControl('previous');
+    });
+    document.getElementById('music-next-btn').addEventListener('click', () => {
+        suppressMusicPolling(8000);
+        spotifyControl('next');
+    });
+    document.getElementById('music-play-btn').addEventListener('click', () => {
+        suppressMusicPolling(8000);
+        spotifyControl(isPlaying ? 'pause' : 'play');
+    });
+    document.getElementById('music-favorite-btn').addEventListener('click', () => {
+        suppressMusicPolling(8000);
+        spotifyControl(isFavorite ? 'unfavorite' : 'favorite');
+        currentTrack.is_favorite = !isFavorite;
+        renderMusicWidget(data);
+        lucide.createIcons();
+    });
+    document.getElementById('music-shuffle-btn').addEventListener('click', () => {
+        suppressMusicPolling(8000);
+        const next = !playback.shuffle;
+        spotifyControl('shuffle', next);
+        playback.shuffle = next;
+        renderMusicWidget(data);
+        lucide.createIcons();
+    });
+    document.getElementById('music-repeat-btn').addEventListener('click', () => {
+        suppressMusicPolling(8000);
+        const next = MUSIC_REPEAT_CYCLE[repeatMode];
+        spotifyControl('repeat', next);
+        playback.repeat = next;
+        renderMusicWidget(data);
+        lucide.createIcons();
+    });
+    document.getElementById('music-vu-meter').addEventListener('click', (e) => {
+        suppressMusicPolling(8000);
+        const rect = e.currentTarget.getBoundingClientRect();
+        const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+        const newProgress = Math.round(fraction * currentTrack.duration_seconds);
+        spotifyControl('seek', newProgress);
+        playback.progress_seconds = newProgress;
+        renderMusicWidget(data);
+        lucide.createIcons();
+    });
+    document.getElementById('music-volume-slider').addEventListener('input', (e) => {
+        e.target.style.setProperty('--vinyl-fill', `${e.target.value}%`);
+        document.getElementById('music-volume-label').textContent = `${e.target.value}%`;
+    });
+    document.getElementById('music-volume-slider').addEventListener('change', (e) => {
+        suppressMusicPolling(8000);
+        spotifyControl('volume', Number(e.target.value));
     });
 }
 

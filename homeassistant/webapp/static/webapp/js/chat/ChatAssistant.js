@@ -283,13 +283,13 @@ const IntegratedChatAssistant = () => {
         });
     };
 
-    const sendMessage = async (e) => {
-        e.preventDefault();
-        if (!inputValue.trim() || !currentConversation || isLoading) return;
+    const sendMessage = async (e, overrideText) => {
+        if (e && e.preventDefault) e.preventDefault();
+        const messageText = (overrideText !== undefined ? overrideText : inputValue).trim();
+        if (!messageText || !currentConversation || isLoading) return;
 
         shouldFollowLatest.current = true;
 
-        const messageText = inputValue.trim();
         const isFirstMessage = messages.length === 0;
         const userMessage = {
             message_id: `temp-user-${Date.now()}`,
@@ -303,10 +303,11 @@ const IntegratedChatAssistant = () => {
 
         setMessages(prev => [...prev, userMessage]);
         const streamingMsgId = `streaming-${Date.now()}`;
+        const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
         setMessages(prev => [...prev, {
             message_id: streamingMsgId,
             role: 'assistant',
-            content: { content_format: 'plain', text: '', _streaming: true },
+            content: { content_format: selectedFormat, text: '', _streaming: true },
             created_at: new Date().toISOString(),
         }]);
         setInputValue('');
@@ -315,7 +316,6 @@ const IntegratedChatAssistant = () => {
         try {
             const selectedCommandModel = window.selectedCommandModel || localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
             const selectedFinalOutputModel = window.selectedFinalOutputModel || localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
-            const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
             const demoMode = window.demoMode || localStorage.getItem('demoMode') === 'true';
             const noImage = window.noImage || localStorage.getItem('noImage') === 'true';
             const persona = (window.selectedStyle || localStorage.getItem('selectedStyle') || 'butler').toLowerCase();
@@ -494,10 +494,11 @@ const IntegratedChatAssistant = () => {
 
         setMessages(prev => [...prev, userMessage]);
         const streamingMsgId = `streaming-${Date.now()}`;
+        const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
         setMessages(prev => [...prev, {
             message_id: streamingMsgId,
             role: 'assistant',
-            content: { content_format: 'plain', text: '', _streaming: true },
+            content: { content_format: selectedFormat, text: '', _streaming: true },
             created_at: new Date().toISOString(),
         }]);
         setIsLoading(true);
@@ -505,7 +506,6 @@ const IntegratedChatAssistant = () => {
         try {
             const selectedCommandModel = window.selectedCommandModel || localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
             const selectedFinalOutputModel = window.selectedFinalOutputModel || localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
-            const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
             const demoMode = window.demoMode || localStorage.getItem('demoMode') === 'true';
             const noImage = window.noImage || localStorage.getItem('noImage') === 'true';
             const persona = (window.selectedStyle || localStorage.getItem('selectedStyle') || 'butler').toLowerCase();
@@ -678,16 +678,7 @@ const IntegratedChatAssistant = () => {
             getCurrentConversationId: () => currentConversation?.conversation_id || null,
             sendMessage: (message) => {
                 if (currentConversation) {
-                    // Trigger sending message to current conversation
-                    const inputElement = document.querySelector('textarea[placeholder*="Напишите сообщение"]');
-                    if (inputElement) {
-                        inputElement.value = message;
-                        // Trigger form submission
-                        const form = inputElement.closest('form');
-                        if (form) {
-                            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-                        }
-                    }
+                    sendMessage(null, message);
                 }
             }
         };

@@ -1,28 +1,46 @@
 // UI Elements Components
 
-// Custom marked renderer for pill-style links
-const createCustomMarkedRenderer = () => {
-    if (typeof marked === 'undefined') return null;
-    const renderer = new marked.Renderer();
-    renderer.link = (linkData) => {
-        // marked v5+ passes object: { href, title, text }
-        // older versions pass (href, title, text) separately
-        const href = typeof linkData === 'object' ? linkData.href : linkData;
-        const title = typeof linkData === 'object' ? linkData.title : arguments[1];
-        const text = typeof linkData === 'object' ? linkData.text : arguments[2];
-        
-        const pillClass = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all duration-200 cursor-pointer no-underline';
-        const titleAttr = title ? ` title="${title}"` : '';
-        return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="${pillClass}"${titleAttr}><span class="mr-1">🔗</span>${text}</a>`;
-    };
-    return renderer;
-};
-
-// Parse markdown with custom link styling
+// Parse markdown, then apply hljs highlighting via post-processing
 const parseMarkdownWithPillLinks = (text) => {
     if (typeof marked === 'undefined') return text;
-    const renderer = createCustomMarkedRenderer();
-    return marked.parse(text, { renderer });
+
+    let html = marked.parse(text);
+
+    // Post-process: apply hljs syntax highlighting to code blocks
+    if (typeof hljs !== 'undefined') {
+        html = html.replace(
+            /<pre><code(?: class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g,
+            (match, lang, encodedCode) => {
+                if (lang === 'mermaid') return match;
+                // Decode HTML entities that marked encoded
+                const code = encodedCode
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&amp;/g, '&')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#39;/g, "'");
+                const language = lang && hljs.getLanguage(lang) ? lang : null;
+                const highlighted = language
+                    ? hljs.highlight(code, { language }).value
+                    : hljs.highlightAuto(code).value;
+                const cls = language ? `hljs language-${language}` : 'hljs';
+                return `<pre><code class="${cls}">${highlighted}</code></pre>`;
+            }
+        );
+    }
+
+    // Post-process: convert pill-style links
+    html = html.replace(
+        /<a href="([^"]*)"(?: title="([^"]*)")?>([\s\S]*?)<\/a>/g,
+        (match, href, title, linkText) => {
+            if (!href) return match;
+            const pillClass = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all duration-200 cursor-pointer no-underline';
+            const titleAttr = title ? ` title="${title}"` : '';
+            return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="${pillClass}"${titleAttr}><span class="mr-1">🔗</span>${linkText}</a>`;
+        }
+    );
+
+    return html;
 };
 
 // Frontend button command handlers
@@ -89,6 +107,216 @@ const ChatButton = ({ button, onExecute, cardData }) => {
     ]);
 };
 
+// mm:ss formatter scoped to this widget (chat/utils.js's formatTime formats dates, not durations)
+const formatTrackDuration = (seconds) => {
+    if (!Number.isFinite(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const SPOTIFY_REPEAT_CYCLE = { off: 'context', context: 'track', track: 'off' };
+
+// Spotify player widget (renders MusicWidget: cover, track/artist, progress,
+// transport + shuffle/repeat/favorite controls, upcoming queue)
+const SpotifyPlayerWidget = ({ widget }) => {
+    const [playback, setPlayback] = React.useState(widget.playback || {});
+    const progressBarRef = React.useRef(null);
+
+    React.useEffect(() => {
+        const handleState = (event) => {
+            const state = event.detail;
+            if (!state) return;
+            const track = state.track_window && state.track_window.current_track;
+            setPlayback(prev => ({
+                is_playing: !state.paused,
+                progress_seconds: Math.round(state.position / 1000),
+                volume: prev.volume,
+                shuffle: typeof state.shuffle === 'boolean' ? state.shuffle : prev.shuffle,
+                repeat: typeof state.repeat_mode === 'number'
+                    ? ['off', 'context', 'track'][state.repeat_mode]
+                    : prev.repeat,
+                current_track: track ? {
+                    title: track.name,
+                    artist: (track.artists || []).map(a => a.name).join(', '),
+                    album: track.album ? track.album.name : null,
+                    duration_seconds: Math.round(state.duration / 1000),
+                    cover_url: track.album && track.album.images && track.album.images[0]
+                        ? track.album.images[0].url : null,
+                    is_favorite: prev.current_track ? prev.current_track.is_favorite : false
+                } : null
+            }));
+        };
+        window.addEventListener('spotify:state', handleState);
+        return () => window.removeEventListener('spotify:state', handleState);
+    }, []);
+
+    const track = playback.current_track;
+    const progress = track && track.duration_seconds
+        ? Math.min(100, (playback.progress_seconds / track.duration_seconds) * 100)
+        : 0;
+
+    const handleSeek = (e) => {
+        if (!track || !progressBarRef.current) return;
+        const rect = progressBarRef.current.getBoundingClientRect();
+        const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+        const newProgress = Math.round(fraction * track.duration_seconds);
+        spotifyControl('seek', newProgress);
+        setPlayback(prev => ({ ...prev, progress_seconds: newProgress }));
+    };
+
+    const handleShuffleClick = () => {
+        const next = !playback.shuffle;
+        spotifyControl('shuffle', next);
+        setPlayback(prev => ({ ...prev, shuffle: next }));
+    };
+
+    const handleRepeatClick = () => {
+        const next = SPOTIFY_REPEAT_CYCLE[playback.repeat || 'off'];
+        spotifyControl('repeat', next);
+        setPlayback(prev => ({ ...prev, repeat: next }));
+    };
+
+    const handleFavoriteClick = () => {
+        if (!track) return;
+        const next = !track.is_favorite;
+        spotifyControl(next ? 'favorite' : 'unfavorite');
+        setPlayback(prev => ({ ...prev, current_track: { ...prev.current_track, is_favorite: next } }));
+    };
+
+    const handleQueueItemClick = (item) => {
+        spotifyControl('play_track', `${item.title} — ${item.artist}`);
+    };
+
+    return React.createElement('div', {
+        className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-4 border border-white/20'
+    }, [
+        React.createElement('div', {
+            key: 'header',
+            className: 'flex items-center gap-4'
+        }, [
+            React.createElement('div', {
+                key: 'cover',
+                className: 'w-14 h-14 rounded-lg bg-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center'
+            }, track && track.cover_url
+                ? React.createElement('img', { src: track.cover_url, className: 'w-full h-full object-cover' })
+                : React.createElement('i', { 'data-lucide': 'music', className: 'w-6 h-6 text-white/40' })
+            ),
+            React.createElement('div', { key: 'meta', className: 'min-w-0 flex-1' }, [
+                React.createElement('div', {
+                    key: 'title',
+                    className: 'text-white font-medium truncate'
+                }, track ? track.title : (widget.title || 'Музыка')),
+                React.createElement('div', {
+                    key: 'artist',
+                    className: 'text-white/50 text-sm truncate'
+                }, track ? track.artist : (widget.subtitle || ''))
+            ]),
+            track && React.createElement('button', {
+                key: 'favorite',
+                onClick: handleFavoriteClick,
+                title: track.is_favorite ? 'Убрать из избранного' : 'В избранное',
+                className: track.is_favorite ? 'text-pink-400 hover:text-pink-300' : 'text-white/40 hover:text-white'
+            }, React.createElement('i', {
+                'data-lucide': 'heart',
+                className: `w-5 h-5${track.is_favorite ? ' fill-current' : ''}`
+            }))
+        ]),
+        React.createElement('div', {
+            key: 'progress',
+            ref: progressBarRef,
+            onClick: handleSeek,
+            className: 'mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden cursor-pointer'
+        }, React.createElement('div', {
+            className: 'h-full bg-indigo-400 pointer-events-none',
+            style: { width: `${progress}%` }
+        })),
+        track && React.createElement('div', {
+            key: 'times',
+            className: 'flex justify-between text-white/40 text-xs mt-1'
+        }, [
+            React.createElement('span', { key: 'elapsed' }, formatTrackDuration(playback.progress_seconds)),
+            React.createElement('span', { key: 'total' }, formatTrackDuration(track.duration_seconds))
+        ]),
+        React.createElement('div', {
+            key: 'controls',
+            className: 'flex items-center justify-center gap-4 mt-3'
+        }, [
+            React.createElement('button', {
+                key: 'shuffle',
+                onClick: handleShuffleClick,
+                title: 'Перемешать',
+                className: playback.shuffle ? 'text-indigo-300' : 'text-white/50 hover:text-white'
+            }, React.createElement('i', { 'data-lucide': 'shuffle', className: 'w-4 h-4' })),
+            React.createElement('button', {
+                key: 'prev',
+                onClick: () => spotifyControl('previous'),
+                className: 'text-white/70 hover:text-white'
+            }, React.createElement('i', { 'data-lucide': 'skip-back', className: 'w-5 h-5' })),
+            React.createElement('button', {
+                key: 'play',
+                onClick: () => spotifyControl(playback.is_playing ? 'pause' : 'play'),
+                className: 'text-white hover:text-indigo-300'
+            }, React.createElement('i', { 'data-lucide': playback.is_playing ? 'pause' : 'play', className: 'w-6 h-6' })),
+            React.createElement('button', {
+                key: 'next',
+                onClick: () => spotifyControl('next'),
+                className: 'text-white/70 hover:text-white'
+            }, React.createElement('i', { 'data-lucide': 'skip-forward', className: 'w-5 h-5' })),
+            React.createElement('button', {
+                key: 'repeat',
+                onClick: handleRepeatClick,
+                title: `Повтор: ${playback.repeat || 'off'}`,
+                className: (playback.repeat && playback.repeat !== 'off') ? 'text-indigo-300' : 'text-white/50 hover:text-white'
+            }, React.createElement('i', {
+                'data-lucide': playback.repeat === 'track' ? 'repeat-1' : 'repeat',
+                className: 'w-4 h-4'
+            }))
+        ]),
+        widget.playlist && widget.playlist.length > 0 && React.createElement('div', {
+            key: 'queue',
+            className: 'mt-4 pt-3 border-t border-white/10'
+        }, [
+            React.createElement('div', {
+                key: 'queue-label',
+                className: 'text-white/40 text-xs uppercase tracking-wide mb-1'
+            }, 'Далее в очереди'),
+            ...widget.playlist.slice(0, 5).map((item, index) => React.createElement('button', {
+                key: `queue-${item.track_id || index}`,
+                onClick: () => handleQueueItemClick(item),
+                className: 'flex items-center gap-2 w-full text-left py-1.5 px-2 -mx-2 rounded-lg hover:bg-white/5 transition-colors'
+            }, [
+                React.createElement('span', {
+                    key: 'label',
+                    className: 'text-white/80 text-sm truncate flex-1'
+                }, `${item.title} — ${item.artist}`),
+                React.createElement('span', {
+                    key: 'duration',
+                    className: 'text-white/30 text-xs flex-shrink-0'
+                }, formatTrackDuration(item.duration_seconds))
+            ]))
+        ]),
+        widget.quick_actions && React.createElement('div', {
+            key: 'quick-actions',
+            className: 'flex flex-wrap gap-2 mt-4 pt-3 border-t border-white/10'
+        }, widget.quick_actions.map((button, index) =>
+            React.createElement(ChatButton, { key: `spotify-qa-${index}`, button })
+        ))
+    ]);
+};
+
+// Renders a Level3Answer/Content widget by discriminated type
+const renderContentWidget = (widget) => {
+    const widgetType = widget.type || widget.widget_type;
+    if (widgetType === 'music_widget') {
+        return React.createElement(SpotifyPlayerWidget, { key: 'widget', widget });
+    }
+    return React.createElement('div', {
+        key: 'widget',
+        className: 'text-white/50 text-sm'
+    }, `[Widget: ${widgetType}]`);
+};
+
 // Form helper to convert form data to YAML
 const formDataToYaml = (formType, data) => {
     const lines = [`${formType}:`];
@@ -139,7 +367,7 @@ const FormTextarea = ({ label, name, value, onChange, placeholder, rows }) => {
             onChange: (e) => onChange(name, e.target.value),
             placeholder: placeholder,
             rows: rows || 3,
-            className: 'w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all resize-none'
+            className: 'w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all resize-y'
         })
     ]);
 };
@@ -308,7 +536,7 @@ const ChatEmailForm = ({ content, onExecute }) => {
     };
 
     return React.createElement('div', {
-        className: 'backdrop-blur-lg bg-white/10 rounded-2xl p-6 border-2 border-sky-500 shadow-xl shadow-sky-500/20'
+        className: 'w-full backdrop-blur-lg bg-white/10 rounded-2xl p-6 border-2 border-sky-500 shadow-xl shadow-sky-500/20'
     }, [
         React.createElement('div', {
             key: 'header',
@@ -975,10 +1203,10 @@ const ImagePlaceholder = ({ aspectRatio = '16/9', className = '', prompt = '' })
     return React.createElement('div', {
         className: `image-placeholder ${className}`,
         style: { aspectRatio }
-    }, prompt
-        ? React.createElement('span', { className: 'image-placeholder__prompt' }, prompt)
-        : null
-    );
+    }, React.createElement('div', { className: 'image-placeholder__content' }, [
+        React.createElement('span', { key: 'label', className: 'image-placeholder__label' }, 'Image is being generated'),
+        prompt && React.createElement('span', { key: 'prompt', className: 'image-placeholder__prompt' }, prompt)
+    ]));
 };
 
 const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
@@ -1160,7 +1388,7 @@ const StreamingStatusInline = ({ message, step }) => {
     ]);
 };
 
-const StreamingPlaceholder = ({ reasoning, statusMessage, statusStep }) => {
+const StreamingPlaceholder = ({ reasoning, statusMessage, statusStep, introText }) => {
     return React.createElement('div', {
         className: 'space-y-4'
     }, [
@@ -1173,14 +1401,20 @@ const StreamingPlaceholder = ({ reasoning, statusMessage, statusStep }) => {
             key: 'reasoning',
             className: 'text-white/50 text-xs italic border-l-2 border-white/20 pl-3 mb-3'
         }, reasoning),
-        React.createElement('div', {
-            key: 'skeleton-lines',
-            className: 'space-y-2'
-        }, [
-            React.createElement('div', { key: 's1', className: 'skeleton-line', style: { width: '75%' } }),
-            React.createElement('div', { key: 's2', className: 'skeleton-line', style: { width: '100%' } }),
-            React.createElement('div', { key: 's3', className: 'skeleton-line', style: { width: '83%' } }),
-        ]),
+        introText
+            ? React.createElement('div', {
+                key: 'intro-text',
+                className: 'prose prose-invert max-w-none streaming-markdown',
+                dangerouslySetInnerHTML: { __html: parseMarkdownWithPillLinks(introText) + '<span class="streaming-cursor"></span>' }
+              })
+            : React.createElement('div', {
+                key: 'skeleton-lines',
+                className: 'space-y-2'
+              }, [
+                React.createElement('div', { key: 's1', className: 'skeleton-line', style: { width: '75%' } }),
+                React.createElement('div', { key: 's2', className: 'skeleton-line', style: { width: '100%' } }),
+                React.createElement('div', { key: 's3', className: 'skeleton-line', style: { width: '83%' } }),
+              ]),
         React.createElement('div', {
             key: 'skeleton-cards',
             className: 'grid grid-cols-2 gap-3 mt-3'
@@ -1192,25 +1426,29 @@ const StreamingPlaceholder = ({ reasoning, statusMessage, statusStep }) => {
 };
 
 const ChatContent = ({ content, onExecute }) => {
-    console.log('ChatContent: Rendering content', content);
-    console.log('ChatContent: content.text', content?.text);
-    console.log('ChatContent: content.ui_answer', content?.ui_answer);
-    console.log('ChatContent: content.content_format', content?.content_format);
 
     if (content._streaming && !content._placeholder) {
+        const isFormattedStream = content.content_format === 'formatted' || content.content_format === 'level2_answer';
+        const streamText = content.text || '';
         return React.createElement('div', { className: 'space-y-0' }, [
             content._statusMessage && React.createElement(StreamingStatusInline, {
                 key: 'status',
                 message: content._statusMessage,
                 step: content._statusStep || ''
             }),
-            React.createElement('div', {
-                key: 'text',
-                className: 'prose prose-invert max-w-none'
-            }, [
-                React.createElement('span', { key: 'text' }, content.text || ''),
-                React.createElement('span', { key: 'cursor', className: 'streaming-cursor' })
-            ])
+            isFormattedStream && typeof marked !== 'undefined'
+                ? React.createElement('div', {
+                    key: 'text',
+                    className: 'prose prose-invert max-w-none streaming-markdown',
+                    dangerouslySetInnerHTML: { __html: parseMarkdownWithPillLinks(streamText) + '<span class="streaming-cursor"></span>' }
+                  })
+                : React.createElement('div', {
+                    key: 'text',
+                    className: 'prose prose-invert max-w-none'
+                  }, [
+                    React.createElement('span', { key: 'text' }, streamText),
+                    React.createElement('span', { key: 'cursor', className: 'streaming-cursor' })
+                  ])
         ]);
     }
 
@@ -1219,7 +1457,8 @@ const ChatContent = ({ content, onExecute }) => {
             key: 'placeholder',
             reasoning: content._reasoning || '',
             statusMessage: content._statusMessage || '',
-            statusStep: content._statusStep || ''
+            statusStep: content._statusStep || '',
+            introText: content.text || ''
         });
     }
 
@@ -1249,11 +1488,8 @@ const ChatContent = ({ content, onExecute }) => {
                         : l3.text.text
                 }
             }),
-            // Widget placeholder (TODO: render actual widget)
-            l3.widget && React.createElement('div', {
-                key: 'widget',
-                className: 'text-white/50 text-sm'
-            }, `[Widget: ${l3.widget.type || l3.widget.widget_type}]`),
+            // Widget (music_widget, etc.)
+            l3.widget && renderContentWidget(l3.widget),
             // Quick action buttons
             l3.quick_action_buttons && React.createElement('div', {
                 key: 'quick-actions',
@@ -1270,7 +1506,6 @@ const ChatContent = ({ content, onExecute }) => {
     
     // Check for level2_answer (text + quick actions)
     if (content.level2_answer) {
-        console.log('ChatContent: Rendering level2_answer');
         const l2 = content.level2_answer;
         return React.createElement('div', {
             className: 'space-y-6'
@@ -1279,7 +1514,7 @@ const ChatContent = ({ content, onExecute }) => {
             l2.text && React.createElement('div', {
                 key: 'text',
                 className: 'prose prose-invert max-w-none',
-                dangerouslySetInnerHTML: { 
+                dangerouslySetInnerHTML: {
                     __html: l2.text.type === 'markdown' && typeof marked !== 'undefined'
                         ? parseMarkdownWithPillLinks(l2.text.text)
                         : l2.text.text
@@ -1319,9 +1554,30 @@ const ChatContent = ({ content, onExecute }) => {
 };
 
 const ChatMessage = ({ message, onExecute }) => {
-    const { useState } = React;
+    const { useState, useRef, useEffect } = React;
     const isUser = message.role === 'user';
-    const isStreaming = !isUser && (message.content?._streaming || message.content?._placeholder);
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        if (!containerRef.current) return;
+
+        // Render mermaid diagrams: replace <pre><code class="language-mermaid"> with <div class="mermaid">
+        if (typeof mermaid !== 'undefined') {
+            const mermaidBlocks = containerRef.current.querySelectorAll('code.language-mermaid');
+            mermaidBlocks.forEach(block => {
+                const pre = block.parentElement;
+                const container = document.createElement('div');
+                container.className = 'mermaid';
+                container.textContent = block.textContent;
+                pre.replaceWith(container);
+            });
+            const mermaidNodes = containerRef.current.querySelectorAll('.mermaid');
+            if (mermaidNodes.length > 0) {
+                mermaid.run({ nodes: mermaidNodes });
+            }
+        }
+
+    }, [message]);
     const [debugOpen, setDebugOpen] = useState(false);
     const hasDebugData = message.llm_trace || (message.pipeline_steps && message.pipeline_steps.length > 0) || message.pipeline_trace;
     const showDebugButton = window.debugMode && hasDebugData;
@@ -1441,11 +1697,12 @@ const ChatMessage = ({ message, onExecute }) => {
     };
 
     return React.createElement('div', {
-        className: `mb-6 flex ${isUser ? 'justify-end' : 'justify-start'}`
+        className: `mb-6 flex ${isUser ? 'justify-end' : 'justify-start'}`,
+        ref: containerRef
     }, [
         React.createElement('div', {
             key: 'message-container',
-            className: `${isStreaming ? 'w-[85%]' : 'max-w-[85%]'} ${isUser ? 'order-2' : 'order-1'}`
+            className: `${isUser ? 'max-w-[85%]' : 'w-[85%]'} ${isUser ? 'order-2' : 'order-1'}`
         }, [
             React.createElement('div', {
                 key: 'message-bubble',

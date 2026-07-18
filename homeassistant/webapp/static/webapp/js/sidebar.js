@@ -181,6 +181,37 @@ function renderLeftSidebar() {
     };
     settingsExpanded.innerHTML = `<i data-lucide="sliders-horizontal" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Настройки чата</span>`;
     leftSidebarExpandedMenu.appendChild(settingsExpanded);
+
+    renderSpotifyConnectItem(leftSidebarCollapsedIcons, leftSidebarExpandedMenu);
+}
+
+// Кнопка "Подключить Spotify" (видна только пока аккаунт не привязан)
+async function renderSpotifyConnectItem(collapsedContainer, expandedContainer) {
+    try {
+        const response = await fetch('/spotify/api/status/');
+        const data = await response.json();
+        if (data.connected) return;
+    } catch (error) {
+        console.error('Error fetching Spotify status:', error);
+        return;
+    }
+
+    const spotifyCollapsed = document.createElement('a');
+    spotifyCollapsed.href = "/spotify/authorize/";
+    spotifyCollapsed.className = "sidebar-item text-gray-300";
+    spotifyCollapsed.title = "Подключить Spotify";
+    spotifyCollapsed.innerHTML = `<i data-lucide="music" class="w-6 h-6"></i>`;
+    collapsedContainer.appendChild(spotifyCollapsed);
+
+    const spotifyExpanded = document.createElement('a');
+    spotifyExpanded.href = "/spotify/authorize/";
+    spotifyExpanded.className = "sidebar-item-expanded text-gray-300";
+    spotifyExpanded.innerHTML = `<i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Подключить Spotify</span>`;
+    expandedContainer.appendChild(spotifyExpanded);
+
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 }
 
 // Простая загрузка чатов
