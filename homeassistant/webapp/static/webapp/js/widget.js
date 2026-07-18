@@ -216,6 +216,11 @@ const STATIC_CLIMATE_WIDGET = {
 };
 
 const MUSIC_REPEAT_CYCLE = { off: 'context', context: 'track', track: 'off' };
+// Must match .vinyl-disc's `animation: vinyl-spin <duration>` in custom.css.
+// Re-renders (polling, SDK events) rebuild the disc element from scratch,
+// which would otherwise snap its rotation back to 0deg every time; using a
+// clock-derived negative animation-delay keeps the spin visually continuous.
+const VINYL_SPIN_DURATION_MS = 9000;
 
 const MUSIC_QUICK_ACTIONS = [
     {
@@ -933,7 +938,7 @@ function renderMusicWidget(data) {
         <div class="rounded-xl p-4 mb-4" style="background: rgba(0,0,0,0.22)">
             <div class="flex items-center gap-4">
                 <div class="vinyl-disc-wrap">
-                    <div class="vinyl-disc${isPlaying ? ' is-spinning' : ''}">
+                    <div class="vinyl-disc${isPlaying ? ' is-spinning' : ''}" style="animation-delay: -${Date.now() % VINYL_SPIN_DURATION_MS}ms">
                         <div class="vinyl-disc__spindle"></div>
                         <div class="vinyl-disc__label">
                             ${currentTrack.cover_url
