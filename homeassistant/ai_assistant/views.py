@@ -11,6 +11,8 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from homeassistant.redis_client import redis_client
+
 from .image_processor import (IMAGE_GENERATION_COST_PER_IMAGE,
                               process_images_in_ui_answer)
 from .models import Conversation, Message
@@ -361,6 +363,13 @@ def proxy_chat(request):
 
     try:
         data = json.loads(request.body)
+
+        user_name = data.get("user_name")
+        if user_name and "device_id" not in data:
+            device_id = redis_client.get_user_field(user_name, "spotify_device_id")
+            if device_id:
+                data["device_id"] = device_id
+
         response = requests.post(f"{AI_AGENT_URL}/chat", json=data)
         json_response = JsonResponse(response.json(), safe=False)
         return add_cors_headers(json_response)
