@@ -556,6 +556,7 @@ const AI_MODELS = {
         "gpt-5.4-pro",
         "gpt-5.4-mini",
         "gpt-5.4-nano",
+        "gpt-5.6-luna",
     ],
     openrouter: [
         // Google Gemini

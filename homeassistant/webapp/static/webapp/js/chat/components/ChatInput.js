@@ -76,6 +76,7 @@ const ChatInput = ({
     const openaiModels = [
         'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
         'gpt-5.4', 'gpt-5.4-pro', 'gpt-5.4-mini', 'gpt-5.4-nano',
+        'gpt-5.6-luna',
     ];
     const openrouterModels = [
         'google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview', 'google/gemini-3.1-flash-lite-preview',
