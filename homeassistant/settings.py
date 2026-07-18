@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "homeassistant.weather",
     "homeassistant.ai_assistant",
     "homeassistant.voice_assistant",
+    "homeassistant.spotify",
 ]
 
 MIDDLEWARE = [
@@ -149,6 +150,15 @@ LOGGING = {
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_DB = int(os.getenv("REDIS_DB", 0))
+
+# Spotify OAuth
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+SPOTIFY_REDIRECT_URI = os.getenv(
+    "SPOTIFY_REDIRECT_URI", "http://localhost:8000/spotify/callback/"
+)
+SPOTIFY_ACCESS_TOKEN = os.getenv("SPOTIFY_ACCESS_TOKEN")
+SPOTIFY_REFRESH_TOKEN = os.getenv("SPOTIFY_REFRESH_TOKEN")
 
 # Increase max upload size for base64 images (50MB)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800
