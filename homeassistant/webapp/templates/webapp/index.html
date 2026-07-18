@@ -21,6 +21,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <!-- Fraunces: display serif used for the Music widget's "now playing" title -->
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+
     <!-- React and dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -30,6 +33,17 @@
 
     <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+
+    <!-- Mermaid.js for diagram rendering (loaded as module to avoid polluting globals like marked) -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+        window.mermaid = mermaid;
+        mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+    </script>
 
     <link rel="stylesheet" href="{% static 'webapp/css/custom.css' %}">
 </head>
@@ -165,7 +179,10 @@
     <script src="{% static 'webapp/js/dashboard-api.js' %}"></script>
     <script src="{% static 'webapp/js/dashboard.js' %}"></script>
     <script src="{% static 'webapp/js/widget.js' %}"></script>
-    
+    <script src="{% static 'webapp/js/spotify/spotifyPlayer.js' %}"></script>
+    <!-- Loaded after spotifyPlayer.js so window.onSpotifyWebPlaybackSDKReady is defined first -->
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+
     <!-- React Components -->
     <script src="{% static 'webapp/js/chat/utils.js' %}"></script>
     <script src="{% static 'webapp/js/chat/api.js' %}"></script>
