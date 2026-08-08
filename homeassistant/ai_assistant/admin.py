@@ -3,9 +3,11 @@ import os
 
 import requests
 from django.contrib import admin, messages
+from django.db import models
+from django.utils import timezone
 from django.utils.html import format_html
 
-from .models import Conversation, Message
+from .models import Conversation, ConversationFlag, Message
 
 AI_AGENT_URL = os.getenv("AI_AGENT_URL", "http://archie-ai-agent:8005")
 
@@ -293,3 +295,96 @@ class MessageAdmin(admin.ModelAdmin):
         return "-"
 
     content_formatted.short_description = "Content"
+
+
+class HasJiraKeyFilter(admin.SimpleListFilter):
+    title = "jira ticket"
+    parameter_name = "has_jira"
+
+    def lookups(self, request, model_admin):
+        return (("yes", "With JIRA ticket"), ("no", "Without JIRA ticket"))
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.exclude(jira_key__isnull=True).exclude(jira_key="")
+        if self.value() == "no":
+            return queryset.filter(
+                models.Q(jira_key__isnull=True) | models.Q(jira_key="")
+            )
+        return queryset
+
+
+class IsReviewedFilter(admin.SimpleListFilter):
+    title = "review status"
+    parameter_name = "is_reviewed"
+
+    def lookups(self, request, model_admin):
+        return (("yes", "Reviewed"), ("no", "Not reviewed"))
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(reviewed_at__isnull=False)
+        if self.value() == "no":
+            return queryset.filter(reviewed_at__isnull=True)
+        return queryset
+
+
+@admin.register(ConversationFlag)
+class ConversationFlagAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "severity",
+        "conversation_id",
+        "message_id",
+        "jira_link",
+        "created_at",
+        "reviewed_at",
+        "reviewed_by",
+    )
+    list_filter = ("severity", HasJiraKeyFilter, IsReviewedFilter, "created_at")
+    search_fields = ("conversation_id", "message_id", "jira_key", "reason")
+    ordering = ("-created_at",)
+    actions = ["mark_reviewed"]
+    readonly_fields = (
+        "conversation_id",
+        "message_id",
+        "previous_message_id",
+        "severity",
+        "reason",
+        "user_text",
+        "ai_text",
+        "jira_link",
+        "created_at",
+    )
+    fieldsets = (
+        (
+            "Flag",
+            {
+                "fields": (
+                    "conversation_id",
+                    "message_id",
+                    "previous_message_id",
+                    "severity",
+                    "jira_link",
+                    "created_at",
+                )
+            },
+        ),
+        ("Details", {"fields": ("reason", "user_text", "ai_text")}),
+        ("Review", {"fields": ("reviewed_at", "reviewed_by")}),
+    )
+
+    def jira_link(self, obj):
+        if obj.jira_key:
+            url = f"https://badich.atlassian.net/browse/{obj.jira_key}"
+            return format_html('<a href="{}" target="_blank">{}</a>', url, obj.jira_key)
+        return "-"
+
+    jira_link.short_description = "JIRA"
+
+    @admin.action(description="Mark selected flags as reviewed")
+    def mark_reviewed(self, request, queryset):
+        updated = queryset.filter(reviewed_at__isnull=True).update(
+            reviewed_at=timezone.now(), reviewed_by=request.user.get_username()
+        )
+        self.message_user(request, f"Marked {updated} flag(s) as reviewed")
