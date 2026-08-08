@@ -206,7 +206,7 @@ const SpotifyPlayerWidget = ({ widget }) => {
                 React.createElement('div', {
                     key: 'title',
                     className: 'text-white font-medium truncate'
-                }, track ? track.title : (widget.title || 'Музыка')),
+                }, track ? track.title : (widget.title || 'Music')),
                 React.createElement('div', {
                     key: 'artist',
                     className: 'text-white/50 text-sm truncate'
@@ -215,7 +215,7 @@ const SpotifyPlayerWidget = ({ widget }) => {
             track && React.createElement('button', {
                 key: 'favorite',
                 onClick: handleFavoriteClick,
-                title: track.is_favorite ? 'Убрать из избранного' : 'В избранное',
+                title: track.is_favorite ? 'Remove from favorites' : 'Add to favorites',
                 className: track.is_favorite ? 'text-pink-400 hover:text-pink-300' : 'text-white/40 hover:text-white'
             }, React.createElement('i', {
                 'data-lucide': 'heart',
@@ -245,7 +245,7 @@ const SpotifyPlayerWidget = ({ widget }) => {
             React.createElement('button', {
                 key: 'shuffle',
                 onClick: handleShuffleClick,
-                title: 'Перемешать',
+                title: 'Shuffle',
                 className: playback.shuffle ? 'text-indigo-300' : 'text-white/50 hover:text-white'
             }, React.createElement('i', { 'data-lucide': 'shuffle', className: 'w-4 h-4' })),
             React.createElement('button', {
@@ -266,7 +266,7 @@ const SpotifyPlayerWidget = ({ widget }) => {
             React.createElement('button', {
                 key: 'repeat',
                 onClick: handleRepeatClick,
-                title: `Повтор: ${playback.repeat || 'off'}`,
+                title: `Repeat: ${playback.repeat || 'off'}`,
                 className: (playback.repeat && playback.repeat !== 'off') ? 'text-indigo-300' : 'text-white/50 hover:text-white'
             }, React.createElement('i', {
                 'data-lucide': playback.repeat === 'track' ? 'repeat-1' : 'repeat',
@@ -280,7 +280,7 @@ const SpotifyPlayerWidget = ({ widget }) => {
             React.createElement('div', {
                 key: 'queue-label',
                 className: 'text-white/40 text-xs uppercase tracking-wide mb-1'
-            }, 'Далее в очереди'),
+            }, 'Up next'),
             ...widget.playlist.slice(0, 5).map((item, index) => React.createElement('button', {
                 key: `queue-${item.track_id || index}`,
                 onClick: () => handleQueueItemClick(item),
@@ -389,12 +389,12 @@ const ChatEventForm = ({ content, onExecute }) => {
 
     const handleSubmit = () => {
         const yaml = formDataToYaml('event_form', formData);
-        const request = `Создать событие в календаре:\n\`\`\`yaml\n${yaml}\n\`\`\``;
+        const request = `Create calendar event:\n\`\`\`yaml\n${yaml}\n\`\`\``;
         onExecute(request);
     };
 
     const handleCancel = () => {
-        onExecute('Отмена создания события в календаре');
+        onExecute('Cancel creating calendar event');
     };
 
     return React.createElement('div', {
@@ -412,7 +412,7 @@ const ChatEventForm = ({ content, onExecute }) => {
             React.createElement('h3', {
                 key: 'title',
                 className: 'text-lg font-semibold text-white'
-            }, 'Новое событие')
+            }, 'New event')
         ]),
         React.createElement('div', {
             key: 'form',
@@ -420,11 +420,11 @@ const ChatEventForm = ({ content, onExecute }) => {
         }, [
             React.createElement(FormInput, {
                 key: 'title',
-                label: 'Название',
+                label: 'Title',
                 name: 'title',
                 value: formData.title,
                 onChange: handleChange,
-                placeholder: 'Введите название события',
+                placeholder: 'Enter event title',
                 required: true
             }),
             React.createElement('div', {
@@ -433,20 +433,20 @@ const ChatEventForm = ({ content, onExecute }) => {
             }, [
                 React.createElement(FormInput, {
                     key: 'date',
-                    label: 'Дата',
+                    label: 'Date',
                     name: 'date',
                     value: formData.date,
                     onChange: handleChange,
-                    placeholder: 'ДД.ММ.ГГГГ',
+                    placeholder: 'DD.MM.YYYY',
                     required: true
                 }),
                 React.createElement(FormInput, {
                     key: 'time',
-                    label: 'Время',
+                    label: 'Time',
                     name: 'time',
                     value: formData.time,
                     onChange: handleChange,
-                    placeholder: 'ЧЧ:ММ'
+                    placeholder: 'HH:MM'
                 })
             ]),
             React.createElement('div', {
@@ -455,7 +455,7 @@ const ChatEventForm = ({ content, onExecute }) => {
             }, [
                 React.createElement(FormInput, {
                     key: 'duration',
-                    label: 'Длительность (мин)',
+                    label: 'Duration (min)',
                     name: 'duration_minutes',
                     type: 'number',
                     value: formData.duration_minutes,
@@ -464,20 +464,20 @@ const ChatEventForm = ({ content, onExecute }) => {
                 }),
                 React.createElement(FormInput, {
                     key: 'location',
-                    label: 'Место',
+                    label: 'Location',
                     name: 'location',
                     value: formData.location,
                     onChange: handleChange,
-                    placeholder: 'Где будет событие'
+                    placeholder: 'Where the event takes place'
                 })
             ]),
             React.createElement(FormTextarea, {
                 key: 'description',
-                label: 'Описание',
+                label: 'Description',
                 name: 'description',
                 value: formData.description,
                 onChange: handleChange,
-                placeholder: 'Дополнительные заметки',
+                placeholder: 'Additional notes',
                 rows: 2
             })
         ]),
@@ -495,7 +495,7 @@ const ChatEventForm = ({ content, onExecute }) => {
                     'data-lucide': 'check',
                     className: 'w-4 h-4'
                 }),
-                React.createElement('span', { key: 'text' }, 'Создать')
+                React.createElement('span', { key: 'text' }, 'Create')
             ]),
             React.createElement('button', {
                 key: 'cancel',
@@ -507,7 +507,7 @@ const ChatEventForm = ({ content, onExecute }) => {
                     'data-lucide': 'x',
                     className: 'w-4 h-4'
                 }),
-                React.createElement('span', { key: 'text' }, 'Отмена')
+                React.createElement('span', { key: 'text' }, 'Cancel')
             ])
         ])
     ]);
@@ -527,12 +527,12 @@ const ChatEmailForm = ({ content, onExecute }) => {
 
     const handleSubmit = () => {
         const yaml = formDataToYaml('email_form', formData);
-        const request = `Отправить email:\n\`\`\`yaml\n${yaml}\n\`\`\``;
+        const request = `Send email:\n\`\`\`yaml\n${yaml}\n\`\`\``;
         onExecute(request);
     };
 
     const handleCancel = () => {
-        onExecute('Отмена отправки email');
+        onExecute('Cancel sending email');
     };
 
     return React.createElement('div', {
@@ -550,7 +550,7 @@ const ChatEmailForm = ({ content, onExecute }) => {
             React.createElement('h3', {
                 key: 'title',
                 className: 'text-lg font-semibold text-white'
-            }, 'Новое письмо')
+            }, 'New email')
         ]),
         React.createElement('div', {
             key: 'form',
@@ -558,7 +558,7 @@ const ChatEmailForm = ({ content, onExecute }) => {
         }, [
             React.createElement(FormInput, {
                 key: 'to',
-                label: 'Кому',
+                label: 'To',
                 name: 'to',
                 type: 'email',
                 value: formData.to,
@@ -568,19 +568,19 @@ const ChatEmailForm = ({ content, onExecute }) => {
             }),
             React.createElement(FormInput, {
                 key: 'subject',
-                label: 'Тема',
+                label: 'Subject',
                 name: 'subject',
                 value: formData.subject,
                 onChange: handleChange,
-                placeholder: 'Тема письма'
+                placeholder: 'Email subject'
             }),
             React.createElement(FormTextarea, {
                 key: 'body',
-                label: 'Текст письма',
+                label: 'Email body',
                 name: 'body',
                 value: formData.body,
                 onChange: handleChange,
-                placeholder: 'Введите текст письма...',
+                placeholder: 'Enter email text...',
                 rows: 5
             })
         ]),
@@ -598,7 +598,7 @@ const ChatEmailForm = ({ content, onExecute }) => {
                     'data-lucide': 'send',
                     className: 'w-4 h-4'
                 }),
-                React.createElement('span', { key: 'text' }, 'Отправить')
+                React.createElement('span', { key: 'text' }, 'Send')
             ]),
             React.createElement('button', {
                 key: 'cancel',
@@ -610,7 +610,7 @@ const ChatEmailForm = ({ content, onExecute }) => {
                     'data-lucide': 'x',
                     className: 'w-4 h-4'
                 }),
-                React.createElement('span', { key: 'text' }, 'Отмена')
+                React.createElement('span', { key: 'text' }, 'Cancel')
             ])
         ])
     ]);
@@ -629,12 +629,12 @@ const ChatNoteForm = ({ content, onExecute }) => {
 
     const handleSubmit = () => {
         const yaml = formDataToYaml('note_form', formData);
-        const request = `Сохранить заметку:\n\`\`\`yaml\n${yaml}\n\`\`\``;
+        const request = `Save note:\n\`\`\`yaml\n${yaml}\n\`\`\``;
         onExecute(request);
     };
 
     const handleCancel = () => {
-        onExecute('Отмена создания заметки');
+        onExecute('Cancel creating note');
     };
 
     return React.createElement('div', {
@@ -652,7 +652,7 @@ const ChatNoteForm = ({ content, onExecute }) => {
             React.createElement('h3', {
                 key: 'title',
                 className: 'text-lg font-semibold text-white'
-            }, 'Новая заметка')
+            }, 'New note')
         ]),
         React.createElement('div', {
             key: 'form',
@@ -660,19 +660,19 @@ const ChatNoteForm = ({ content, onExecute }) => {
         }, [
             React.createElement(FormInput, {
                 key: 'title',
-                label: 'Заголовок',
+                label: 'Title',
                 name: 'title',
                 value: formData.title,
                 onChange: handleChange,
-                placeholder: 'Название заметки'
+                placeholder: 'Note title'
             }),
             React.createElement(FormTextarea, {
                 key: 'content',
-                label: 'Содержание',
+                label: 'Content',
                 name: 'content',
                 value: formData.content,
                 onChange: handleChange,
-                placeholder: 'Текст заметки...',
+                placeholder: 'Note text...',
                 rows: 5
             })
         ]),
@@ -690,7 +690,7 @@ const ChatNoteForm = ({ content, onExecute }) => {
                     'data-lucide': 'save',
                     className: 'w-4 h-4'
                 }),
-                React.createElement('span', { key: 'text' }, 'Сохранить')
+                React.createElement('span', { key: 'text' }, 'Save')
             ]),
             React.createElement('button', {
                 key: 'cancel',
@@ -702,7 +702,7 @@ const ChatNoteForm = ({ content, onExecute }) => {
                     'data-lucide': 'x',
                     className: 'w-4 h-4'
                 }),
-                React.createElement('span', { key: 'text' }, 'Отмена')
+                React.createElement('span', { key: 'text' }, 'Cancel')
             ])
         ])
     ]);
@@ -797,7 +797,7 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
             
             const metadata = [];
             card.year && metadata.push(`${card.year}`);
-            card.director && metadata.push(`реж. ${card.director}`);
+            card.director && metadata.push(`dir. ${card.director}`);
             if (metadata.length > 0) {
                 elements.push(React.createElement('p', {
                     key: 'metadata',
@@ -856,8 +856,8 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
             
             if (card.seasons || card.episodes) {
                 const seriesInfo = [];
-                card.seasons && seriesInfo.push(`${card.seasons} сезонов`);
-                card.episodes && seriesInfo.push(`${card.episodes} эпизодов`);
+                card.seasons && seriesInfo.push(`${card.seasons} seasons`);
+                card.episodes && seriesInfo.push(`${card.episodes} episodes`);
                 elements.push(React.createElement('p', {
                     key: 'series-info',
                     className: 'text-xs text-white/60 mb-2'
@@ -1006,7 +1006,7 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
             card.total_cost && elements.push(React.createElement('p', {
                 key: 'total',
                 className: 'text-sm font-semibold text-white/90 pt-2 border-t border-white/20'
-            }, `💰 Общая стоимость: ~${card.total_cost}€`));
+            }, `💰 Total cost: ~${card.total_cost}€`));
         }
         // Weather Card
         else if (card.type === 'weather_card') {
@@ -1017,7 +1017,7 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
             
             const tempDisplay = [];
             card.current_temp && tempDisplay.push(card.current_temp);
-            card.feels_like && tempDisplay.push(`ощущается ${card.feels_like}`);
+            card.feels_like && tempDisplay.push(`feels like ${card.feels_like}`);
             elements.push(React.createElement('p', {
                 key: 'temp',
                 className: 'text-2xl font-bold text-white mb-2'
@@ -1282,7 +1282,7 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
         default:
             return React.createElement('div', {
                 className: 'text-white/70 mb-4'
-            }, `Неподдерживаемый тип элемента: ${item.type}`);
+            }, `Unsupported item type: ${item.type}`);
     }
 };
 
@@ -1384,7 +1384,7 @@ const StreamingStatusInline = ({ message, step }) => {
         React.createElement('span', {
             key: 'text',
             className: 'text-white/50 text-xs truncate'
-        }, message || 'Обрабатываю...')
+        }, message || 'Processing...')
     ]);
 };
 
@@ -1550,7 +1550,7 @@ const ChatContent = ({ content, onExecute }) => {
     console.error('ChatContent: Unsupported content format', content);
     return React.createElement('div', {
         className: 'text-white/70'
-    }, 'Неподдерживаемый формат контента');
+    }, 'Unsupported content format');
 };
 
 const ChatMessage = ({ message, onExecute }) => {
@@ -1731,7 +1731,7 @@ const ChatMessage = ({ message, onExecute }) => {
                     React.createElement('span', {
                         key: 'role',
                         className: 'font-semibold'
-                    }, isUser ? 'Вы' : 'Archie'),
+                    }, isUser ? 'You' : 'Archie'),
                     React.createElement('span', {
                         key: 'time',
                         className: 'text-xs opacity-70'
