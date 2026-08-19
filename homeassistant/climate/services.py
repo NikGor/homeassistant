@@ -1,5 +1,7 @@
 import logging
 
+from homeassistant.ha_mcp.services import HomeAssistantMCPClient
+
 from .pydantic_models import ClimateDeviceState, ClimateStateAggregate
 
 logger = logging.getLogger(__name__)
@@ -9,33 +11,37 @@ class ClimateStateService:
     """Service for retrieving aggregated climate device states"""
 
     def get_all_devices_state(self):
-        """
-        Get current state of all climate devices
-        TODO: Replace with real device polling
-        """
-        logger.info("climate_services_001: Fetching climate devices state (mock data)")
+        """Get current state of all climate devices from Home Assistant via MCP"""
+        logger.info("climate_services_001: Fetching climate devices state via MCP")
 
-        devices = [
-            ClimateDeviceState(
-                name="Гостиная",
-                icon="thermometer",
-                color="green",
-                variant="solid",
-                tooltip="22.1°C",
-            ),
-            ClimateDeviceState(
-                name="Спальня",
-                icon="thermometer",
-                color="blue",
-                variant="outline",
-                tooltip="21.5°C",
-            ),
-        ]
+        entities = HomeAssistantMCPClient().get_domain_entities("climate")
 
-        temps = [22.1, 21.5]
-        average = sum(temps) / len(temps)
+        devices = []
+        temps = []
+        for entity in entities:
+            temp = entity.get("temperature")
+            if temp is not None:
+                temps.append(temp)
+            is_active = entity.get("state") not in (
+                None,
+                "off",
+                "idle",
+                "unknown",
+                "unavailable",
+            )
+            devices.append(
+                ClimateDeviceState(
+                    name=entity.get("name") or entity.get("entity_id") or "Climate",
+                    icon="thermometer",
+                    color="green" if is_active else "blue",
+                    variant="solid" if is_active else "outline",
+                    tooltip=f"{temp}°C" if temp is not None else "N/A",
+                )
+            )
 
-        return ClimateStateAggregate(average_temp=round(average, 1), devices=devices)
+        average = round(sum(temps) / len(temps), 1) if temps else 0.0
+
+        return ClimateStateAggregate(average_temp=average, devices=devices)
 
     def save_to_redis(self, user_name: str = "Niko"):
         """Save climate state to user_state in Redis"""
