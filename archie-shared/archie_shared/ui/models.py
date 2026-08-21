@@ -571,7 +571,7 @@ class MapPoint(BaseModel):
 
 
 class Map(BaseModel):
-    """Interactive map with markers. Use when the answer references multiple physical places (e.g., restaurants, attractions in a city) — never for a single location, use LocationCard instead."""
+    """Interactive map with markers. Use when the answer references physical places (e.g., restaurants, attractions in a city)"""
 
     type: Literal["map"] = Field(
         "map", description="Type of the component for frontend rendering"
