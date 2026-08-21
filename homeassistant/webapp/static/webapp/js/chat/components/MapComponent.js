@@ -30,8 +30,10 @@ const ChatMapComponent = ({ map }) => {
             return;
         }
 
+        // Wheel zoom on directly, so scrolling over the map zooms it like any
+        // embedded map. (Move the cursor off the map to scroll the conversation.)
         const leafletMap = L.map(containerRef.current, {
-            scrollWheelZoom: false
+            scrollWheelZoom: true
         });
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
