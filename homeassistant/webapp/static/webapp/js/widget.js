@@ -1,120 +1,23 @@
-// Light Widget API Functions
+// Light Widget API Functions — display-only, state read live from Home Assistant
 
-async function fetchLightDevices() {
+async function fetchLightWidgetData() {
     try {
-        const response = await fetch('/light/api/devices/status/');
+        const response = await fetch('/light/api/widget/status/');
         const data = await response.json();
         if (data.success) {
-            return data.devices;
+            return data;
         }
-        console.error('Failed to fetch light devices:', data.message);
-        return [];
+        console.error('Failed to fetch light widget data:', data.message);
+        return null;
     } catch (error) {
-        console.error('Error fetching light devices:', error);
-        return [];
+        console.error('Error fetching light widget data:', error);
+        return null;
     }
-}
-
-async function toggleLight(deviceId) {
-    try {
-        const response = await fetch(`/light/api/device/${deviceId}/toggle/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        return await response.json();
-    } catch (error) {
-        console.error('Error toggling light:', error);
-        return { success: false, message: error.message };
-    }
-}
-
-async function setLightBrightness(deviceId, brightness) {
-    try {
-        const response = await fetch(`/light/api/device/${deviceId}/brightness/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ brightness })
-        });
-        return await response.json();
-    } catch (error) {
-        console.error('Error setting brightness:', error);
-        return { success: false, message: error.message };
-    }
-}
-
-async function setLightColorTemp(deviceId, temperature) {
-    try {
-        const response = await fetch(`/light/api/device/${deviceId}/temperature/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ temperature })
-        });
-        return await response.json();
-    } catch (error) {
-        console.error('Error setting color temp:', error);
-        return { success: false, message: error.message };
-    }
-}
-
-async function setLightRGB(deviceId, red, green, blue) {
-    try {
-        const response = await fetch(`/light/api/device/${deviceId}/rgb/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ red, green, blue })
-        });
-        return await response.json();
-    } catch (error) {
-        console.error('Error setting RGB:', error);
-        return { success: false, message: error.message };
-    }
-}
-
-function transformApiDeviceToWidget(apiDevice) {
-    const isOn = apiDevice.is_on;
-    const hasRgbColor = apiDevice.rgb_color && apiDevice.rgb_color !== '#ffffff';
-    return {
-        device_id: apiDevice.id,
-        name: apiDevice.name,
-        room: apiDevice.model || 'Unknown',
-        is_on: isOn,
-        brightness: apiDevice.brightness || 100,
-        color_mode: hasRgbColor ? 'color' : 'temperature',
-        color_temp: apiDevice.color_temp || 4000,
-        rgb_color: apiDevice.rgb_color || '#ffffff',
-        icon: 'lightbulb',
-        color: isOn ? 'yellow' : 'gray'
-    };
 }
 
 async function buildLightWidgetData() {
-    const apiDevices = await fetchLightDevices();
-    const devices = apiDevices.map(transformApiDeviceToWidget);
-    const onCount = devices.filter(d => d.is_on).length;
-    return {
-        type: "light_widget",
-        title: "Свет",
-        subtitle: `${onCount} из ${devices.length} включены`,
-        on_count: onCount,
-        total_count: devices.length,
-        devices: devices,
-        quick_actions: [
-            {
-                type: "assistant_button",
-                text: "Включить все",
-                style: "primary",
-                icon: "power",
-                assistant_request: "Включи весь свет"
-            },
-            {
-                type: "assistant_button",
-                text: "Выключить все",
-                style: "secondary",
-                icon: "power-off",
-                assistant_request: "Выключи весь свет"
-            }
-        ]
-    };
+    const data = await fetchLightWidgetData();
+    return data || STATIC_LIGHT_WIDGET;
 }
 
 // Static fallback data for Light widget (used when API unavailable)
@@ -214,6 +117,26 @@ const STATIC_CLIMATE_WIDGET = {
         }
     ]
 };
+
+async function fetchClimateWidgetData() {
+    try {
+        const response = await fetch('/climate/api/devices/status/');
+        const data = await response.json();
+        if (data.success) {
+            return data;
+        }
+        console.error('Failed to fetch climate data:', data.message);
+        return null;
+    } catch (error) {
+        console.error('Error fetching climate data:', error);
+        return null;
+    }
+}
+
+async function buildClimateWidgetData() {
+    const data = await fetchClimateWidgetData();
+    return data || STATIC_CLIMATE_WIDGET;
+}
 
 const MUSIC_REPEAT_CYCLE = { off: 'context', context: 'track', track: 'off' };
 // Must match .vinyl-disc's `animation: vinyl-spin <duration>` in custom.css.
@@ -487,8 +410,8 @@ async function showWidgetView(widgetType) {
         currentWidget = await buildLightWidgetData();
         renderLightWidget(currentWidget);
     } else if (widgetType === 'climate') {
-        currentWidget = STATIC_CLIMATE_WIDGET;
-        renderClimateWidget(STATIC_CLIMATE_WIDGET);
+        currentWidget = await buildClimateWidgetData();
+        renderClimateWidget(currentWidget);
     } else if (widgetType === 'music') {
         ensureMusicStateListener();
         if (typeof ensureSpotifyPlayerConnected === 'function') {
@@ -506,90 +429,65 @@ async function showWidgetView(widgetType) {
 }
 
 // Render Light Widget
+// Group a list of {room, ...} items by room, preserving first-seen order.
+// Items without a room fall into an "Другое" bucket at the end.
+function groupByRoom(items) {
+    const groups = new Map();
+    const noRoom = [];
+    items.forEach(item => {
+        if (!item.room) {
+            noRoom.push(item);
+            return;
+        }
+        if (!groups.has(item.room)) groups.set(item.room, []);
+        groups.get(item.room).push(item);
+    });
+    const result = Array.from(groups.entries()).map(([room, devices]) => ({ room, devices }));
+    if (noRoom.length) result.push({ room: 'Другое', devices: noRoom });
+    return result;
+}
+
 function renderLightWidget(data) {
     const container = document.getElementById('widget-container');
 
-    const devicesHtml = data.devices.map(device => {
+    const renderDeviceCard = device => {
         const isOn = device.is_on;
         const colorClass = getTailwindColorClass(device.color);
         const bgClass = isOn ? getTailwindBgColorClass(device.color) : '';
-        const isColorMode = device.color_mode === 'color';
-        
-        // Status text
+
         let statusText;
         if (!isOn) {
             statusText = 'Выключено';
-        } else if (isColorMode) {
-            statusText = `${device.brightness}%, цвет`;
+        } else if (device.brightness) {
+            statusText = `Включено, ${device.brightness}%`;
         } else {
-            statusText = `${device.brightness}%, ${device.color_temp}K`;
+            statusText = 'Включено';
         }
-
-        // Controls row - all 3 in one line
-        const controlsHtml = isOn ? `
-            <div class="flex items-center gap-2 mt-3">
-                <!-- Brightness -->
-                <div class="flex items-center gap-1.5">
-                    <i data-lucide="sun-dim" class="w-4 h-4 text-gray-400 shrink-0"></i>
-                    <input type="range" min="1" max="100" value="${device.brightness}"
-                           class="brightness-slider w-20 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-500"
-                           data-device-id="${device.device_id}"
-                           title="Яркость: ${device.brightness}%">
-                    <span class="brightness-value text-xs text-gray-500 w-8">${device.brightness}%</span>
-                </div>
-                
-                <!-- Temperature (dimmed if color mode) -->
-                <button class="mode-toggle flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all ${!isColorMode ? 'bg-orange-500/20 ring-1 ring-orange-500/50' : 'opacity-40 hover:opacity-70'}"
-                        title="Режим температуры"
-                        data-device="${device.device_id}" data-mode="temperature">
-                    <i data-lucide="thermometer" class="w-3.5 h-3.5 ${!isColorMode ? 'text-orange-400' : 'text-gray-400'}"></i>
-                    <input type="range" min="1700" max="6500" value="${device.color_temp || 4000}"
-                           class="colortemp-slider w-20 h-1.5 rounded-lg appearance-none cursor-pointer"
-                           data-device-id="${device.device_id}"
-                           style="background: linear-gradient(to right, #ff8c00, #87ceeb);"
-                           title="${device.color_temp || 4000}K"
-                           ${isColorMode ? 'disabled' : ''}>
-                    <span class="text-xs ${!isColorMode ? 'text-orange-300' : 'text-gray-500'} w-12">${device.color_temp || 4000}K</span>
-                </button>
-                
-                <!-- Color (dimmed if temperature mode) -->
-                <button class="mode-toggle flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all ${isColorMode ? 'bg-purple-500/20 ring-1 ring-purple-500/50' : 'opacity-40 hover:opacity-70'}"
-                        title="Режим цвета"
-                        data-device="${device.device_id}" data-mode="color">
-                    <i data-lucide="palette" class="w-3.5 h-3.5 ${isColorMode ? 'text-purple-400' : 'text-gray-400'}"></i>
-                    <input type="color" value="${device.rgb_color || '#FFFFFF'}"
-                           class="rgb-picker w-8 h-5 rounded cursor-pointer border-0 bg-transparent"
-                           data-device-id="${device.device_id}"
-                           title="Цвет: ${device.rgb_color || '#FFFFFF'}"
-                           ${!isColorMode ? 'disabled' : ''}>
-                </button>
-            </div>
-        ` : '';
 
         return `
             <div class="glass-tile rounded-xl p-4" data-device-card="${device.device_id}">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-full flex items-center justify-center ${isOn ? bgClass + ' bg-opacity-20' : 'bg-gray-800'}"
-                             ${isOn && isColorMode && device.rgb_color ? `style="background-color: ${device.rgb_color}20;"` : ''}>
-                            <i data-lucide="${device.icon}" class="w-6 h-6 ${colorClass}"
-                               ${isOn && isColorMode && device.rgb_color ? `style="color: ${device.rgb_color};"` : ''}></i>
-                        </div>
-                        <div>
-                            <div class="text-white font-medium">${device.name}</div>
-                            <div class="text-gray-400 text-sm">${device.room} • ${statusText}</div>
-                        </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center ${isOn ? bgClass + ' bg-opacity-20' : 'bg-gray-800'}">
+                        <i data-lucide="${device.icon}" class="w-6 h-6 ${colorClass}"></i>
                     </div>
-                    <button class="device-toggle-btn w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isOn ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-800 text-gray-500'}"
-                            data-device-id="${device.device_id}"
-                            title="${isOn ? 'Выключить' : 'Включить'}">
-                        <i data-lucide="power" class="w-5 h-5"></i>
-                    </button>
+                    <div>
+                        <div class="text-white font-medium">${device.name}</div>
+                        <div class="text-gray-400 text-sm">${statusText}</div>
+                    </div>
                 </div>
-                ${controlsHtml}
             </div>
         `;
-    }).join('');
+    };
+
+    const roomGroups = groupByRoom(data.devices);
+    const devicesHtml = roomGroups.map(({ room, devices }) => `
+        <div class="mb-4">
+            <h3 class="text-sm font-medium text-gray-400 mb-3">${room}</h3>
+            <div class="space-y-3">
+                ${devices.map(renderDeviceCard).join('')}
+            </div>
+        </div>
+    `).join('');
 
     const quickActionsHtml = data.quick_actions.map(action => {
         const styleClass = action.style === 'primary'
@@ -616,8 +514,8 @@ function renderLightWidget(data) {
                 </div>
             </div>
 
-            <div class="space-y-3 mb-6">
-                ${devicesHtml}
+            <div class="mb-6">
+                ${devicesHtml || '<p class="text-gray-500 text-sm">Нет доступных устройств</p>'}
             </div>
 
             <div class="flex gap-3">
@@ -625,127 +523,26 @@ function renderLightWidget(data) {
             </div>
         </div>
     `;
-    
-    // Add click handlers for power toggle buttons
-    container.querySelectorAll('.device-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const deviceId = btn.dataset.deviceId;
-            btn.disabled = true;
-            btn.classList.add('opacity-50');
-            
-            const result = await toggleLight(deviceId);
-            
-            if (result.success) {
-                // Refresh widget with new data
-                const updatedData = await buildLightWidgetData();
-                currentWidget = updatedData;
-                renderLightWidget(updatedData);
-                lucide.createIcons();
-            } else {
-                console.error('Toggle failed:', result.message);
-                btn.disabled = false;
-                btn.classList.remove('opacity-50');
-            }
-        });
-    });
-    
-    // Add change handlers for brightness sliders
-    container.querySelectorAll('.brightness-slider').forEach(slider => {
-        let debounceTimer;
-        slider.addEventListener('input', (e) => {
-            // Update visual value immediately
-            const valueSpan = slider.parentElement.querySelector('.brightness-value');
-            if (valueSpan) valueSpan.textContent = `${slider.value}%`;
-        });
-        slider.addEventListener('change', async (e) => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(async () => {
-                const deviceId = slider.dataset.deviceId;
-                const brightness = parseInt(slider.value);
-                
-                const result = await setLightBrightness(deviceId, brightness);
-                if (!result.success) {
-                    console.error('Brightness change failed:', result.message);
-                }
-            }, 300);
-        });
-    });
-    
-    // Add change handlers for color temperature sliders
-    container.querySelectorAll('.colortemp-slider').forEach(slider => {
-        let debounceTimer;
-        slider.addEventListener('change', async (e) => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(async () => {
-                const deviceId = slider.dataset.deviceId;
-                const temperature = parseInt(slider.value);
-                
-                const result = await setLightColorTemp(deviceId, temperature);
-                if (!result.success) {
-                    console.error('Color temp change failed:', result.message);
-                }
-            }, 300);
-        });
-    });
-    
-    // Add change handlers for RGB color pickers
-    container.querySelectorAll('.rgb-picker').forEach(picker => {
-        picker.addEventListener('change', async (e) => {
-            const deviceId = picker.dataset.deviceId;
-            const hexColor = picker.value;
-            
-            // Convert hex to RGB
-            const r = parseInt(hexColor.slice(1, 3), 16);
-            const g = parseInt(hexColor.slice(3, 5), 16);
-            const b = parseInt(hexColor.slice(5, 7), 16);
-            
-            const result = await setLightRGB(deviceId, r, g, b);
-            if (!result.success) {
-                console.error('RGB change failed:', result.message);
-            }
-        });
-    });
-    
-    // Add click handlers for mode toggle buttons
-    container.querySelectorAll('.mode-toggle').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            // Don't toggle if clicking on input itself
-            if (e.target.tagName === 'INPUT') return;
-            
-            const deviceId = btn.dataset.device;
-            const newMode = btn.dataset.mode;
-            
-            // Find device in data and update
-            const device = data.devices.find(d => d.device_id === deviceId);
-            if (device && device.color_mode !== newMode) {
-                device.color_mode = newMode;
-                // Re-render widget
-                renderLightWidget(data);
-                lucide.createIcons();
-            }
-        });
-    });
 }
 
 // Render Climate Widget
 function renderClimateWidget(data) {
     const container = document.getElementById('widget-container');
 
-    const radiatorsHtml = data.radiators.map(radiator => {
+    const modeLabels = { heat: 'Нагрев', off: 'Выкл', auto: 'Авто', eco: 'Эко' };
+
+    const renderRadiatorCard = radiator => {
         const isOn = radiator.is_on;
         const colorClass = getTailwindColorClass(radiator.color);
         const bgClass = getTailwindBgColorClass(radiator.color);
-        const modeLabels = {
-            heat: 'Нагрев',
-            off: 'Выкл',
-            auto: 'Авто',
-            eco: 'Эко'
-        };
+
+        const currentTempHtml = radiator.current_temp !== null && radiator.current_temp !== undefined
+            ? `<div class="text-gray-500 text-xs mt-0.5">сейчас ${radiator.current_temp}°C</div>`
+            : '';
 
         return `
             <div class="glass-tile rounded-xl p-4">
-                <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full flex items-center justify-center ${isOn ? bgClass + ' bg-opacity-20' : 'bg-gray-800'}">
                             <i data-lucide="${radiator.icon}" class="w-5 h-5 ${colorClass}"></i>
@@ -758,26 +555,32 @@ function renderClimateWidget(data) {
                     <div class="text-right">
                         <div class="text-2xl font-bold ${colorClass}">${radiator.target_temp}°C</div>
                         <div class="text-gray-500 text-xs">целевая</div>
+                        ${currentTempHtml}
                     </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button class="w-8 h-8 rounded-full bg-gray-800 text-gray-400 flex items-center justify-center hover:bg-gray-700">
-                        <i data-lucide="minus" class="w-4 h-4"></i>
-                    </button>
-                    <input type="range" min="5" max="35" value="${radiator.target_temp}" step="0.5"
-                           class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500">
-                    <button class="w-8 h-8 rounded-full bg-gray-800 text-gray-400 flex items-center justify-center hover:bg-gray-700">
-                        <i data-lucide="plus" class="w-4 h-4"></i>
-                    </button>
                 </div>
             </div>
         `;
-    }).join('');
+    };
 
-    const sensorsHtml = data.sensors.map(sensor => {
+    const radiatorsHtml = groupByRoom(data.radiators).map(({ room, devices }) => `
+        <div class="mb-4">
+            <h4 class="text-xs font-medium text-gray-500 mb-2">${room}</h4>
+            <div class="space-y-3">
+                ${devices.map(renderRadiatorCard).join('')}
+            </div>
+        </div>
+    `).join('');
+
+    const renderSensorCard = sensor => {
         const colorClass = getTailwindColorClass(sensor.color);
+        const hasBattery = sensor.battery_level !== null && sensor.battery_level !== undefined;
         const batteryIcon = sensor.battery_level > 50 ? 'battery-full' : sensor.battery_level > 20 ? 'battery-medium' : 'battery-low';
         const batteryColor = sensor.battery_level > 50 ? 'text-green-500' : sensor.battery_level > 20 ? 'text-yellow-500' : 'text-red-500';
+        const batteryHtml = hasBattery ? `
+                    <div class="flex items-center gap-1 ${batteryColor}">
+                        <i data-lucide="${batteryIcon}" class="w-4 h-4"></i>
+                        <span class="text-xs">${sensor.battery_level}%</span>
+                    </div>` : '';
 
         return `
             <div class="glass-tile rounded-xl p-4 flex items-center justify-between">
@@ -787,7 +590,7 @@ function renderClimateWidget(data) {
                     </div>
                     <div>
                         <div class="text-white font-medium">${sensor.name}</div>
-                        <div class="text-gray-400 text-sm">${sensor.room} • ${sensor.last_updated}</div>
+                        ${sensor.last_updated ? `<div class="text-gray-400 text-sm">${sensor.last_updated}</div>` : ''}
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
@@ -798,15 +601,20 @@ function renderClimateWidget(data) {
                     <div class="text-center">
                         <div class="text-xl font-bold text-blue-400">${sensor.humidity}%</div>
                         <div class="text-gray-500 text-xs">влаж.</div>
-                    </div>
-                    <div class="flex items-center gap-1 ${batteryColor}">
-                        <i data-lucide="${batteryIcon}" class="w-4 h-4"></i>
-                        <span class="text-xs">${sensor.battery_level}%</span>
-                    </div>
+                    </div>${batteryHtml}
                 </div>
             </div>
         `;
-    }).join('');
+    };
+
+    const sensorsHtml = groupByRoom(data.sensors).map(({ room, devices }) => `
+        <div class="mb-4">
+            <h4 class="text-xs font-medium text-gray-500 mb-2">${room}</h4>
+            <div class="space-y-3">
+                ${devices.map(renderSensorCard).join('')}
+            </div>
+        </div>
+    `).join('');
 
     const quickActionsHtml = data.quick_actions.map(action => {
         const styleClass = action.style === 'primary'
@@ -845,7 +653,7 @@ function renderClimateWidget(data) {
                     Батареи отопления
                 </h3>
                 <div class="space-y-3">
-                    ${radiatorsHtml}
+                    ${radiatorsHtml || '<p class="text-gray-500 text-sm">Нет доступных радиаторов</p>'}
                 </div>
             </div>
 
@@ -855,7 +663,7 @@ function renderClimateWidget(data) {
                     Датчики
                 </h3>
                 <div class="space-y-3">
-                    ${sensorsHtml}
+                    ${sensorsHtml || '<p class="text-gray-500 text-sm">Нет доступных датчиков</p>'}
                 </div>
             </div>
 
@@ -1370,11 +1178,8 @@ window.renderClimateWidget = renderClimateWidget;
 window.renderMusicWidget = renderMusicWidget;
 window.renderDocumentsWidget = renderDocumentsWidget;
 window.buildLightWidgetData = buildLightWidgetData;
-window.fetchLightDevices = fetchLightDevices;
-window.toggleLight = toggleLight;
-window.setLightBrightness = setLightBrightness;
-window.setLightColorTemp = setLightColorTemp;
-window.setLightRGB = setLightRGB;
+window.fetchLightWidgetData = fetchLightWidgetData;
+window.buildClimateWidgetData = buildClimateWidgetData;
 
 // Initialize widget input form handler
 document.addEventListener('DOMContentLoaded', () => {

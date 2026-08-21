@@ -32,7 +32,7 @@ trio = ["trio (>=0.31.0)"]
 
 [[package]]
 name = "archie-shared"
-version = "0.1.63"
+version = "0.1.70"
 description = "Shared Pydantic models and utilities for Archie ecosystem"
 optional = false
 python-versions = ">=3.11.0rc1,<4.0"
@@ -2287,4 +2287,4 @@ dev = ["Sphinx", "flake8", "flake8-docstrings", "flake8-import-order", "flake8-t
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4.0"
-content-hash = "ee85fac148699ec69843e16ff4df324b201b8310afefd8267ec2c1d8d4ee0bf9"
+content-hash = "a69bc2d1dee2409330fe131f8b78eb99ccf0255e54f64cc55b5084ef1efcb4d6"

@@ -16,6 +16,7 @@ Modular Django 5.2 smart home dashboard. `webapp` is the central hub; specialize
 | `/weather/` | weather | OpenWeatherMap API, 10-min caching, `WeatherService` |
 | `/camera/` | camera | — |
 | `/api/` | api | — |
+| — | ha_mcp | `HomeAssistantMCPClient` — Home Assistant MCP server client, feeds real device state to `climate`/`light` dashboard tiles |
 
 ---
 
@@ -28,6 +29,8 @@ DATABASE_URL          # sqlite:///db.sqlite3 or Postgres
 OPENWEATHER_API_KEY
 BACKEND_API_URL       # http://archie-backend:8002
 AI_AGENT_URL          # http://archie-ai-agent:8005
+HOMEASSISTANT_MCP_URL    # http://homeassistant.local:8123/api/mcp
+HOMEASSISTANT_MCP_TOKEN  # HA long-lived access token
 ```
 
 ---
@@ -64,7 +67,10 @@ See `agent_docs/` for code style and logging conventions.
 
 | Skill | When to invoke |
 |-------|----------------|
-| `backend-developer` | Any Django change — models, views, services, URLs, migrations, tests, Redis |
-| `frontend-developer` | Any UI change — templates, static JS/CSS, URL routing |
-| `archie-shared` | Adding or editing shared Pydantic models: chat protocol types, UI components (cards, widgets, response levels), UserState |
-| `ai-agent` | Building or editing UI that consumes AI agent responses — rendering response levels, WebSocket streaming, button discriminator (AssistantButton vs FrontendButton) |
+| `backend-developer` | Use for any Django change — models, views, services, URLs, migrations, tests, Redis |
+| `frontend-developer` | Use for any UI change — templates, static JS/CSS, URL routing |
+| `archie-shared` | Use when adding or editing shared Pydantic models: chat protocol types, UI components (cards, widgets, response levels), UserState |
+| `ai-agent` | Use when building or editing UI that consumes AI agent responses — rendering response levels, WebSocket streaming, button discriminator (AssistantButton vs FrontendButton) |
+| `db-explorer` | Use to query and inspect records in the PostgreSQL database — check tables, debug data, explore model records |
+| `log-analyzer` | Use to investigate errors, exceptions, and unexpected behavior — always check Docker logs before drawing conclusions | 
+

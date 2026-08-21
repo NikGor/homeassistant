@@ -273,6 +273,13 @@ body, html {
     padding: 1rem; /* Отступы для прокрутки */
 }
 
+/* Виджет-панель прокручивается только своим внутренним flex-1 контейнером
+   (см. index.html) — второй scroll-контекст на самом .view-screen мешает
+   ему добираться до истинного верха при длинных списках устройств. */
+#widget-view {
+    overflow-y: hidden;
+}
+
 /* AI Assistant integration styles */
 #chat-assistant-root {
     /* Remove default padding from view-screen for full AI Assistant control */

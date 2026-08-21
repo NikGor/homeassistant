@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "homeassistant.camera",
     "homeassistant.light",
     "homeassistant.climate",
+    "homeassistant.ha_mcp",
     "homeassistant.weather",
     "homeassistant.ai_assistant",
     "homeassistant.voice_assistant",

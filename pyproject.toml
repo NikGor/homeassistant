@@ -24,6 +24,7 @@ numpy = "^2.0.0"
 redis = "^5.0.1"
 google-genai = "^1.50.1"
 pillow = "^11.0.0"
+mcp = "^1.22.0"
 
 [tool.poetry.group.voice]
 optional = true

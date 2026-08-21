@@ -44,6 +44,11 @@ urlpatterns = [
         name="api_all_devices_status",
     ),
     path(
+        "api/widget/status/",
+        api_views.LightWidgetStatusAPIView.as_view(),
+        name="api_widget_status",
+    ),
+    path(
         "api/devices/scan/",
         api_views.ScanDevicesView.as_view(),
         name="api_scan_devices",

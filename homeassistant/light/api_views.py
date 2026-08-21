@@ -1,16 +1,99 @@
 import json
 import logging
 
+from archie_shared.ui.models import (AssistantButton, LightDeviceState,
+                                     LightWidget)
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
+
+from homeassistant.ha_mcp.services import HomeAssistantMCPClient
 
 from .exceptions import DeviceError
 from .light_controller import light_controller
 from .services import YeelightDevice
 
 logger = logging.getLogger(__name__)
+
+QUICK_ACTIONS = [
+    AssistantButton(
+        text="Включить все",
+        style="primary",
+        icon="power",
+        assistant_request="Включи весь свет",
+    ),
+    AssistantButton(
+        text="Выключить все",
+        style="secondary",
+        icon="power-off",
+        assistant_request="Выключи весь свет",
+    ),
+]
+
+
+def _brightness_pct(attrs):
+    """HA reports brightness on a 0-255 scale; widget expects 1-100%"""
+    raw = attrs.get("brightness")
+    if raw in (None, ""):
+        return None
+    try:
+        value = round(float(raw) / 255 * 100)
+    except (TypeError, ValueError):
+        return None
+    return max(1, min(100, value))
+
+
+def _build_light_devices(entities):
+    devices = []
+    for i, entity in enumerate(entities):
+        is_on = entity.get("state") == "on"
+        attrs = entity.get("attributes", {})
+        brightness = _brightness_pct(attrs) if is_on else None
+        devices.append(
+            LightDeviceState(
+                device_id=entity.get("entity_id") or f"light_{i}",
+                name=entity.get("name") or entity.get("entity_id") or "Свет",
+                room=entity.get("area") or None,
+                is_on=is_on,
+                brightness=brightness or 1,
+                color_mode="temperature",
+                icon="lightbulb",
+                color="yellow" if is_on else "gray",
+            )
+        )
+    return devices
+
+
+class LightWidgetStatusAPIView(View):
+    """Live light device status, read directly from Home Assistant via MCP.
+
+    Display-only: no device control, no caching layer — every request
+    re-fetches current state so the panel never shows stale data.
+    """
+
+    def get(self, request, *args, **kwargs):
+        logger.info("light_api_views_widget_001: Fetching light widget data via MCP")
+
+        client = HomeAssistantMCPClient()
+        entities = client.get_domain_entities("light")
+        devices = _build_light_devices(entities)
+        on_count = sum(1 for d in devices if d.is_on)
+
+        logger.info(
+            f"light_api_views_widget_002: Built {len(devices)} light devices "
+            f"from MCP live context, {on_count} on"
+        )
+
+        widget = LightWidget(
+            subtitle=f"{on_count} из {len(devices)} включены",
+            on_count=on_count,
+            total_count=len(devices),
+            devices=devices,
+            quick_actions=QUICK_ACTIONS,
+        )
+
+        return JsonResponse({"success": True, **widget.model_dump()})
 
 
 @method_decorator(csrf_exempt, name="dispatch")
