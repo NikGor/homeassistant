@@ -23,22 +23,22 @@ async function buildLightWidgetData() {
 // Static fallback data for Light widget (used when API unavailable)
 const STATIC_LIGHT_WIDGET = {
     type: "light_widget",
-    title: "Свет",
-    subtitle: "Загрузка...",
+    title: "Light",
+    subtitle: "Loading...",
     on_count: 0,
     total_count: 0,
     devices: [],
     quick_actions: [
         {
             type: "assistant_button",
-            text: "Включить все",
+            text: "Turn on all",
             style: "primary",
             icon: "power",
             assistant_request: "Включи весь свет"
         },
         {
             type: "assistant_button",
-            text: "Выключить все",
+            text: "Turn off all",
             style: "secondary",
             icon: "power-off",
             assistant_request: "Выключи весь свет"
@@ -48,15 +48,15 @@ const STATIC_LIGHT_WIDGET = {
 
 const STATIC_CLIMATE_WIDGET = {
     type: "climate_widget",
-    title: "Климат",
-    subtitle: "средняя 21.8°C, влажность 48%",
+    title: "Climate",
+    subtitle: "average 21.8°C, humidity 48%",
     average_temp: 21.8,
     average_humidity: 48,
     radiators: [
         {
             device_id: "radiator_1",
-            name: "Батарея гостиная",
-            room: "Гостиная",
+            name: "Living room radiator",
+            room: "Living room",
             is_on: true,
             target_temp: 22.0,
             current_temp: 22.1,
@@ -66,8 +66,8 @@ const STATIC_CLIMATE_WIDGET = {
         },
         {
             device_id: "radiator_2",
-            name: "Батарея спальня",
-            room: "Спальня",
+            name: "Bedroom radiator",
+            room: "Bedroom",
             is_on: false,
             target_temp: 20.0,
             current_temp: 21.5,
@@ -79,23 +79,23 @@ const STATIC_CLIMATE_WIDGET = {
     sensors: [
         {
             device_id: "sensor_1",
-            name: "Датчик гостиная",
-            room: "Гостиная",
+            name: "Living room sensor",
+            room: "Living room",
             temperature: 22.1,
             humidity: 45,
             battery_level: 87,
-            last_updated: "2 мин назад",
+            last_updated: "2 min ago",
             icon: "thermometer",
             color: "green"
         },
         {
             device_id: "sensor_2",
-            name: "Датчик спальня",
-            room: "Спальня",
+            name: "Bedroom sensor",
+            room: "Bedroom",
             temperature: 21.5,
             humidity: 51,
             battery_level: 62,
-            last_updated: "5 мин назад",
+            last_updated: "5 min ago",
             icon: "thermometer",
             color: "green"
         }
@@ -103,14 +103,14 @@ const STATIC_CLIMATE_WIDGET = {
     quick_actions: [
         {
             type: "assistant_button",
-            text: "Режим эко",
+            text: "Eco mode",
             style: "primary",
             icon: "leaf",
             assistant_request: "Включи эко режим отопления"
         },
         {
             type: "assistant_button",
-            text: "Прогреть дом",
+            text: "Warm up home",
             style: "secondary",
             icon: "flame",
             assistant_request: "Прогрей весь дом до 23 градусов"
@@ -430,7 +430,7 @@ async function showWidgetView(widgetType) {
 
 // Render Light Widget
 // Group a list of {room, ...} items by room, preserving first-seen order.
-// Items without a room fall into an "Другое" bucket at the end.
+// Items without a room fall into an "Other" bucket at the end.
 function groupByRoom(items) {
     const groups = new Map();
     const noRoom = [];
@@ -443,7 +443,7 @@ function groupByRoom(items) {
         groups.get(item.room).push(item);
     });
     const result = Array.from(groups.entries()).map(([room, devices]) => ({ room, devices }));
-    if (noRoom.length) result.push({ room: 'Другое', devices: noRoom });
+    if (noRoom.length) result.push({ room: 'Other', devices: noRoom });
     return result;
 }
 
@@ -457,11 +457,11 @@ function renderLightWidget(data) {
 
         let statusText;
         if (!isOn) {
-            statusText = 'Выключено';
+            statusText = 'Off';
         } else if (device.brightness) {
-            statusText = `Включено, ${device.brightness}%`;
+            statusText = `On, ${device.brightness}%`;
         } else {
-            statusText = 'Включено';
+            statusText = 'On';
         }
 
         return `
@@ -515,7 +515,7 @@ function renderLightWidget(data) {
             </div>
 
             <div class="mb-6">
-                ${devicesHtml || '<p class="text-gray-500 text-sm">Нет доступных устройств</p>'}
+                ${devicesHtml || '<p class="text-gray-500 text-sm">No devices available</p>'}
             </div>
 
             <div class="flex gap-3">
@@ -529,7 +529,7 @@ function renderLightWidget(data) {
 function renderClimateWidget(data) {
     const container = document.getElementById('widget-container');
 
-    const modeLabels = { heat: 'Нагрев', off: 'Выкл', auto: 'Авто', eco: 'Эко' };
+    const modeLabels = { heat: 'Heating', off: 'Off', auto: 'Auto', eco: 'Eco' };
 
     const renderRadiatorCard = radiator => {
         const isOn = radiator.is_on;
@@ -537,7 +537,7 @@ function renderClimateWidget(data) {
         const bgClass = getTailwindBgColorClass(radiator.color);
 
         const currentTempHtml = radiator.current_temp !== null && radiator.current_temp !== undefined
-            ? `<div class="text-gray-500 text-xs mt-0.5">сейчас ${radiator.current_temp}°C</div>`
+            ? `<div class="text-gray-500 text-xs mt-0.5">now ${radiator.current_temp}°C</div>`
             : '';
 
         return `
@@ -554,7 +554,7 @@ function renderClimateWidget(data) {
                     </div>
                     <div class="text-right">
                         <div class="text-2xl font-bold ${colorClass}">${radiator.target_temp}°C</div>
-                        <div class="text-gray-500 text-xs">целевая</div>
+                        <div class="text-gray-500 text-xs">target</div>
                         ${currentTempHtml}
                     </div>
                 </div>
@@ -596,11 +596,11 @@ function renderClimateWidget(data) {
                 <div class="flex items-center gap-4">
                     <div class="text-center">
                         <div class="text-xl font-bold text-white">${sensor.temperature}°C</div>
-                        <div class="text-gray-500 text-xs">темп.</div>
+                        <div class="text-gray-500 text-xs">temp.</div>
                     </div>
                     <div class="text-center">
                         <div class="text-xl font-bold text-blue-400">${sensor.humidity}%</div>
-                        <div class="text-gray-500 text-xs">влаж.</div>
+                        <div class="text-gray-500 text-xs">hum.</div>
                     </div>${batteryHtml}
                 </div>
             </div>
@@ -638,11 +638,11 @@ function renderClimateWidget(data) {
                 <div class="flex items-center gap-4">
                     <div class="text-center">
                         <div class="text-3xl font-bold text-green-500">${data.average_temp}°C</div>
-                        <div class="text-gray-500 text-xs">средняя</div>
+                        <div class="text-gray-500 text-xs">average</div>
                     </div>
                     <div class="text-center">
                         <div class="text-3xl font-bold text-blue-400">${data.average_humidity}%</div>
-                        <div class="text-gray-500 text-xs">влаж.</div>
+                        <div class="text-gray-500 text-xs">hum.</div>
                     </div>
                 </div>
             </div>
@@ -650,20 +650,20 @@ function renderClimateWidget(data) {
             <div class="mb-4">
                 <h3 class="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
                     <i data-lucide="heater" class="w-4 h-4"></i>
-                    Батареи отопления
+                    Radiators
                 </h3>
                 <div class="space-y-3">
-                    ${radiatorsHtml || '<p class="text-gray-500 text-sm">Нет доступных радиаторов</p>'}
+                    ${radiatorsHtml || '<p class="text-gray-500 text-sm">No radiators available</p>'}
                 </div>
             </div>
 
             <div class="mb-6">
                 <h3 class="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
                     <i data-lucide="thermometer" class="w-4 h-4"></i>
-                    Датчики
+                    Sensors
                 </h3>
                 <div class="space-y-3">
-                    ${sensorsHtml || '<p class="text-gray-500 text-sm">Нет доступных датчиков</p>'}
+                    ${sensorsHtml || '<p class="text-gray-500 text-sm">No sensors available</p>'}
                 </div>
             </div>
 

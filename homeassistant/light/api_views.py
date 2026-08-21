@@ -18,13 +18,13 @@ logger = logging.getLogger(__name__)
 
 QUICK_ACTIONS = [
     AssistantButton(
-        text="Включить все",
+        text="Turn on all",
         style="primary",
         icon="power",
         assistant_request="Включи весь свет",
     ),
     AssistantButton(
-        text="Выключить все",
+        text="Turn off all",
         style="secondary",
         icon="power-off",
         assistant_request="Выключи весь свет",
@@ -53,7 +53,7 @@ def _build_light_devices(entities):
         devices.append(
             LightDeviceState(
                 device_id=entity.get("entity_id") or f"light_{i}",
-                name=entity.get("name") or entity.get("entity_id") or "Свет",
+                name=entity.get("name") or entity.get("entity_id") or "Light",
                 room=entity.get("area") or None,
                 is_on=is_on,
                 brightness=brightness or 1,
@@ -86,7 +86,8 @@ class LightWidgetStatusAPIView(View):
         )
 
         widget = LightWidget(
-            subtitle=f"{on_count} из {len(devices)} включены",
+            title="Light",
+            subtitle=f"{on_count} of {len(devices)} on",
             on_count=on_count,
             total_count=len(devices),
             devices=devices,

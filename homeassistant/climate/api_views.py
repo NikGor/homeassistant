@@ -15,13 +15,13 @@ CLIMATE_MODE_MAP = {"heat": "heat", "auto": "auto", "eco": "eco"}
 
 QUICK_ACTIONS = [
     AssistantButton(
-        text="Режим эко",
+        text="Eco mode",
         style="primary",
         icon="leaf",
         assistant_request="Включи эко режим отопления",
     ),
     AssistantButton(
-        text="Прогреть дом",
+        text="Warm up home",
         style="secondary",
         icon="flame",
         assistant_request="Прогрей весь дом до 23 градусов",
@@ -55,7 +55,7 @@ def _build_radiators(entities):
         radiators.append(
             RadiatorState(
                 device_id=entity.get("entity_id") or f"radiator_{i}",
-                name=entity.get("name") or "Радиатор",
+                name=entity.get("name") or "Radiator",
                 room=entity.get("area") or "",
                 is_on=is_on,
                 target_temp=target_temp if target_temp is not None else 20.0,
@@ -99,7 +99,7 @@ def _build_sensors(entities):
         for i in range(pair_count):
             name, temperature = temps[i]
             _, humidity = humidities[i]
-            label = f"Датчик {area}" if pair_count == 1 else f"{name or area} ({area})"
+            label = f"Sensor {area}" if pair_count == 1 else f"{name or area} ({area})"
             sensors.append(
                 TemperatureSensorState(
                     device_id=f"sensor_{area}_{i}",
@@ -146,7 +146,8 @@ class ClimateStatusAPIView(View):
         )
 
         widget = ClimateWidget(
-            subtitle=f"средняя {average_temp:.1f}°C, влажность {average_humidity:.0f}%",
+            title="Climate",
+            subtitle=f"average {average_temp:.1f}°C, humidity {average_humidity:.0f}%",
             average_temp=average_temp,
             average_humidity=average_humidity,
             radiators=radiators,
