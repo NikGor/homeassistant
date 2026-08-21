@@ -552,6 +552,42 @@ class Image(BaseModel):
     )
 
 
+class MapPoint(BaseModel):
+    """Single point of interest displayed as a marker on a Map"""
+
+    title: str = Field(description="Marker label shown on the map (e.g., place name)")
+    lat: float = Field(
+        description="Latitude in decimal degrees", ge=-90.0, le=90.0
+    )
+    lng: float = Field(
+        description="Longitude in decimal degrees", ge=-180.0, le=180.0
+    )
+    description: Optional[str] = Field(
+        default=None, description="Short detail shown in the marker popup (1 sentence max)"
+    )
+    address: Optional[str] = Field(
+        default=None, description="Full address shown in the marker popup"
+    )
+
+
+class Map(BaseModel):
+    """Interactive map with markers. Use when the answer references multiple physical places (e.g., restaurants, attractions in a city) — never for a single location, use LocationCard instead."""
+
+    type: Literal["map"] = Field(
+        "map", description="Type of the component for frontend rendering"
+    )
+    title: Optional[str] = Field(
+        default=None, description="Map caption (e.g., 'Recommended restaurants in Berlin')"
+    )
+    points: List[MapPoint] = Field(
+        description="Points of interest to plot as markers. Map auto-fits bounds to show all points."
+    )
+    height: Optional[int] = Field(
+        default=350,
+        description="Map height in pixels, optimized for mobile viewing (250-450px recommended)",
+    )
+
+
 class AdvancedAnswerItem(BaseModel):
     """Strategic UI component with clear hierarchy and user flow optimization"""
 
@@ -564,6 +600,7 @@ class AdvancedAnswerItem(BaseModel):
         "table",
         "chart",
         "image",
+        "map",
         "event_form",
         "email_form",
         "note_form",
@@ -576,6 +613,7 @@ class AdvancedAnswerItem(BaseModel):
         Table,
         Chart,
         Image,
+        Map,
         EventForm,
         EmailForm,
         InternalNoteForm,
