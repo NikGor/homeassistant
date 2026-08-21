@@ -556,14 +556,11 @@ class MapPoint(BaseModel):
     """Single point of interest displayed as a marker on a Map"""
 
     title: str = Field(description="Marker label shown on the map (e.g., place name)")
-    lat: float = Field(
-        description="Latitude in decimal degrees", ge=-90.0, le=90.0
-    )
-    lng: float = Field(
-        description="Longitude in decimal degrees", ge=-180.0, le=180.0
-    )
+    lat: float = Field(description="Latitude in decimal degrees", ge=-90.0, le=90.0)
+    lng: float = Field(description="Longitude in decimal degrees", ge=-180.0, le=180.0)
     description: Optional[str] = Field(
-        default=None, description="Short detail shown in the marker popup (1 sentence max)"
+        default=None,
+        description="Short detail shown in the marker popup (1 sentence max)",
     )
     address: Optional[str] = Field(
         default=None, description="Full address shown in the marker popup"
@@ -577,7 +574,8 @@ class Map(BaseModel):
         "map", description="Type of the component for frontend rendering"
     )
     title: Optional[str] = Field(
-        default=None, description="Map caption (e.g., 'Recommended restaurants in Berlin')"
+        default=None,
+        description="Map caption (e.g., 'Recommended restaurants in Berlin')",
     )
     points: List[MapPoint] = Field(
         description="Points of interest to plot as markers. Map auto-fits bounds to show all points."
