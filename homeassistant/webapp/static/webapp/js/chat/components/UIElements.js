@@ -1237,7 +1237,12 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
                 chart: item.content,
                 order: item.order
             });
-        
+
+        case 'map':
+            return React.createElement(ChatMapComponent, {
+                map: item.content
+            });
+
         case 'image':
             const imagePrompt = item.content?.image_prompt;
             const widthClass = item.layout_hint === 'half_width' ? 'w-full md:w-1/2' :

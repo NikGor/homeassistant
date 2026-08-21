@@ -31,6 +31,10 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 
+    <!-- Leaflet for the Map UI component (OpenStreetMap tiles, no API key needed) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
@@ -187,6 +191,7 @@
     <script src="{% static 'webapp/js/chat/utils.js' %}"></script>
     <script src="{% static 'webapp/js/chat/api.js' %}"></script>
     <script src="{% static 'webapp/js/chat/components/ChartComponent.js' %}"></script>
+    <script src="{% static 'webapp/js/chat/components/MapComponent.js' %}"></script>
     <script src="{% static 'webapp/js/chat/components/UIElements.js' %}"></script>
     <script src="{% static 'webapp/js/chat/components/ChatInput.js' %}"></script>
     <script src="{% static 'webapp/js/chat/ChatAssistant.js' %}"></script>

@@ -794,3 +794,33 @@ body, html {
     overflow-x: auto;
     text-align: center;
 }
+
+/* Leaflet map popups (Map UI component) — dark theme to match the chat glass cards */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+    background: #1a1a1a;
+    color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.leaflet-popup-content {
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.leaflet-popup-close-button {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+    color: rgba(255, 255, 255, 1) !important;
+}
+
+.leaflet-control-attribution {
+    background: rgba(0, 0, 0, 0.6) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.leaflet-control-attribution a {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
