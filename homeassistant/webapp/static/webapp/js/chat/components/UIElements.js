@@ -1236,6 +1236,10 @@ const chatLightTint = (card) => {
     return null;
 };
 
+// AdvancedAnswerItem types that render as smart-home element cards; grouped
+// into a 2-up grid by ChatUIAnswer instead of stacking full-width.
+const DEVICE_CARD_TYPES = new Set(['light_card', 'light_sensor_card', 'climate_card', 'climate_sensor_card']);
+
 // Single smart-home element card for chat (light / light sensor / radiator /
 // climate sensor). Icon-in-circle on the left, primary reading on the right.
 const ChatDeviceCard = ({ card, onExecute }) => {
@@ -1267,7 +1271,7 @@ const ChatDeviceCard = ({ card, onExecute }) => {
     }
 
     return React.createElement('div', {
-        className: `backdrop-blur-lg bg-white/10 rounded-2xl p-4 mb-4 border border-${accent}-500/40 shadow-xl`
+        className: `backdrop-blur-lg bg-white/10 rounded-2xl p-4 border-2 border-${accent}-500 hover:border-${accent}-400 shadow-xl shadow-${accent}-500/20 transition-all duration-300 h-full`
     }, [
         React.createElement('div', { key: 'row', className: 'flex items-center justify-between gap-3' }, [
             React.createElement('div', { key: 'left', className: 'flex items-center gap-3 min-w-0' }, [
@@ -1408,6 +1412,44 @@ const ChatUIAnswer = ({ uiAnswer, onExecute }) => {
     const items = uiAnswer?.items || [];
     console.log('ChatUIAnswer: Processing items', items);
 
+    // Smart-home element cards are individual items, but should tile 2-up rather
+    // than stack full-width. Collapse each run of consecutive device-card items
+    // into a grid-cols-2 row; a lone card stays full-width. Everything else
+    // renders one-per-block as before.
+    const sorted = items.slice().sort((a, b) => a.order - b.order);
+    const renderedItems = [];
+    for (let i = 0; i < sorted.length;) {
+        const item = sorted[i];
+        if (DEVICE_CARD_TYPES.has(item.type)) {
+            const group = [];
+            while (i < sorted.length && DEVICE_CARD_TYPES.has(sorted[i].type)) {
+                group.push(sorted[i]);
+                i++;
+            }
+            const inner = group.length > 1
+                ? React.createElement('div', {
+                    className: 'grid grid-cols-2 gap-3'
+                }, group.map((g, gi) => React.createElement(ChatAdvancedAnswerItem, {
+                    key: `card-${gi}`, item: g, onExecute
+                })))
+                : React.createElement(ChatAdvancedAnswerItem, {
+                    item: group[0], onExecute
+                });
+            renderedItems.push(React.createElement('div', {
+                key: `group-${i}`,
+                className: getSpacingClass(group[0].spacing)
+            }, inner));
+        } else {
+            renderedItems.push(React.createElement('div', {
+                key: `item-${i}`,
+                className: getSpacingClass(item.spacing)
+            }, React.createElement(ChatAdvancedAnswerItem, {
+                item, onExecute
+            })));
+            i++;
+        }
+    }
+
     return React.createElement('div', {
         className: 'space-y-6'
     }, [
@@ -1417,16 +1459,7 @@ const ChatUIAnswer = ({ uiAnswer, onExecute }) => {
         // Items
         React.createElement('div', {
             key: 'items'
-        }, items.sort((a, b) => a.order - b.order).map((item, index) => {
-            console.log(`ChatUIAnswer: Rendering item ${index}`, item);
-            return React.createElement('div', {
-                key: `item-${index}`,
-                className: getSpacingClass(item.spacing)
-            }, React.createElement(ChatAdvancedAnswerItem, {
-                item: item,
-                onExecute: onExecute
-            }));
-        })),
+        }, renderedItems),
 
         // Quick action buttons
         uiAnswer.quick_action_buttons && React.createElement('div', {
