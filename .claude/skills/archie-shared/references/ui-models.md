@@ -67,6 +67,19 @@ Cards are grouped in `CardGrid(grid_dimensions, cards)`.
 | `"event_form"` | `EventForm` | Calendar event creation |
 | `"email_form"` | `EmailForm` | Email composition |
 | `"note_form"` | `InternalNoteForm` | Note saving |
+| `"light_card"` | `LightCard` | Single light device inline (on/off, brightness, colour) |
+| `"light_sensor_card"` | `LightSensorCard` | Single illuminance (lux) sensor inline |
+| `"climate_card"` | `ClimateCard` | Single radiator inline (target/current temp, mode) |
+| `"climate_sensor_card"` | `ClimateSensorCard` | Single temperature/humidity sensor inline |
+
+Smart-home element cards are the chat-answer counterparts of the dashboard
+widget element models (`LightDeviceState` / `IlluminanceSensorState` /
+`RadiatorState` / `TemperatureSensorState`). The widget models carry
+backend-computed display state (`device_id`, `icon`, palette) for the standalone
+dashboard widgets; the `*Card` models carry only semantic state the assistant
+knows, and the frontend derives icon/colour. Use a card in `UIAnswer.items` to
+show one device inline in a chat answer; use the full `LightWidget`/`ClimateWidget`
+in `Level3Answer.widget` to show the whole panel.
 
 ---
 

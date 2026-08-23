@@ -1209,6 +1209,93 @@ const ImagePlaceholder = ({ aspectRatio = '16/9', className = '', prompt = '' })
     ]));
 };
 
+// Colour temperature (Kelvin) -> #RRGGBB tint, so a chat light card reflects
+// the bulb's real warmth. Mirrors kelvinToHex in widget.js.
+const chatKelvinToHex = (kelvin) => {
+    const t = kelvin / 100;
+    let r, g, b;
+    if (t <= 66) {
+        r = 255;
+        g = 99.4708025861 * Math.log(t) - 161.1195681661;
+    } else {
+        r = 329.698727446 * Math.pow(t - 60, -0.1332047592);
+        g = 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+    }
+    if (t >= 66) b = 255;
+    else if (t <= 19) b = 0;
+    else b = 138.5177312231 * Math.log(t - 10) - 305.0447927307;
+    const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
+    const hex = v => clamp(v).toString(16).padStart(2, '0');
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
+};
+
+const chatLightTint = (card) => {
+    if (!card.is_on) return null;
+    if (card.color_mode === 'color' && card.rgb_color) return card.rgb_color;
+    if (card.color_mode === 'temperature' && card.color_temp) return chatKelvinToHex(card.color_temp);
+    return null;
+};
+
+// Single smart-home element card for chat (light / light sensor / radiator /
+// climate sensor). Icon-in-circle on the left, primary reading on the right.
+const ChatDeviceCard = ({ card, onExecute }) => {
+    const accent = { light_card: 'amber', light_sensor_card: 'yellow', climate_card: 'rose', climate_sensor_card: 'teal' }[card.type] || 'white';
+    const iconName = { light_card: 'lightbulb', light_sensor_card: 'sun', climate_card: 'heater', climate_sensor_card: 'thermometer' }[card.type] || 'box';
+
+    // Left: icon circle. Right: type-specific primary reading.
+    let tint = null;
+    let iconColorClass = 'text-white/70';
+    if (card.type === 'light_card') {
+        tint = chatLightTint(card);
+        if (!tint) iconColorClass = card.is_on ? 'text-amber-300' : 'text-white/40';
+    }
+
+    const reading = [];
+    if (card.type === 'light_card') {
+        const status = !card.is_on ? 'Off' : (card.brightness ? `On · ${card.brightness}%` : 'On');
+        reading.push(React.createElement('div', { key: 'v', className: 'text-lg font-bold text-white' }, status));
+    } else if (card.type === 'light_sensor_card') {
+        reading.push(React.createElement('div', { key: 'v', className: 'text-lg font-bold text-white' }, `${Math.round(card.illuminance)}`));
+        reading.push(React.createElement('div', { key: 'u', className: 'text-white/40 text-xs' }, 'lux'));
+    } else if (card.type === 'climate_card') {
+        reading.push(React.createElement('div', { key: 'v', className: 'text-lg font-bold text-white' }, `${card.target_temp}°C`));
+        const sub = card.current_temp != null ? `now ${card.current_temp}°C` : (card.mode || '');
+        sub && reading.push(React.createElement('div', { key: 'u', className: 'text-white/40 text-xs' }, sub));
+    } else if (card.type === 'climate_sensor_card') {
+        reading.push(React.createElement('div', { key: 'v', className: 'text-lg font-bold text-white' }, `${card.temperature}°C`));
+        reading.push(React.createElement('div', { key: 'u', className: 'text-white/40 text-xs' }, `💧 ${card.humidity}%`));
+    }
+
+    return React.createElement('div', {
+        className: `backdrop-blur-lg bg-white/10 rounded-2xl p-4 mb-4 border border-${accent}-500/40 shadow-xl`
+    }, [
+        React.createElement('div', { key: 'row', className: 'flex items-center justify-between gap-3' }, [
+            React.createElement('div', { key: 'left', className: 'flex items-center gap-3 min-w-0' }, [
+                React.createElement('div', {
+                    key: 'circle',
+                    className: 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-white/10',
+                    style: tint ? { backgroundColor: `${tint}33` } : undefined
+                }, React.createElement('i', {
+                    'data-lucide': iconName,
+                    className: `w-5 h-5 ${tint ? '' : iconColorClass}`,
+                    style: tint ? { color: tint } : undefined
+                })),
+                React.createElement('div', { key: 'meta', className: 'min-w-0' }, [
+                    React.createElement('div', { key: 'name', className: 'text-white font-medium truncate' }, card.name),
+                    card.room && React.createElement('div', { key: 'room', className: 'text-white/40 text-xs truncate' }, card.room)
+                ])
+            ]),
+            React.createElement('div', { key: 'reading', className: 'text-right flex-shrink-0' }, reading)
+        ]),
+        card.buttons && card.buttons.length > 0 && React.createElement('div', {
+            key: 'buttons',
+            className: 'flex flex-wrap gap-2 mt-3'
+        }, card.buttons.map((button, i) => React.createElement(ChatButton, {
+            key: `dc-btn-${i}`, button, onExecute, cardData: card
+        })))
+    ]);
+};
+
 const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
     switch (item.type) {
         case 'text_answer':
@@ -1283,7 +1370,16 @@ const ChatAdvancedAnswerItem = ({ item, onExecute }) => {
                 content: item.content,
                 onExecute: onExecute
             });
-        
+
+        case 'light_card':
+        case 'light_sensor_card':
+        case 'climate_card':
+        case 'climate_sensor_card':
+            return React.createElement(ChatDeviceCard, {
+                card: item.content,
+                onExecute: onExecute
+            });
+
         default:
             return React.createElement('div', {
                 className: 'text-white/70 mb-4'

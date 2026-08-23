@@ -49,7 +49,9 @@ The `content_format` field on `ChatMessage.content` tells the frontend which ren
 | `widget` | `content.widget` | Standalone widget (no text) |
 
 For `ui_answer`, each item in `ui_answer.items` has a `type` field:
-`text_answer` | `card_grid` | `table` | `chart` | `image` | `event_form` | `email_form` | `note_form`
+`text_answer` | `card_grid` | `table` | `chart` | `image` | `event_form` | `email_form` | `note_form` | `light_card` | `light_sensor_card` | `climate_card` | `climate_sensor_card`
+
+The `*_card` smart-home types render one device inline (light, illuminance sensor, radiator, temperature/humidity sensor) — use them to answer about individual devices, versus the full `LightWidget`/`ClimateWidget` in a `level3_answer` for the whole panel.
 
 Render each item according to its `type`; the `layout_hint` and `spacing` fields control visual placement.
 

@@ -586,6 +586,103 @@ class Map(BaseModel):
     )
 
 
+# =============================================================================
+# SMART-HOME ELEMENT CARDS (single-device cards for chat / Level-4 answers)
+#
+# Thin, LLM-authored counterparts to the dashboard widget element models
+# (LightDeviceState / IlluminanceSensorState / RadiatorState /
+# TemperatureSensorState). Those carry backend-computed display state
+# (device_id, icon, palette) for the standalone dashboard widgets; these carry
+# only the semantic state the assistant knows, and the frontend derives icon
+# and colour. Each has a `type` discriminator so it can sit in the
+# AdvancedAnswerItem content Union alongside TextAnswer, CardGrid, etc.
+# =============================================================================
+
+
+class LightCard(BaseModel):
+    """Single light device shown inline in a chat answer"""
+
+    type: Literal["light_card"] = Field(
+        "light_card", description="Type of the card for frontend rendering"
+    )
+    name: str = Field(
+        description="Device display name (e.g., 'Living room chandelier')"
+    )
+    room: Optional[str] = Field(default=None, description="Room location")
+    is_on: bool = Field(description="Current power state")
+    brightness: Optional[int] = Field(
+        default=None, description="Brightness level 1-100%, if on", ge=1, le=100
+    )
+    color_mode: Optional[Literal["temperature", "color"]] = Field(
+        default=None, description="'temperature' for white temp, 'color' for RGB"
+    )
+    color_temp: Optional[int] = Field(
+        default=None,
+        description="Color temperature in Kelvin, if color_mode='temperature'",
+        ge=1700,
+        le=6500,
+    )
+    rgb_color: Optional[str] = Field(
+        default=None,
+        description="RGB hex color (e.g., '#FF5500'), if color_mode='color'",
+    )
+    buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
+        default=None, description="Action buttons (e.g., toggle, dim). Max 3."
+    )
+
+
+class LightSensorCard(BaseModel):
+    """Ambient-light (illuminance) sensor shown inline in a chat answer"""
+
+    type: Literal["light_sensor_card"] = Field(
+        "light_sensor_card", description="Type of the card for frontend rendering"
+    )
+    name: str = Field(description="Sensor display name (e.g., 'Living room lux')")
+    room: Optional[str] = Field(default=None, description="Room location")
+    illuminance: float = Field(description="Current illuminance in lux", ge=0.0)
+    buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
+        default=None, description="Action buttons. Max 3."
+    )
+
+
+class ClimateCard(BaseModel):
+    """Single heating element (radiator) shown inline in a chat answer"""
+
+    type: Literal["climate_card"] = Field(
+        "climate_card", description="Type of the card for frontend rendering"
+    )
+    name: str = Field(
+        description="Radiator display name (e.g., 'Living room radiator')"
+    )
+    room: Optional[str] = Field(default=None, description="Room location")
+    is_on: bool = Field(description="Current heating state")
+    target_temp: float = Field(
+        description="Target temperature in Celsius", ge=5.0, le=35.0
+    )
+    current_temp: Optional[float] = Field(
+        default=None, description="Current temperature reading if available"
+    )
+    mode: Literal["heat", "off", "auto", "eco"] = Field(description="Operating mode")
+    buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
+        default=None, description="Action buttons (e.g., set temp, mode). Max 3."
+    )
+
+
+class ClimateSensorCard(BaseModel):
+    """Temperature/humidity sensor shown inline in a chat answer"""
+
+    type: Literal["climate_sensor_card"] = Field(
+        "climate_sensor_card", description="Type of the card for frontend rendering"
+    )
+    name: str = Field(description="Sensor display name (e.g., 'Bedroom sensor')")
+    room: Optional[str] = Field(default=None, description="Room location")
+    temperature: float = Field(description="Current temperature in Celsius")
+    humidity: float = Field(description="Current humidity percentage", ge=0.0, le=100.0)
+    buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
+        default=None, description="Action buttons. Max 3."
+    )
+
+
 class AdvancedAnswerItem(BaseModel):
     """Strategic UI component with clear hierarchy and user flow optimization"""
 
@@ -602,6 +699,10 @@ class AdvancedAnswerItem(BaseModel):
         "event_form",
         "email_form",
         "note_form",
+        "light_card",
+        "light_sensor_card",
+        "climate_card",
+        "climate_sensor_card",
     ] = Field(
         description="UI component type. Follow component selection instructions from system prompt."
     )
@@ -615,6 +716,10 @@ class AdvancedAnswerItem(BaseModel):
         EventForm,
         EmailForm,
         InternalNoteForm,
+        LightCard,
+        LightSensorCard,
+        ClimateCard,
+        ClimateSensorCard,
     ] = Field(description="Component content payload matching the selected type.")
     layout_hint: Optional[Literal["full_width", "half_width", "inline", "emphasis"]] = (
         Field(
