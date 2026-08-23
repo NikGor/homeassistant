@@ -2,8 +2,8 @@ import json
 import logging
 import re
 
-from archie_shared.ui.models import (AssistantButton, LightDeviceState,
-                                     LightWidget)
+from archie_shared.ui.models import (AssistantButton, IlluminanceSensorState,
+                                     LightDeviceState, LightWidget)
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -109,6 +109,46 @@ def _build_light_devices(entities):
     return devices
 
 
+def _illuminance_color(lux):
+    """Map an ambient-light reading to the widget's palette."""
+    if lux is None:
+        return "gray"
+    if lux < 50:
+        return "blue"
+    if lux < 300:
+        return "green"
+    return "yellow"
+
+
+def _build_light_sensors(entities):
+    """Build ambient-light (illuminance) sensors from HA `sensor` entities.
+
+    HA exposes lux sensors in the `sensor` domain with
+    `device_class="illuminance"`; everything else in that domain (temperature,
+    humidity, power, ...) is ignored here so the light panel only shows light
+    readings.
+    """
+    sensors = []
+    for i, entity in enumerate(entities):
+        attrs = entity.get("attributes", {})
+        if attrs.get("device_class") != "illuminance":
+            continue
+        lux = to_float(entity.get("state"))
+        if lux is None:
+            continue
+        sensors.append(
+            IlluminanceSensorState(
+                device_id=entity.get("entity_id") or f"illuminance_{i}",
+                name=entity.get("name") or "Light sensor",
+                room=entity.get("area") or None,
+                illuminance=max(0.0, lux),
+                icon="sun",
+                color=_illuminance_color(lux),
+            )
+        )
+    return sensors
+
+
 class LightWidgetStatusAPIView(View):
     """Live light device status, read directly from Home Assistant via MCP.
 
@@ -122,11 +162,13 @@ class LightWidgetStatusAPIView(View):
         client = HomeAssistantMCPClient()
         entities = client.get_domain_entities("light")
         devices = _build_light_devices(entities)
+        sensors = _build_light_sensors(client.get_domain_entities("sensor"))
         on_count = sum(1 for d in devices if d.is_on)
 
         logger.info(
             f"light_api_views_widget_002: Built {len(devices)} light devices "
-            f"from MCP live context, {on_count} on"
+            f"and {len(sensors)} illuminance sensors from MCP live context, "
+            f"{on_count} on"
         )
 
         widget = LightWidget(
@@ -135,6 +177,7 @@ class LightWidgetStatusAPIView(View):
             on_count=on_count,
             total_count=len(devices),
             devices=devices,
+            sensors=sensors,
             quick_actions=QUICK_ACTIONS,
         )
 
