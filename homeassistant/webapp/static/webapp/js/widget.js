@@ -28,6 +28,7 @@ const STATIC_LIGHT_WIDGET = {
     on_count: 0,
     total_count: 0,
     devices: [],
+    sensors: [],
     quick_actions: [
         {
             type: "assistant_button",
@@ -548,6 +549,49 @@ function renderLightWidget(data) {
         </div>
     `).join('');
 
+    const renderSensorCard = sensor => {
+        const colorClass = getTailwindColorClass(sensor.color);
+        const bgClass = getTailwindBgColorClass(sensor.color);
+        const lux = Math.round(sensor.illuminance);
+        return `
+            <div class="glass-tile rounded-xl p-4 flex items-center justify-between" data-sensor-card="${sensor.device_id}">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full ${bgClass} bg-opacity-20 flex items-center justify-center">
+                        <i data-lucide="${sensor.icon}" class="w-5 h-5 ${colorClass}"></i>
+                    </div>
+                    <div>
+                        <div class="text-white font-medium">${sensor.name}</div>
+                        ${sensor.last_updated ? `<div class="text-gray-400 text-sm">${sensor.last_updated}</div>` : ''}
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xl font-bold ${colorClass}">${lux}</div>
+                    <div class="text-gray-500 text-xs">lux</div>
+                </div>
+            </div>
+        `;
+    };
+
+    const sensors = data.sensors || [];
+    const sensorsHtml = sensors.length ? `
+        <div class="mb-6">
+            <h3 class="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
+                <i data-lucide="sun" class="w-4 h-4"></i>
+                Light sensors
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${groupByRoom(sensors).map(({ room, devices }) => `
+                    <div>
+                        <h4 class="text-xs font-medium text-gray-500 mb-2">${room}</h4>
+                        <div class="space-y-3">
+                            ${devices.map(renderSensorCard).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
+
     const quickActionsHtml = data.quick_actions.map(action => {
         const styleClass = action.style === 'primary'
             ? 'bg-blue-600 hover:bg-blue-500'
@@ -576,6 +620,8 @@ function renderLightWidget(data) {
             <div class="mb-6">
                 ${devicesHtml || '<p class="text-gray-500 text-sm">No devices available</p>'}
             </div>
+
+            ${sensorsHtml}
 
             <div class="flex gap-3">
                 ${quickActionsHtml}
