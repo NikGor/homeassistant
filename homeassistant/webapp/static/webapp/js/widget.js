@@ -458,6 +458,45 @@ function groupByRoom(items) {
     return result;
 }
 
+// Convert a colour temperature in Kelvin to an #RRGGBB tint, so a warm 2700K
+// bulb reads amber and a cool 6500K one reads near-white/blue. Based on Tanner
+// Helland's black-body approximation, clamped to byte range.
+function kelvinToHex(kelvin) {
+    const t = kelvin / 100;
+    let r, g, b;
+    if (t <= 66) {
+        r = 255;
+        g = 99.4708025861 * Math.log(t) - 161.1195681661;
+    } else {
+        r = 329.698727446 * Math.pow(t - 60, -0.1332047592);
+        g = 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+    }
+    if (t >= 66) {
+        b = 255;
+    } else if (t <= 19) {
+        b = 0;
+    } else {
+        b = 138.5177312231 * Math.log(t - 10) - 305.0447927307;
+    }
+    const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
+    const hex = v => clamp(v).toString(16).padStart(2, '0');
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
+// Resolve the real colour a lit bulb should show, from the model's colour
+// fields. Returns an #RRGGBB string, or null to fall back to Tailwind classes
+// (bulb off, or no colour data reported).
+function lightTintHex(device) {
+    if (!device.is_on) return null;
+    if (device.color_mode === 'color' && device.rgb_color) {
+        return device.rgb_color;
+    }
+    if (device.color_mode === 'temperature' && device.color_temp) {
+        return kelvinToHex(device.color_temp);
+    }
+    return null;
+}
+
 function renderLightWidget(data) {
     const container = document.getElementById('widget-container');
 
@@ -475,10 +514,21 @@ function renderLightWidget(data) {
             statusText = 'On';
         }
 
+        // Prefer the bulb's actual colour (RGB or colour-temperature tint) via
+        // inline styles; only fall back to the static Tailwind classes when
+        // there's no colour data (off, or unreported).
+        const tint = lightTintHex(device);
+        const circleClass = tint
+            ? 'w-12 h-12 rounded-full flex items-center justify-center'
+            : `w-12 h-12 rounded-full flex items-center justify-center ${isOn ? bgClass + ' bg-opacity-20' : 'bg-gray-800'}`;
+        const circleStyle = tint ? ` style="background-color: ${tint}33"` : '';
+        const iconClass = tint ? 'w-6 h-6' : `w-6 h-6 ${colorClass}`;
+        const iconStyle = tint ? ` style="color: ${tint}"` : '';
+
         return `
             <div class="glass-tile rounded-xl p-4 aspect-square flex flex-col items-center justify-center text-center gap-3" data-device-card="${device.device_id}">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center ${isOn ? bgClass + ' bg-opacity-20' : 'bg-gray-800'}">
-                    <i data-lucide="${device.icon}" class="w-6 h-6 ${colorClass}"></i>
+                <div class="${circleClass}"${circleStyle}>
+                    <i data-lucide="${device.icon}" class="${iconClass}"${iconStyle}></i>
                 </div>
                 <div>
                     <div class="text-white font-medium text-sm leading-tight">${device.name}</div>
