@@ -677,6 +677,27 @@ class LightDeviceState(BaseModel):
     )
 
 
+class IlluminanceSensorState(BaseModel):
+    """State of an ambient light (illuminance) sensor"""
+
+    device_id: str = Field(description="Unique sensor identifier")
+    name: str = Field(description="Sensor display name (e.g., 'Датчик света гостиная')")
+    room: Optional[str] = Field(default=None, description="Room location")
+    illuminance: float = Field(description="Current illuminance in lux", ge=0.0)
+    battery_level: Optional[int] = Field(
+        default=None, description="Battery level 0-100% if wireless", ge=0, le=100
+    )
+    last_updated: Optional[str] = Field(
+        default=None, description="Last reading timestamp"
+    )
+    icon: str = Field(default="sun", description="Lucide icon name")
+    color: Literal["orange", "green", "blue", "red", "purple", "yellow", "gray"] = (
+        Field(
+            description="Icon color based on brightness: 'yellow' bright, 'blue' dim, 'gray' dark"
+        )
+    )
+
+
 class LightWidget(BaseModel):
     """Light control widget with device list and quick actions"""
 
@@ -689,6 +710,10 @@ class LightWidget(BaseModel):
     total_count: int = Field(description="Total number of light devices")
     devices: List[LightDeviceState] = Field(
         description="List of all light devices with their states"
+    )
+    sensors: List[IlluminanceSensorState] = Field(
+        default_factory=list,
+        description="Ambient light (illuminance) sensors, if any",
     )
     quick_actions: List[AssistantButton] = Field(
         description="2 quick action buttons (e.g., 'Включить все', 'Выключить все')"
