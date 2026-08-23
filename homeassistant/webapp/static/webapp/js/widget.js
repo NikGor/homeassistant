@@ -429,7 +429,11 @@ async function showWidgetView(widgetType) {
 }
 
 // Render Light Widget
-// Group a list of {room, ...} items by room, preserving first-seen order.
+// Preferred room ordering; rooms listed here come first in this exact order,
+// any other rooms follow in first-seen order, and "Other" (no room) is last.
+const ROOM_ORDER = ['Гостиная', 'Спальня', 'Кухня', 'Коридор'];
+
+// Group a list of {room, ...} items by room, sorted by ROOM_ORDER.
 // Items without a room fall into an "Other" bucket at the end.
 function groupByRoom(items) {
     const groups = new Map();
@@ -442,7 +446,14 @@ function groupByRoom(items) {
         if (!groups.has(item.room)) groups.set(item.room, []);
         groups.get(item.room).push(item);
     });
-    const result = Array.from(groups.entries()).map(([room, devices]) => ({ room, devices }));
+    const rank = room => {
+        const i = ROOM_ORDER.indexOf(room);
+        return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+    };
+    // Array.sort is stable, so unranked rooms keep their first-seen order.
+    const result = Array.from(groups.entries())
+        .map(([room, devices]) => ({ room, devices }))
+        .sort((a, b) => rank(a.room) - rank(b.room));
     if (noRoom.length) result.push({ room: 'Other', devices: noRoom });
     return result;
 }
@@ -465,15 +476,13 @@ function renderLightWidget(data) {
         }
 
         return `
-            <div class="glass-tile rounded-xl p-4" data-device-card="${device.device_id}">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full flex items-center justify-center ${isOn ? bgClass + ' bg-opacity-20' : 'bg-gray-800'}">
-                        <i data-lucide="${device.icon}" class="w-6 h-6 ${colorClass}"></i>
-                    </div>
-                    <div>
-                        <div class="text-white font-medium">${device.name}</div>
-                        <div class="text-gray-400 text-sm">${statusText}</div>
-                    </div>
+            <div class="glass-tile rounded-xl p-4 aspect-square flex flex-col items-center justify-center text-center gap-3" data-device-card="${device.device_id}">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center ${isOn ? bgClass + ' bg-opacity-20' : 'bg-gray-800'}">
+                    <i data-lucide="${device.icon}" class="w-6 h-6 ${colorClass}"></i>
+                </div>
+                <div>
+                    <div class="text-white font-medium text-sm leading-tight">${device.name}</div>
+                    <div class="text-gray-400 text-xs mt-0.5">${statusText}</div>
                 </div>
             </div>
         `;
@@ -483,7 +492,7 @@ function renderLightWidget(data) {
     const devicesHtml = roomGroups.map(({ room, devices }) => `
         <div class="mb-4">
             <h3 class="text-sm font-medium text-gray-400 mb-3">${room}</h3>
-            <div class="space-y-3">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 ${devices.map(renderDeviceCard).join('')}
             </div>
         </div>
@@ -563,7 +572,7 @@ function renderClimateWidget(data) {
     };
 
     const radiatorsHtml = groupByRoom(data.radiators).map(({ room, devices }) => `
-        <div class="mb-4">
+        <div class="mb-4 break-inside-avoid">
             <h4 class="text-xs font-medium text-gray-500 mb-2">${room}</h4>
             <div class="space-y-3">
                 ${devices.map(renderRadiatorCard).join('')}
@@ -608,7 +617,7 @@ function renderClimateWidget(data) {
     };
 
     const sensorsHtml = groupByRoom(data.sensors).map(({ room, devices }) => `
-        <div class="mb-4">
+        <div class="mb-4 break-inside-avoid">
             <h4 class="text-xs font-medium text-gray-500 mb-2">${room}</h4>
             <div class="space-y-3">
                 ${devices.map(renderSensorCard).join('')}
@@ -652,7 +661,7 @@ function renderClimateWidget(data) {
                     <i data-lucide="heater" class="w-4 h-4"></i>
                     Radiators
                 </h3>
-                <div class="space-y-3">
+                <div class="columns-1 sm:columns-2 gap-4">
                     ${radiatorsHtml || '<p class="text-gray-500 text-sm">No radiators available</p>'}
                 </div>
             </div>
@@ -662,7 +671,7 @@ function renderClimateWidget(data) {
                     <i data-lucide="thermometer" class="w-4 h-4"></i>
                     Sensors
                 </h3>
-                <div class="space-y-3">
+                <div class="columns-1 sm:columns-2 gap-4">
                     ${sensorsHtml || '<p class="text-gray-500 text-sm">No sensors available</p>'}
                 </div>
             </div>
