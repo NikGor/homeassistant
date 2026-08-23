@@ -75,16 +75,14 @@ class UserProfile(models.Model):
 
     def sync_to_redis(self):
         """Syncs user profile to Redis cache"""
-        from datetime import datetime
-
         from archie_shared.user.models import UserState
 
         from homeassistant.redis_client import redis_client
 
-        now = datetime.now()
+        user_name = self.user_name or self.user.username
         state = UserState(
             user_id=str(self.user.id),
-            user_name=self.user_name or self.user.username,
+            user_name=user_name,
             default_city=self.default_city,
             default_country=self.default_country,
             persona=self.persona,
@@ -98,11 +96,8 @@ class UserProfile(models.Model):
             commercial_check_open_now=self.commercial_check_open_now,
             transport_preferences=self.transport_preferences or [],
             cuisine_preferences=self.cuisine_preferences or [],
-            current_date=now.strftime("%Y-%m-%d"),
-            current_time=now.strftime("%H:%M:%S"),
-            current_weekday=now.strftime("%A"),
         )
-        return redis_client.set_user_state(str(self.user.id), state)
+        return redis_client.set_user_state(user_name, state)
 
 
 @receiver(post_save, sender=UserProfile)
