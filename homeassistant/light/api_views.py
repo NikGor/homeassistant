@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 
 from archie_shared.ui.models import (AssistantButton, LightDeviceState,
                                      LightWidget)
@@ -8,7 +9,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
-from homeassistant.ha_mcp.services import HomeAssistantMCPClient
+from homeassistant.ha_mcp.services import HomeAssistantMCPClient, to_float
 
 from .exceptions import DeviceError
 from .light_controller import light_controller
@@ -44,12 +45,51 @@ def _brightness_pct(attrs):
     return max(1, min(100, value))
 
 
+# HA color_mode values that mean the bulb is showing an RGB-ish colour rather
+# than a white temperature. Everything else (color_temp, white, brightness,
+# onoff) maps to the widget's "temperature" mode.
+_HA_RGB_MODES = {"hs", "xy", "rgb", "rgbw", "rgbww"}
+
+
+def _color_mode(attrs):
+    return "color" if attrs.get("color_mode") in _HA_RGB_MODES else "temperature"
+
+
+def _color_temp_kelvin(attrs):
+    """Return colour temperature in Kelvin, clamped to the widget's 1700-6500K.
+
+    HA exposes `color_temp_kelvin` on newer installs and legacy `color_temp`
+    in mireds on older ones; accept either and convert mireds (1e6 / mireds).
+    """
+    kelvin = to_float(attrs.get("color_temp_kelvin"))
+    if kelvin is None:
+        mireds = to_float(attrs.get("color_temp"))
+        if mireds and mireds > 0:
+            kelvin = 1_000_000 / mireds
+    if kelvin is None:
+        return None
+    return int(max(1700, min(6500, round(kelvin))))
+
+
+def _rgb_hex(attrs):
+    """HA exposes `rgb_color` as an (r, g, b) list; render it as #RRGGBB."""
+    raw = attrs.get("rgb_color")
+    if not raw:
+        return None
+    nums = re.findall(r"\d+", str(raw))
+    if len(nums) < 3:
+        return None
+    r, g, b = (max(0, min(255, int(n))) for n in nums[:3])
+    return f"#{r:02X}{g:02X}{b:02X}"
+
+
 def _build_light_devices(entities):
     devices = []
     for i, entity in enumerate(entities):
         is_on = entity.get("state") == "on"
         attrs = entity.get("attributes", {})
         brightness = _brightness_pct(attrs) if is_on else None
+        color_mode = _color_mode(attrs) if is_on else "temperature"
         devices.append(
             LightDeviceState(
                 device_id=entity.get("entity_id") or f"light_{i}",
@@ -57,7 +97,11 @@ def _build_light_devices(entities):
                 room=entity.get("area") or None,
                 is_on=is_on,
                 brightness=brightness or 1,
-                color_mode="temperature",
+                color_mode=color_mode,
+                color_temp=(
+                    _color_temp_kelvin(attrs) if color_mode == "temperature" else None
+                ),
+                rgb_color=_rgb_hex(attrs) if color_mode == "color" else None,
                 icon="lightbulb",
                 color="yellow" if is_on else "gray",
             )

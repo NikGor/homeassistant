@@ -29,6 +29,17 @@ QUICK_ACTIONS = [
 ]
 
 
+def _clamp(value, low, high):
+    """Keep a raw HA reading inside the widget model's allowed range.
+
+    Home Assistant can report values outside the tidy bounds the widget
+    models declare (a mis-configured TRV setpoint, a humidity spike above
+    100%). Without clamping those trip Pydantic validation and 500 the whole
+    endpoint, so pin them to the range instead of failing the panel.
+    """
+    return max(low, min(high, value))
+
+
 def _radiator_mode(state):
     if state in INACTIVE_STATES:
         return "off"
@@ -58,7 +69,9 @@ def _build_radiators(entities):
                 name=entity.get("name") or "Radiator",
                 room=entity.get("area") or "",
                 is_on=is_on,
-                target_temp=target_temp if target_temp is not None else 20.0,
+                target_temp=(
+                    _clamp(target_temp, 5.0, 35.0) if target_temp is not None else 20.0
+                ),
                 current_temp=to_float(attrs.get("current_temperature")),
                 mode=_radiator_mode(state),
                 icon="heater",
@@ -106,7 +119,7 @@ def _build_sensors(entities):
                     name=label,
                     room=area,
                     temperature=temperature,
-                    humidity=humidity,
+                    humidity=_clamp(humidity, 0.0, 100.0),
                     icon="thermometer",
                     color=_sensor_color(temperature),
                 )
