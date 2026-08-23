@@ -26,7 +26,7 @@ class RedisClient:
         return f"user_state:name:{user_name}"
 
     def get_user_state_by_name(self, user_name: str) -> UserState | None:
-        """Gets user state from Redis by username, auto-updates current datetime"""
+        """Gets user state from Redis by username; current date/time/weekday are always computed at read time, not stored"""
         try:
             key = self._get_user_key_by_name(user_name)
             data = self.redis_client.get(key)
@@ -37,7 +37,6 @@ class RedisClient:
                 state_dict["current_date"] = now.strftime("%Y-%m-%d")
                 state_dict["current_time"] = now.strftime("%H:%M:%S")
                 state_dict["current_weekday"] = now.strftime("%A")
-                self.redis_client.set(key, json.dumps(state_dict))
                 return UserState(**state_dict)
             return None
 
@@ -129,16 +128,6 @@ class RedisClient:
     ) -> bool:
         """Sets specific field in user state"""
         return self.update_user_state(user_name, {field: value}, ttl)
-
-    def update_current_datetime(self, user_name: str) -> bool:
-        """Updates current date and time for user"""
-        now = datetime.now()
-        updates = {
-            "current_date": now.strftime("%Y-%m-%d"),
-            "current_time": now.strftime("%H:%M:%S"),
-            "current_weekday": now.strftime("%A"),
-        }
-        return self.update_user_state(user_name, updates)
 
     def ping(self) -> bool:
         """Check Redis connection"""
