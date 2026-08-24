@@ -728,8 +728,10 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
                 return `${baseStyle} border-2 border-violet-500 hover:border-violet-400 shadow-violet-500/20`;
             case 'music_card': 
                 return `${baseStyle} border-2 border-pink-500 hover:border-pink-400 shadow-pink-500/20`;
-            case 'article_card': 
+            case 'article_card':
                 return `${baseStyle} border-2 border-sky-500 hover:border-sky-400 shadow-sky-500/20`;
+            case 'news_card':
+                return `${baseStyle} border-2 border-rose-500 hover:border-rose-400 shadow-rose-500/20`;
             case 'shopping_list_card': 
                 return `${baseStyle} border-2 border-yellow-500 hover:border-yellow-400 shadow-yellow-500/20`;
             case 'weather_card': 
@@ -927,6 +929,33 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
                 }, `📰 ${metadata.join(' • ')}`));
             }
             
+            card.summary && elements.push(React.createElement('p', {
+                key: 'summary',
+                className: 'text-sm text-white/80 mb-3'
+            }, card.summary));
+        }
+        // News Card
+        else if (card.type === 'news_card') {
+            card.category && elements.push(React.createElement('span', {
+                key: 'category',
+                className: 'inline-block text-[10px] uppercase tracking-wide font-semibold text-rose-200 bg-rose-500/20 rounded-full px-2 py-0.5 mb-2'
+            }, card.category));
+
+            card.headline && elements.push(React.createElement('h3', {
+                key: 'headline',
+                className: 'font-semibold text-white text-lg mb-2'
+            }, card.headline));
+
+            const metadata = [];
+            card.source && metadata.push(card.source);
+            card.published_date && metadata.push(card.published_date);
+            if (metadata.length > 0) {
+                elements.push(React.createElement('p', {
+                    key: 'metadata',
+                    className: 'text-xs text-white/60 mb-2'
+                }, `🗞️ ${metadata.join(' • ')}`));
+            }
+
             card.summary && elements.push(React.createElement('p', {
                 key: 'summary',
                 className: 'text-sm text-white/80 mb-3'

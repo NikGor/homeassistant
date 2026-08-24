@@ -268,6 +268,48 @@ class ArticleCard(BaseModel):
     )
 
 
+class NewsCard(BaseModel):
+    """Use for a single news story. Show the headline, the outlet it comes from, and a short summary of what happened. Include a `url_to` FrontendButton to read the full story when a link is available."""
+
+    type: Literal["news_card"] = Field(
+        "news_card", description="Type of the card for frontend rendering"
+    )
+    headline: str = Field(
+        description="News headline — clear and factual, no clickbait (6-12 words)"
+    )
+    source: str = Field(
+        description="News outlet or publisher name (e.g., 'Reuters', 'BBC News')"
+    )
+    summary: str = Field(
+        description="Short summary of the story in 1-3 sentences covering the key facts"
+    )
+    category: Optional[
+        Literal[
+            "world",
+            "politics",
+            "business",
+            "technology",
+            "science",
+            "health",
+            "sports",
+            "entertainment",
+            "local",
+        ]
+    ] = Field(default=None, description="News category for labelling and colour coding")
+    published_date: Optional[str] = Field(
+        default=None,
+        description="Publication date or relative time (e.g., '2h ago', '24.08.2026')",
+    )
+    image_prompt: Optional[str] = Field(
+        default=None,
+        description="Image generation prompt for the story illustration. Follow card image style instructions from system prompt.",
+    )
+    buttons: Optional[List[Union[FrontendButton, AssistantButton]]] = Field(
+        default=None,
+        description="Action buttons for the story: read full article, related news, share. Max 3.",
+    )
+
+
 class DocumentCard(BaseModel):
     """Use for document search results (invoices, contracts, insurance, receipts). Show filename, snippet, relevance score, extracted date/amount."""
 
@@ -442,6 +484,7 @@ class CardGrid(BaseModel):
             SeriesCard,
             MusicCard,
             ArticleCard,
+            NewsCard,
             DocumentCard,
             ShoppingListCard,
             WeatherCard,
