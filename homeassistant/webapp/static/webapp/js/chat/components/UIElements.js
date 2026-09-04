@@ -83,6 +83,39 @@ const handleFrontendCommand = (command, cardData, button) => {
     }
 };
 
+// Human-readable hover tooltip explaining what a button does:
+// an assistant request vs. a link/action, with per-command specificity.
+const FRONTEND_COMMAND_LABELS = {
+    open_map: 'Opens the location in Google Maps',
+    open_on_youtube_video: 'Searches YouTube in a new tab',
+    open_on_youtube_music: 'Plays on Spotify',
+    play_on_spotify: 'Plays on Spotify',
+    check_amazon: 'Searches Amazon in a new tab',
+    navigate_to: 'Navigates to another screen',
+    call: 'Starts a phone call',
+    email: 'Composes an email',
+    message: 'Opens a message',
+    show_details: 'Shows more details',
+    export_to_notes: 'Saves to notes',
+    export_to_calendar: 'Adds to your calendar',
+    url_to: 'Opens a link in a new tab',
+};
+
+const getButtonTooltip = (button) => {
+    if (button.type === 'assistant_button') {
+        return button.assistant_request
+            ? `Sends to the assistant: "${button.assistant_request}"`
+            : 'Sends a request to the assistant';
+    }
+    if (button.type === 'frontend_button') {
+        const label = FRONTEND_COMMAND_LABELS[button.command] || 'Runs an action';
+        return button.command === 'url_to' && button.url
+            ? `Opens a link in a new tab: ${button.url}`
+            : label;
+    }
+    return undefined;
+};
+
 const ChatButton = ({ button, onExecute, cardData }) => {
     const handleClick = () => {
         if (button.type === 'assistant_button') {
@@ -94,6 +127,7 @@ const ChatButton = ({ button, onExecute, cardData }) => {
 
     return React.createElement('button', {
         onClick: handleClick,
+        title: getButtonTooltip(button),
         className: `px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${getButtonStyle(button.style)}`
     }, [
         button.icon && React.createElement('i', {
@@ -1771,6 +1805,12 @@ const ChatMessage = ({ message, onExecute }) => {
 
         const sec = (n) => `${(n / 1000).toFixed(2)}s`;
 
+        // ── MESSAGE ────────────────────────────────────────────────────────────
+        const idSection = message.message_id && [
+            H('id-hdr', 'Message'),
+            Row('msg-id', 'id', String(message.message_id)),
+        ];
+
         // ── LLM TRACE ──────────────────────────────────────────────────────────
         const lm = effectiveLlmTrace;
         const cached = lm?.input_tokens_details?.cached_tokens || 0;
@@ -1824,6 +1864,7 @@ const ChatMessage = ({ message, onExecute }) => {
             key: 'debug-panel',
             className: 'mt-2 bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono'
         }, [
+            ...(idSection    || []),
             ...(llmSection   || []),
             ...(traceSection || []),
             ...(stepsSection || []),

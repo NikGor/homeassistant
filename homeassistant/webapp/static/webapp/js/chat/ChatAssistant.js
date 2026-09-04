@@ -70,6 +70,21 @@ const StreamingStatusBanner = ({ statusInfo }) => {
     );
 };
 
+// Read the conversation id from the current URL path (ChatGPT-style /c/<id>/).
+// Returns null when we are on the bare "/" route.
+const getConversationIdFromUrl = () => {
+    const match = window.location.pathname.match(/^\/c\/([^/]+)\/?$/);
+    return match ? decodeURIComponent(match[1]) : null;
+};
+
+// Reflect the active conversation in the address bar without reloading the page.
+const syncUrlToConversation = (conversationId, { replace = false } = {}) => {
+    const target = conversationId ? `/c/${encodeURIComponent(conversationId)}/` : '/';
+    if (window.location.pathname === target) return;
+    const method = replace ? 'replaceState' : 'pushState';
+    window.history[method]({ conversationId: conversationId || null }, '', target);
+};
+
 // IntegratedChatAssistant - полноценный чат с AI-driven UI
 const IntegratedChatAssistant = () => {
     const { useState, useRef, useEffect } = React;
@@ -104,6 +119,18 @@ const IntegratedChatAssistant = () => {
     useEffect(() => {
         loadConversations();
     }, []);
+
+    // Sync the open chat with browser back/forward navigation.
+    useEffect(() => {
+        const handlePopState = () => {
+            const urlConversationId = getConversationIdFromUrl();
+            if (urlConversationId && urlConversationId !== currentConversation) {
+                selectConversation(urlConversationId, { syncUrl: false });
+            }
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [currentConversation]);
 
     // Scroll to bottom when messages change
     useEffect(() => {
@@ -142,21 +169,36 @@ const IntegratedChatAssistant = () => {
         try {
             const convos = await api.current.getConversations();
             setConversations(convos);
-            
-            // Auto-select first conversation if exists
-            if (convos.length > 0 && !currentConversation) {
-                selectConversation(convos[0].conversation_id);
+
+            if (currentConversation) return;
+
+            // Prefer the conversation deep-linked in the URL, if it still exists.
+            const urlConversationId = getConversationIdFromUrl();
+            const urlConvo = urlConversationId
+                ? convos.find(c => c.conversation_id === urlConversationId)
+                : null;
+
+            if (urlConvo) {
+                // Already reflected in the address bar — replace, don't push.
+                selectConversation(urlConvo.conversation_id, { syncUrl: false });
+            } else if (convos.length > 0) {
+                // Auto-select first conversation and rewrite the URL in place.
+                selectConversation(convos[0].conversation_id, { replaceUrl: true });
             }
         } catch (err) {
             setError(`Не удалось загрузить чаты: ${err.message}`);
         }
     };
 
-    const selectConversation = async (conversationId) => {
+    const selectConversation = async (conversationId, { syncUrl = true, replaceUrl = false } = {}) => {
         shouldFollowLatest.current = true;
         setCurrentConversation(conversationId);
         setCurrentMessageIndex(-1); // Сбрасываем индекс при смене разговора
-        
+
+        if (syncUrl) {
+            syncUrlToConversation(conversationId, { replace: replaceUrl });
+        }
+
         try {
             const msgs = await api.current.getMessages(conversationId);
             setMessages(msgs);
@@ -172,6 +214,7 @@ const IntegratedChatAssistant = () => {
                 setConversations(prev => [newConvo, ...prev]);
                 setCurrentConversation(newConvo.conversation_id);
                 setMessages([]);
+                syncUrlToConversation(newConvo.conversation_id);
             }
         } catch (err) {
             setError(`Не удалось создать новый чат: ${err.message}`);
