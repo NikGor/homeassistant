@@ -53,7 +53,7 @@ def logout_view(request):
 
 @method_decorator(login_required, name="dispatch")
 class IndexView(View):
-    def get(self, request):
+    def get(self, request, conversation_id=None):
         weather_service = WeatherService()
         weather_data = weather_service.get_bad_mergentheim_weather()
         forecast_data = weather_service.get_bad_mergentheim_forecast()
