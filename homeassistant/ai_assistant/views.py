@@ -32,6 +32,54 @@ def add_cors_headers(response):
     return response
 
 
+_PIPELINE_STAGES = ("command_call", "tool_execution", "create_output")
+
+
+def aggregate_message_trace(llm_trace, pipeline_trace):
+    """Aggregate token usage and cost for a single assistant message.
+
+    A message spans several pipeline stages (command_call, tool_execution,
+    create_output), each with its own llm_trace and possibly a different model.
+    Summing every stage is the only correct per-message cost — the top-level
+    llm_trace holds create_output alone and undercounts the command stage.
+    Falls back to the top-level trace for direct flows (dashboard/widget) that
+    carry no pipeline_trace.
+    """
+    totals = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "input_cached_tokens": 0,
+        "output_reasoning_tokens": 0,
+        "total_cost": 0.0,
+    }
+
+    def add(trace):
+        totals["input_tokens"] += trace.get("input_tokens") or 0
+        totals["output_tokens"] += trace.get("output_tokens") or 0
+        totals["total_tokens"] += trace.get("total_tokens") or 0
+        totals["total_cost"] += trace.get("total_cost") or 0.0
+        totals["input_cached_tokens"] += (
+            trace.get("input_tokens_details") or {}
+        ).get("cached_tokens") or 0
+        totals["output_reasoning_tokens"] += (
+            trace.get("output_tokens_details") or {}
+        ).get("reasoning_tokens") or 0
+
+    found = False
+    for stage_key in _PIPELINE_STAGES:
+        stage = (pipeline_trace or {}).get(stage_key) or {}
+        stage_trace = stage.get("llm_trace") or {}
+        if stage_trace.get("total_tokens"):
+            add(stage_trace)
+            found = True
+
+    if not found and (llm_trace or {}).get("total_tokens"):
+        add(llm_trace)
+
+    return totals
+
+
 @csrf_exempt
 @require_http_methods(["GET", "POST", "OPTIONS"])
 def proxy_conversations(request):
@@ -305,28 +353,26 @@ def proxy_send_message(request):
         assistant_llm_trace = ai_data.get("llm_trace", {})
         assistant_pipeline_trace = ai_data.get("pipeline_trace")
 
-        # Real tokens are often in command_call.llm_trace, not in the top-level llm_trace
-        effective_trace = assistant_llm_trace or {}
-        if not effective_trace.get("total_tokens") and assistant_pipeline_trace:
-            for stage_key in ("command_call", "tool_execution", "create_output"):
-                stage = assistant_pipeline_trace.get(stage_key) or {}
-                stage_trace = stage.get("llm_trace") or {}
-                if stage_trace.get("total_tokens"):
-                    effective_trace = stage_trace
-                    break
-
-        # Extract token usage if available
-        input_tokens = effective_trace.get("input_tokens")
-        output_tokens = effective_trace.get("output_tokens")
-        total_tokens = effective_trace.get("total_tokens")
-        total_cost = effective_trace.get("total_cost")
+        # Per-message cost is the sum of all pipeline stages (command_call may
+        # run on a different, pricier model than create_output).
+        totals = aggregate_message_trace(
+            assistant_llm_trace, assistant_pipeline_trace
+        )
+        input_tokens = totals["input_tokens"]
+        output_tokens = totals["output_tokens"]
+        total_tokens = totals["total_tokens"]
+        total_cost = totals["total_cost"]
 
         # Update conversation stats
         if total_tokens:
             conversation.total_tokens += total_tokens
-            conversation.total_input_tokens += input_tokens or 0
-            conversation.total_output_tokens += output_tokens or 0
-            conversation.total_cost += total_cost or 0.0
+            conversation.total_input_tokens += input_tokens
+            conversation.total_input_cached_tokens += totals["input_cached_tokens"]
+            conversation.total_output_tokens += output_tokens
+            conversation.total_output_reasoning_tokens += totals[
+                "output_reasoning_tokens"
+            ]
+            conversation.total_cost += total_cost
             conversation.save()
 
         Message.objects.create(
@@ -337,7 +383,9 @@ def proxy_send_message(request):
             created_at=timezone.now(),
             llm_trace=assistant_llm_trace,
             input_tokens=input_tokens,
+            input_cached_tokens=totals["input_cached_tokens"],
             output_tokens=output_tokens,
+            output_reasoning_tokens=totals["output_reasoning_tokens"],
             total_tokens=total_tokens,
             total_cost=total_cost,
             pipeline_trace=assistant_pipeline_trace,
@@ -564,15 +612,9 @@ def save_message(request):
         pipeline_steps = message_data.get("pipeline_steps", [])
         pipeline_trace = message_data.get("pipeline_trace")
 
-        # Real tokens are often in command_call.llm_trace, not in the top-level llm_trace
-        effective_trace = llm_trace or {}
-        if not effective_trace.get("total_tokens") and pipeline_trace:
-            for stage_key in ("command_call", "tool_execution", "create_output"):
-                stage = pipeline_trace.get(stage_key) or {}
-                stage_trace = stage.get("llm_trace") or {}
-                if stage_trace.get("total_tokens"):
-                    effective_trace = stage_trace
-                    break
+        # Per-message cost is the sum of all pipeline stages (command_call may
+        # run on a different, pricier model than create_output).
+        totals = aggregate_message_trace(llm_trace, pipeline_trace)
 
         Message.objects.create(
             message_id=message_id,
@@ -581,18 +623,24 @@ def save_message(request):
             content=content,
             created_at=timezone.now(),
             llm_trace=llm_trace,
-            input_tokens=effective_trace.get("input_tokens"),
-            output_tokens=effective_trace.get("output_tokens"),
-            total_tokens=effective_trace.get("total_tokens"),
-            total_cost=effective_trace.get("total_cost"),
+            input_tokens=totals["input_tokens"],
+            input_cached_tokens=totals["input_cached_tokens"],
+            output_tokens=totals["output_tokens"],
+            output_reasoning_tokens=totals["output_reasoning_tokens"],
+            total_tokens=totals["total_tokens"],
+            total_cost=totals["total_cost"],
             pipeline_steps=pipeline_steps,
             pipeline_trace=pipeline_trace,
         )
-        if effective_trace.get("total_tokens"):
-            conversation.total_tokens += effective_trace.get("total_tokens", 0)
-            conversation.total_input_tokens += effective_trace.get("input_tokens", 0)
-            conversation.total_output_tokens += effective_trace.get("output_tokens", 0)
-            conversation.total_cost += effective_trace.get("total_cost", 0.0)
+        if totals["total_tokens"]:
+            conversation.total_tokens += totals["total_tokens"]
+            conversation.total_input_tokens += totals["input_tokens"]
+            conversation.total_input_cached_tokens += totals["input_cached_tokens"]
+            conversation.total_output_tokens += totals["output_tokens"]
+            conversation.total_output_reasoning_tokens += totals[
+                "output_reasoning_tokens"
+            ]
+            conversation.total_cost += totals["total_cost"]
             conversation.save()
         logger.info(f"ai_assistant_052: Saved {role} message {message_id}")
         json_response = JsonResponse({"success": True, "message_id": message_id})
