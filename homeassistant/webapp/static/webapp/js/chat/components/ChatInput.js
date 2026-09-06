@@ -69,7 +69,8 @@ const ChatInput = ({
     const formats = [
         { value: 'plain', label: 'Plain Text' },
         { value: 'formatted', label: 'Formatted Text' },
-        { value: 'ui_answer', label: 'UI Answer' }
+        { value: 'ui_answer', label: 'UI Answer' },
+        { value: 'voice_answer', label: 'Voice Answer' }
     ];
     
     // All available models
@@ -566,7 +567,7 @@ const ChatInput = ({
             }, formats.map(format => 
                 React.createElement(MenuItem, {
                     key: format.value,
-                    icon: format.value === 'plain' ? 'file-text' : format.value === 'formatted' ? 'file-code' : 'layout-grid',
+                    icon: format.value === 'plain' ? 'file-text' : format.value === 'formatted' ? 'file-code' : format.value === 'voice_answer' ? 'mic' : 'layout-grid',
                     label: format.label,
                     isActive: selectedFormat === format.value,
                     onClick: () => handleFormatSelect(format.value)
@@ -711,6 +712,21 @@ const ChatInput = ({
                             renderFormatMenu()
                         ]),
                         
+                        // Voice input button (stub — no functionality yet)
+                        React.createElement('button', {
+                            key: 'voice-btn',
+                            type: 'button',
+                            className: 'p-2 rounded-lg transition-colors border text-gray-400 hover:text-white hover:bg-white/10 border-white/20',
+                            onClick: () => console.log('Voice input clicked'),
+                            title: 'Voice input'
+                        }, [
+                            React.createElement('i', {
+                                key: 'icon',
+                                'data-lucide': 'mic',
+                                className: 'w-4 h-4'
+                            })
+                        ]),
+
                         // Send button
                         React.createElement('button', {
                             key: 'send-btn',

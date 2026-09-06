@@ -1750,6 +1750,81 @@ const ChatMessage = ({ message, onExecute }) => {
     const hasDebugData = message.llm_trace || (message.pipeline_steps && message.pipeline_steps.length > 0) || message.pipeline_trace;
     const showDebugButton = window.debugMode && hasDebugData;
 
+    // ── Text-to-speech (browser SpeechSynthesis) ───────────────────────────
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+    // Extract only the main narrative text — the markdown/prose blocks — skipping
+    // cards, widgets and action buttons (which are rendered outside .prose).
+    const getSpeakText = () => {
+        const dom = containerRef.current?.querySelector('.message-content');
+        if (dom) {
+            const proseText = Array.from(dom.querySelectorAll('.prose'))
+                .map(el => el.innerText?.trim())
+                .filter(Boolean)
+                .join('\n');
+            if (proseText) return proseText;
+        }
+
+        const content = message.content;
+        if (typeof content === 'string') return content;
+        return content?.text
+            || content?.level2_answer?.text?.text
+            || content?.level3_answer?.text?.text
+            || content?.ui_answer?.text?.text
+            || '';
+    };
+
+    // Detect language from the text (Cyrillic → Russian, otherwise English)
+    const detectLang = (text) => (/[Ѐ-ӿ]/.test(text) ? 'ru-RU' : 'en-US');
+
+    // Pick the best available voice for a BCP-47 lang tag (e.g. 'ru-RU')
+    const pickVoice = (lang) => {
+        const voices = window.speechSynthesis.getVoices() || [];
+        const prefix = lang.split('-')[0];
+        return voices.find(v => v.lang === lang)
+            || voices.find(v => v.lang?.toLowerCase().startsWith(prefix))
+            || null;
+    };
+
+    const handlePlay = () => {
+        if (!ttsSupported) {
+            console.warn('SpeechSynthesis is not supported in this browser');
+            return;
+        }
+        // Toggle: stop if this message is already speaking
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+            return;
+        }
+        const text = getSpeakText();
+        if (!text) return;
+        // Cancel any other in-flight speech before starting this one
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        const lang = detectLang(text);
+        utterance.lang = lang;
+        const voice = pickVoice(lang);
+        if (voice) utterance.voice = voice;
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        window.speechSynthesis.speak(utterance);
+        setIsSpeaking(true);
+    };
+
+    // Stop speech and refresh icons when speaking state changes / on unmount
+    useEffect(() => {
+        if (typeof lucide !== 'undefined') {
+            setTimeout(() => lucide.createIcons(), 0);
+        }
+        return () => {
+            if (isSpeaking && ttsSupported) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, [isSpeaking]);
+
     const renderDebugPanel = () => {
         const pt = message.pipeline_trace;
         const topTrace = message.llm_trace;
@@ -1877,7 +1952,7 @@ const ChatMessage = ({ message, onExecute }) => {
     }, [
         React.createElement('div', {
             key: 'message-container',
-            className: `${isUser ? 'max-w-[85%]' : 'w-[85%]'} ${isUser ? 'order-2' : 'order-1'}`
+            className: `group/msg ${isUser ? 'max-w-[85%]' : 'w-[85%]'} ${isUser ? 'order-2' : 'order-1'}`
         }, [
             React.createElement('div', {
                 key: 'message-bubble',
@@ -1918,6 +1993,38 @@ const ChatMessage = ({ message, onExecute }) => {
                 }, React.createElement(ChatContent, {
                     content: message.content,
                     onExecute: onExecute
+                }))
+            ]),
+            // Message actions (stub) — appear on hover, aligned right
+            React.createElement('div', {
+                key: 'message-actions',
+                className: 'flex justify-end gap-1 mt-1 opacity-0 group-hover/msg:opacity-100 transition-opacity'
+            }, [
+                ttsSupported && React.createElement('button', {
+                    key: 'play-btn',
+                    type: 'button',
+                    className: `transition-colors p-1.5 rounded-lg hover:bg-white/10 ${
+                        isSpeaking ? 'text-cyan-400 hover:text-cyan-300' : 'text-white/40 hover:text-white/80'
+                    }`,
+                    title: isSpeaking ? 'Stop playback' : 'Play message',
+                    'aria-label': isSpeaking ? 'Stop playback' : 'Play message',
+                    onClick: handlePlay
+                }, React.createElement('i', {
+                    key: 'icon',
+                    'data-lucide': isSpeaking ? 'square' : 'volume-2',
+                    className: 'w-4 h-4'
+                })),
+                React.createElement('button', {
+                    key: 'more-btn',
+                    type: 'button',
+                    className: 'text-white/40 hover:text-white/80 transition-colors p-1.5 rounded-lg hover:bg-white/10',
+                    title: 'More actions',
+                    'aria-label': 'More actions',
+                    onClick: () => console.log('More actions clicked')
+                }, React.createElement('i', {
+                    key: 'icon',
+                    'data-lucide': 'more-horizontal',
+                    className: 'w-4 h-4'
                 }))
             ]),
             showDebugButton && React.createElement('div', {
