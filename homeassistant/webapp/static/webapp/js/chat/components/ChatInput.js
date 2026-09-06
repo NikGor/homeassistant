@@ -54,12 +54,22 @@ const ChatInput = ({
         return stored;
     });
     
+    // Speech-to-text (browser SpeechRecognition) — always Russian
+    const SpeechRecognition = typeof window !== 'undefined'
+        ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+        : undefined;
+    const sttSupported = !!SpeechRecognition;
+    const [isListening, setIsListening] = useState(false);
+
     // Refs
     const textareaRef = useRef(null);
     const containerRef = useRef(null);
     const addMenuRef = useRef(null);
     const settingsMenuRef = useRef(null);
     const formatMenuRef = useRef(null);
+    const recognitionRef = useRef(null);
+    const valueRef = useRef(value);
+    valueRef.current = value;
     
     // Constants
     const MIN_HEIGHT = 48;
@@ -254,6 +264,52 @@ const ChatInput = ({
         }
     }, [handleSubmit]);
     
+    // Voice input handler — dictates into the input field (Russian)
+    const handleVoiceInput = useCallback(() => {
+        if (!sttSupported) {
+            console.warn('SpeechRecognition is not supported in this browser');
+            return;
+        }
+        // Toggle: stop an active session
+        if (isListening) {
+            recognitionRef.current?.stop();
+            return;
+        }
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU';
+        recognition.interimResults = false;
+        recognition.continuous = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event) => {
+            const transcript = Array.from(event.results)
+                .map(r => r[0]?.transcript || '')
+                .join(' ')
+                .trim();
+            if (!transcript) return;
+            const base = valueRef.current || '';
+            onChange(base ? `${base} ${transcript}` : transcript);
+        };
+        recognition.onerror = () => setIsListening(false);
+        recognition.onend = () => setIsListening(false);
+
+        recognitionRef.current = recognition;
+        recognition.start();
+        setIsListening(true);
+    }, [sttSupported, isListening, SpeechRecognition, onChange]);
+
+    // Stop recognition on unmount
+    useEffect(() => {
+        return () => recognitionRef.current?.abort?.();
+    }, []);
+
+    // Refresh Lucide icon when listening state toggles
+    useEffect(() => {
+        if (typeof lucide !== 'undefined') {
+            setTimeout(() => lucide.createIcons(), 0);
+        }
+    }, [isListening]);
+
     const isSubmitDisabled = !value.trim() || disabled || isLoading;
     const currentFormatLabel = formats.find(f => f.value === selectedFormat)?.label || 'UI Answer';
     
@@ -712,17 +768,21 @@ const ChatInput = ({
                             renderFormatMenu()
                         ]),
                         
-                        // Voice input button (stub — no functionality yet)
-                        React.createElement('button', {
+                        // Voice input button — browser speech-to-text (Russian)
+                        sttSupported && React.createElement('button', {
                             key: 'voice-btn',
                             type: 'button',
-                            className: 'p-2 rounded-lg transition-colors border text-gray-400 hover:text-white hover:bg-white/10 border-white/20',
-                            onClick: () => console.log('Voice input clicked'),
-                            title: 'Voice input'
+                            className: `p-2 rounded-lg transition-colors border ${
+                                isListening
+                                    ? 'bg-red-500/20 text-red-400 border-red-500/40 animate-pulse'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/10 border-white/20'
+                            }`,
+                            onClick: handleVoiceInput,
+                            title: isListening ? 'Stop listening' : 'Voice input'
                         }, [
                             React.createElement('i', {
                                 key: 'icon',
-                                'data-lucide': 'mic',
+                                'data-lucide': isListening ? 'mic-off' : 'mic',
                                 className: 'w-4 h-4'
                             })
                         ]),
