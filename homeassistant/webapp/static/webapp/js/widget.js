@@ -399,9 +399,14 @@ async function showWidgetView(widgetType) {
     const widgetView = document.getElementById('widget-view');
     const leftSidebar = document.getElementById('left-sidebar');
 
+    const voiceView = document.getElementById('voice-view');
+
     chatView.classList.add('hidden');
     dashboardView.classList.add('hidden');
     widgetView.classList.remove('hidden');
+    if (voiceView) voiceView.classList.add('hidden');
+    document.body.classList.remove('voice-mode');
+    if (typeof window.stopVoiceSession === 'function') window.stopVoiceSession();
     leftSidebar.classList.add('hidden');
 
     updateSidebarActiveState(widgetType);

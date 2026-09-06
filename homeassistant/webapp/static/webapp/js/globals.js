@@ -22,6 +22,7 @@ var mainContentArea;
 var chatView;
 var dashboardView;
 var widgetView;
+var voiceView;
 
 // --- Элементы Дашборда ---
 var globalQuickActionsContainer;

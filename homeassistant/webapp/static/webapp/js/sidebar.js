@@ -339,6 +339,21 @@ function renderRightSidebar() {
     archieExpanded.innerHTML = `<i data-lucide="brain" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Archie Чат</span>`;
     rightSidebarExpandedMenu.appendChild(archieExpanded);
 
+    const voiceCollapsed = document.createElement('a');
+    voiceCollapsed.href = "#";
+    voiceCollapsed.className = "sidebar-item text-gray-300";
+    voiceCollapsed.dataset.appCategory = 'voice';
+    voiceCollapsed.title = "Voice Chat";
+    voiceCollapsed.innerHTML = `<i data-lucide="audio-lines" class="w-6 h-6"></i>`;
+    rightSidebarCollapsedIcons.appendChild(voiceCollapsed);
+
+    const voiceExpanded = document.createElement('a');
+    voiceExpanded.href = "#";
+    voiceExpanded.className = "sidebar-item-expanded text-gray-300";
+    voiceExpanded.dataset.appCategory = 'voice';
+    voiceExpanded.innerHTML = `<i data-lucide="audio-lines" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Voice Chat</span>`;
+    rightSidebarExpandedMenu.appendChild(voiceExpanded);
+
     rightSidebarCollapsedIcons.innerHTML += '<hr class="border-t border-white/10 my-2">';
     rightSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
 

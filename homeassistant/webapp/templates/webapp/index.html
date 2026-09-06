@@ -142,9 +142,17 @@
             </div>
         </div>
 
+        <!--
+          ЭКРАН 4: ГОЛОСОВОЙ ЧАТ (z-10, скрыт)
+        -->
+        <div id="voice-view" class="view-screen z-10 hidden">
+            <!-- Voice assistant will be rendered here by React -->
+            <div id="voice-assistant-root" class="h-full w-full"></div>
+        </div>
+
     </main>
-    
-    <!-- 
+
+    <!--
       ПРАВАЯ БОКОВАЯ ПАНЕЛЬ ("Дом")
     -->
     <nav id="right-sidebar" class="sidebar" style="border-left: 1px solid rgba(255, 255, 255, 0.1);">
@@ -196,7 +204,10 @@
     <script src="{% static 'webapp/js/chat/components/ChatInput.js' %}"></script>
     <script src="{% static 'webapp/js/chat/ChatAssistant.js' %}"></script>
     <script src="{% static 'webapp/js/chat.js' %}"></script>
-    
+
+    <!-- Voice Chat -->
+    <script src="{% static 'webapp/js/voice/VoiceChat.js' %}"></script>
+
     <!-- Main Initialization -->
     <script src="{% static 'webapp/js/main.js' %}"></script>
 </body>

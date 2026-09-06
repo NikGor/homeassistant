@@ -5,9 +5,12 @@ function showChatView() {
     chatView.classList.remove('hidden');
     dashboardView.classList.add('hidden');
     widgetView.classList.add('hidden');
+    if (voiceView) voiceView.classList.add('hidden');
+    document.body.classList.remove('voice-mode');
+    if (typeof window.stopVoiceSession === 'function') window.stopVoiceSession();
     leftSidebar.classList.remove('hidden'); // Показываем левый сайдбар в режиме чата
     updateSidebarActiveState('archie');
-    
+
     // Stop dashboard polling when leaving dashboard
     if (typeof stopDashboardPolling === 'function') {
         stopDashboardPolling();
@@ -19,18 +22,37 @@ function showDashboardView() {
     chatView.classList.add('hidden');
     dashboardView.classList.remove('hidden');
     widgetView.classList.add('hidden');
+    if (voiceView) voiceView.classList.add('hidden');
+    document.body.classList.remove('voice-mode');
+    if (typeof window.stopVoiceSession === 'function') window.stopVoiceSession();
     leftSidebar.classList.add('hidden'); // Скрываем левый сайдбар в режиме дашборда
     updateSidebarActiveState('home');
-    
+
     // Start dashboard polling when showing dashboard
     if (typeof startDashboardPolling === 'function') {
         startDashboardPolling(30000); // Poll every 30 seconds
     }
 }
 
+// Показать "Голосовой чат"
+function showVoiceView() {
+    chatView.classList.add('hidden');
+    dashboardView.classList.add('hidden');
+    widgetView.classList.add('hidden');
+    voiceView.classList.remove('hidden');
+    document.body.classList.add('voice-mode'); // Прячем общий фоновый .orb
+    leftSidebar.classList.add('hidden'); // Полноэкранный голосовой режим
+    updateSidebarActiveState('voice');
+
+    if (typeof stopDashboardPolling === 'function') {
+        stopDashboardPolling();
+    }
+}
+
 // Export view functions globally
 window.showChatView = showChatView;
 window.showDashboardView = showDashboardView;
+window.showVoiceView = showVoiceView;
 
 // --- Инициализация и обработчики событий ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -49,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatView = document.getElementById('chat-view');
     dashboardView = document.getElementById('dashboard-view');
     widgetView = document.getElementById('widget-view');
+    voiceView = document.getElementById('voice-view');
     
     globalQuickActionsContainer = document.getElementById('global-quick-actions');
     dashboardTilesContainer = document.getElementById('dashboard-tiles');
@@ -91,6 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (category === 'archie') {
             e.preventDefault();
             showChatView();
+        } else if (category === 'voice') {
+            e.preventDefault();
+            showVoiceView();
         } else if (category === 'home') {
             e.preventDefault();
             
