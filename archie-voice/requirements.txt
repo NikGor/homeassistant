@@ -1,0 +1,15 @@
+# Wake word
+openwakeword>=0.6.0
+onnxruntime>=1.16
+
+# STT (offline)
+faster-whisper>=1.0.0
+
+# Audio I/O
+sounddevice>=0.4.6
+webrtcvad>=2.0.10
+numpy>=1.24
+
+# Agent / TTS over HTTP
+requests>=2.31
+python-dotenv>=1.0
