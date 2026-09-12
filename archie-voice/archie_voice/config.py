@@ -60,7 +60,7 @@ TTS_PCM_RATE = _as_int(os.getenv("TTS_PCM_RATE"), 24000)
 PERSONA_VOICES = {
     "business": "Achird",  # Friendly — professional
     "bro": "Charon",  # Informative (male)
-    "flirty": "Aoede",  # Breezy — warm, playful (female)
+    "flirty": "Zephyr",  # Bright (female)
     "futurebot": "Charon",  # Informative — deep, techy (male)
     "butler": "Sadachbia",  # Lively
 }
