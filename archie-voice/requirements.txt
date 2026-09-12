@@ -1,13 +1,22 @@
-# Wake word
+# Wake word.
+# NOTE (Python 3.12, e.g. Raspberry Pi OS): openwakeword pins tflite-runtime,
+# which has no 3.12 wheels. We use the onnx backend, so install it without deps:
+#     pip install --no-deps openwakeword
+# and rely on the explicit deps below. On Python <=3.11 a plain
+# `pip install openwakeword` works too.
 openwakeword>=0.6.0
 onnxruntime>=1.16
+scipy>=1.3
+scikit-learn>=1.0
+tqdm>=4.0
 
 # STT (offline)
 faster-whisper>=1.0.0
 
 # Audio I/O
 sounddevice>=0.4.6
-webrtcvad>=2.0.10
+# Prebuilt wheels (no C compiler / Python.h needed); provides `import webrtcvad`.
+webrtcvad-wheels>=2.0.14
 numpy>=1.24
 
 # Agent / TTS over HTTP

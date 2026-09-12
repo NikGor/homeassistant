@@ -22,13 +22,19 @@ One activation = one saved conversation (persisted through
 ```bash
 cd archie-voice
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
 
 # system audio deps (Debian/Ubuntu):
 sudo apt-get install -y portaudio19-dev libsndfile1 mpg123
 
+# Python 3.12 (e.g. Raspberry Pi OS): openwakeword pins tflite-runtime which has
+# no 3.12 wheel — install it without deps and let requirements.txt provide the rest:
+pip install -r requirements.txt --no-deps openwakeword   # then:
+pip install -r requirements.txt
+
 cp .env.example .env    # then fill OPENROUTER_API_KEY
 ```
+
+On Python ≤ 3.11 a plain `pip install -r requirements.txt` is enough.
 
 ## Run
 
