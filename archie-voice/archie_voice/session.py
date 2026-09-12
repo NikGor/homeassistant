@@ -43,6 +43,7 @@ def _converse(transcriber):
         pcm = recorder.record_utterance()
         if pcm is None:
             print("… silence — ending session.")
+            audio.beep_end()
             return
 
         text = transcriber.transcribe(pcm)
@@ -56,12 +57,14 @@ def _converse(transcriber):
         except Exception as e:
             logger.error(f"session_error_001: agent request failed: {e}")
             print("⚠️  Agent is unavailable.")
+            audio.beep_end()
             return
 
         if answer:
             print(f"🤖 Archie: {answer}")
             tts.speak(answer)
-        # loop: listen for a follow-up (record_utterance returns None on timeout)
+        # Answer done — cue the user and listen for a follow-up.
+        audio.beep_ready()
 
 
 def run():
@@ -74,7 +77,7 @@ def run():
         while True:
             wake.wait_for_wake()
             print("🎯 Wake word detected!")
-            audio.play_beep()  # audible "I heard you" cue
+            audio.beep_wake()  # audible "I heard you" cue
             _converse(transcriber)
     except KeyboardInterrupt:
         print("\n👋 Stopping.")

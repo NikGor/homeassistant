@@ -69,6 +69,22 @@ def play_beep(freq=880, ms=140, rate=16000, volume=0.3):
         logger.error(f"audio_error_001: beep failed: {e}")
 
 
+# Distinct cues (different pitch so they're easy to tell apart)
+def beep_wake():
+    """'I heard you' — right after the wake word."""
+    play_beep(freq=880, ms=140)
+
+
+def beep_ready():
+    """'Your turn' — answer finished, listening again."""
+    play_beep(freq=1318, ms=100)
+
+
+def beep_end():
+    """'Session closed' — went back to waiting for the wake word."""
+    play_beep(freq=440, ms=200)
+
+
 def play_pcm(pcm_bytes, rate):
     """Play raw 16-bit little-endian mono PCM."""
     data = np.frombuffer(pcm_bytes, dtype=np.int16)
