@@ -69,3 +69,5 @@ MAX_UTTERANCE_S = _as_float(os.getenv("MAX_UTTERANCE_S"), 15.0)
 # Minimum amount of *voiced* audio to accept an utterance (drops noise/silence
 # blips that make Whisper hallucinate).
 MIN_SPEECH_S = _as_float(os.getenv("MIN_SPEECH_S"), 0.5)
+# Gap between "thinking" cue repeats while waiting for the agent.
+THINKING_INTERVAL_S = _as_float(os.getenv("THINKING_INTERVAL_S"), 1.5)

@@ -3,6 +3,7 @@
 import logging
 import os
 import subprocess
+import threading
 import wave
 
 import numpy as np
@@ -117,6 +118,42 @@ def beep_ready():
 def beep_end():
     """'Session closed' — went back to waiting for the wake word."""
     play_wav("end.wav", fallback_freq=440)
+
+
+# --- "Thinking" cue: repeat a sample while the agent is working ---------------
+_thinking_stop = None
+_thinking_thread = None
+
+
+def start_thinking():
+    """Loop the thinking cue in the background until stop_thinking()."""
+    global _thinking_stop, _thinking_thread
+    stop_thinking()  # ensure no previous loop is running
+    stop = threading.Event()
+
+    def loop():
+        # Wait first so the "received" cue can play, then pulse periodically.
+        while not stop.wait(config.THINKING_INTERVAL_S):
+            play_wav("thinking.wav", fallback_freq=660)
+
+    t = threading.Thread(target=loop, daemon=True)
+    _thinking_stop, _thinking_thread = stop, t
+    t.start()
+
+
+def stop_thinking():
+    """Stop the thinking loop and cut any in-progress cue playback."""
+    global _thinking_stop, _thinking_thread
+    if _thinking_stop is not None:
+        _thinking_stop.set()
+        try:
+            sd.stop()  # interrupt a cue that's mid-play
+        except Exception:
+            pass
+        if _thinking_thread is not None:
+            _thinking_thread.join(timeout=2)
+    _thinking_stop = None
+    _thinking_thread = None
 
 
 def play_pcm(pcm_bytes, rate):

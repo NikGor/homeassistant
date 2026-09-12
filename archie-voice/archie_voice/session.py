@@ -47,19 +47,22 @@ def _converse(transcriber):
             return
         audio.beep_received()  # finished capturing the user's message
 
-        text = transcriber.transcribe(pcm)
-        if _is_junk(text):
-            print("⚠️  Didn't catch that.")
-            continue
-        print(f"👤 You: {text}")
-
+        # "Thinking" cue loops while we transcribe + query the agent.
+        audio.start_thinking()
         try:
+            text = transcriber.transcribe(pcm)
+            if _is_junk(text):
+                print("⚠️  Didn't catch that.")
+                continue
+            print(f"👤 You: {text}")
             answer = agent.ask(text, conversation_id)
         except Exception as e:
-            logger.error(f"session_error_001: agent request failed: {e}")
+            logger.error(f"session_error_001: request failed: {e}")
             print("⚠️  Agent is unavailable.")
             audio.beep_end()
             return
+        finally:
+            audio.stop_thinking()
 
         if answer:
             print(f"🤖 Archie: {answer}")
