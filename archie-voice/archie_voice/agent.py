@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 _TAG_RE = re.compile(r"<[^>]+>")
 _BRACKET_RE = re.compile(r"\[[^\]]*\]")  # Gemini inline audio tags, e.g. [excited]
+_TRANSCRIPT_RE = re.compile(r"##\s*Transcript:\s*", re.IGNORECASE)  # gemini_tts note
 _WS_RE = re.compile(r"\s+")
 
 
@@ -93,21 +94,32 @@ def ask(user_input, conversation_id, persona=None):
 def for_tts(raw):
     """Text to feed the TTS engine.
 
-    In "gemini_tts" mode keep Gemini inline audio tags (e.g. [excited]) — the
-    model interprets them. Otherwise strip SSML <tags> (Gemini can't read them).
+    In "gemini_tts" mode send the whole response verbatim — the director's note
+    + [inline tags] IS the Gemini TTS prompt (it interprets the note as style and
+    speaks only the transcript). Otherwise strip SSML <tags> (Gemini can't read
+    them) and collapse whitespace.
     """
     if not raw:
         return ""
     if config.RESPONSE_FORMAT == "gemini_tts":
-        return _WS_RE.sub(" ", html.unescape(str(raw))).strip()
+        return html.unescape(str(raw)).strip()  # keep note + tags + structure
     return strip_ssml(raw)
 
 
 def for_display(raw):
-    """Clean text for the screen/log: drop both <tags> and [inline tags]."""
+    """Clean text for the screen/log: the spoken words only.
+
+    In "gemini_tts" mode keep just the "## Transcript:" section (drop the
+    director's note); always strip <tags> and [inline tags].
+    """
     if not raw:
         return ""
-    text = _TAG_RE.sub(" ", str(raw))
+    text = str(raw)
+    if config.RESPONSE_FORMAT == "gemini_tts":
+        parts = _TRANSCRIPT_RE.split(text, maxsplit=1)
+        if len(parts) == 2:
+            text = parts[1]
+    text = _TAG_RE.sub(" ", text)
     text = _BRACKET_RE.sub(" ", text)
     text = html.unescape(text)
     return _WS_RE.sub(" ", text).strip()
