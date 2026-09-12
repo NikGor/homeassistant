@@ -75,6 +75,11 @@ def beep_wake():
     play_beep(freq=880, ms=140)
 
 
+def beep_received():
+    """'Got it, processing' — finished capturing the user's utterance."""
+    play_beep(freq=1046, ms=90)
+
+
 def beep_ready():
     """'Your turn' — answer finished, listening again."""
     play_beep(freq=1318, ms=100)

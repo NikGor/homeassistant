@@ -45,6 +45,7 @@ def _converse(transcriber):
             print("… silence — ending session.")
             audio.beep_end()
             return
+        audio.beep_received()  # finished capturing the user's message
 
         text = transcriber.transcribe(pcm)
         if _is_junk(text):
