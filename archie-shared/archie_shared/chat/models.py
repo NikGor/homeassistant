@@ -170,6 +170,7 @@ class ChatRequest(BaseModel):
         "markdown",
         "html",
         "ssml",
+        "gemini_tts",
         "json",
         "csv",
         "xml",
