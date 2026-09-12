@@ -36,16 +36,20 @@ class Transcriber:
             # utterances (transcribes to ''), so keep it off.
             vad_filter=False,
             condition_on_previous_text=False,  # don't let prior text bias output
-            no_speech_threshold=0.6,
-            log_prob_threshold=-1.0,
+            no_speech_threshold=0.9,  # lenient: narrowband speech scores low
             temperature=0.0,
         )
-        # Keep only confident, speech-like segments to suppress hallucinations.
+        # Only drop segments the model is *very* sure are non-speech. (The webrtcvad
+        # recorder + session blocklist already handle noise/hallucinations; strict
+        # confidence filtering here was dropping real narrowband speech.)
         parts = []
         for seg in segments:
-            if getattr(seg, "no_speech_prob", 0.0) > 0.6:
-                continue
-            if getattr(seg, "avg_logprob", 0.0) < -1.0:
+            nsp = getattr(seg, "no_speech_prob", 0.0)
+            alp = getattr(seg, "avg_logprob", 0.0)
+            logger.info(
+                f"stt_seg: '{seg.text.strip()}' no_speech={nsp:.2f} avg_logprob={alp:.2f}"
+            )
+            if nsp > 0.85:
                 continue
             parts.append(seg.text)
         text = " ".join(parts).strip()
