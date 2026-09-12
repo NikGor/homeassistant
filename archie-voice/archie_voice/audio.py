@@ -121,8 +121,12 @@ def beep_end():
 
 
 # --- "Thinking" cue: repeat a sample while the agent is working ---------------
+# Played via a separate `aplay` process (NOT sounddevice) so it can never race
+# with the main process's PortAudio streams — calling sounddevice from a
+# background thread caused "double free or corruption" crashes.
 _thinking_stop = None
 _thinking_thread = None
+_thinking_proc = None
 
 
 def start_thinking():
@@ -130,11 +134,26 @@ def start_thinking():
     global _thinking_stop, _thinking_thread
     stop_thinking()  # ensure no previous loop is running
     stop = threading.Event()
+    path = os.path.join(SAMPLES_DIR, "thinking.wav")
 
     def loop():
+        global _thinking_proc
         # Wait first so the "received" cue can play, then pulse periodically.
         while not stop.wait(config.THINKING_INTERVAL_S):
-            play_wav("thinking.wav", fallback_freq=660)
+            if not os.path.exists(path):
+                break
+            try:
+                _thinking_proc = subprocess.Popen(
+                    ["aplay", "-q", path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                _thinking_proc.wait()
+            except Exception as e:
+                logger.error(f"audio_error_003: thinking cue failed: {e}")
+                break
+            finally:
+                _thinking_proc = None
 
     t = threading.Thread(target=loop, daemon=True)
     _thinking_stop, _thinking_thread = stop, t
@@ -142,18 +161,20 @@ def start_thinking():
 
 
 def stop_thinking():
-    """Stop the thinking loop and cut any in-progress cue playback."""
-    global _thinking_stop, _thinking_thread
+    """Stop the thinking loop and any in-progress cue playback."""
+    global _thinking_stop, _thinking_thread, _thinking_proc
     if _thinking_stop is not None:
         _thinking_stop.set()
-        try:
-            sd.stop()  # interrupt a cue that's mid-play
-        except Exception:
-            pass
+        if _thinking_proc is not None:
+            try:
+                _thinking_proc.terminate()
+            except Exception:
+                pass
         if _thinking_thread is not None:
             _thinking_thread.join(timeout=2)
     _thinking_stop = None
     _thinking_thread = None
+    _thinking_proc = None
 
 
 def play_pcm(pcm_bytes, rate):

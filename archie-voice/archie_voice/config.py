@@ -33,7 +33,7 @@ RESPONSE_FORMAT = os.getenv("ARCHIE_RESPONSE_FORMAT", "ssml")
 # Stage 1 uses the pre-trained "hey_jarvis" model. Swap to a custom "hey_archie"
 # model file once trained.
 WAKE_MODEL = os.getenv("WAKE_MODEL", "hey_jarvis")
-WAKE_THRESHOLD = _as_float(os.getenv("WAKE_THRESHOLD"), 0.5)
+WAKE_THRESHOLD = _as_float(os.getenv("WAKE_THRESHOLD"), 0.6)
 WAKE_INFERENCE = os.getenv("WAKE_INFERENCE_FRAMEWORK", "onnx")  # "onnx" | "tflite"
 
 # --- STT (faster-whisper, offline) -----------------------------------------
