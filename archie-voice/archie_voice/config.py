@@ -63,7 +63,7 @@ MIC_DEVICE = _as_int(os.getenv("MIC_DEVICE"), None)  # None -> system default
 # End the session if the user stays silent this long when we start listening.
 SILENCE_TIMEOUT_S = _as_float(os.getenv("SILENCE_TIMEOUT_S"), 10.0)
 # Trailing silence that marks the end of an utterance.
-END_OF_SPEECH_SILENCE_S = _as_float(os.getenv("END_OF_SPEECH_SILENCE_S"), 0.8)
+END_OF_SPEECH_SILENCE_S = _as_float(os.getenv("END_OF_SPEECH_SILENCE_S"), 1.5)
 # Hard cap on a single utterance length.
 MAX_UTTERANCE_S = _as_float(os.getenv("MAX_UTTERANCE_S"), 15.0)
 # Minimum amount of *voiced* audio to accept an utterance (drops noise/silence
