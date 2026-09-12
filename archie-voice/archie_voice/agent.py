@@ -52,7 +52,22 @@ def _extract_ssml(data):
     return data.get("ssml") or data.get("text") or ""
 
 
-def ask(user_input, conversation_id):
+def get_persona():
+    """Fetch the current assistant persona from the webapp (Redis user_state)."""
+    try:
+        resp = requests.get(
+            f"{config.API_BASE}/api/user/state/",
+            params={"user_name": config.USER_NAME},
+            timeout=10,
+        )
+        if resp.ok:
+            return (resp.json() or {}).get("persona")
+    except Exception as e:
+        logger.error(f"agent_err_002: failed to fetch persona: {e}")
+    return None
+
+
+def ask(user_input, conversation_id, persona=None):
     """Send the user's text to the agent; return cleaned plain-text answer."""
     url = f"{config.API_BASE}/ai-assistant/api/messages/"
     payload = {
@@ -61,6 +76,8 @@ def ask(user_input, conversation_id):
         "response_format": config.RESPONSE_FORMAT,
         "conversation_id": conversation_id,
     }
+    if persona:
+        payload["persona"] = persona
     resp = requests.post(url, json=payload, timeout=120)
     resp.raise_for_status()
     data = resp.json()

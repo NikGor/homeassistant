@@ -11,8 +11,8 @@ from . import audio, config
 logger = logging.getLogger(__name__)
 
 
-def speak(text):
-    """Synthesize `text` to speech and play it on the default output."""
+def speak(text, voice=None):
+    """Synthesize `text` to speech and play it. `voice` overrides the default."""
     if not text:
         return
     if not config.OPENROUTER_API_KEY:
@@ -27,7 +27,7 @@ def speak(text):
     payload = {
         "model": config.TTS_MODEL,
         "input": text,
-        "voice": config.TTS_VOICE,
+        "voice": voice or config.TTS_VOICE,
         "response_format": config.TTS_FORMAT,
     }
 

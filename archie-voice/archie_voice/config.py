@@ -55,6 +55,16 @@ TTS_VOICE = os.getenv("TTS_VOICE", "Kore")
 TTS_FORMAT = os.getenv("TTS_FORMAT", "pcm")
 TTS_PCM_RATE = _as_int(os.getenv("TTS_PCM_RATE"), 24000)
 
+# Assistant persona -> Gemini TTS voice (style-matched, male/female mix).
+# Falls back to TTS_VOICE for unknown personas.
+PERSONA_VOICES = {
+    "business": "Kore",  # Firm — professional (female)
+    "bro": "Puck",  # Upbeat — casual (male)
+    "flirty": "Aoede",  # Breezy — warm, playful (female)
+    "futurebot": "Charon",  # Informative — deep, techy (male)
+    "butler": "Gacrux",  # Mature — dignified (male)
+}
+
 # --- Audio ------------------------------------------------------------------
 SAMPLE_RATE = 16000
 MIC_DEVICE = _as_int(os.getenv("MIC_DEVICE"), None)  # None -> system default

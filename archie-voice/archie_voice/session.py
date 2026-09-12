@@ -36,7 +36,12 @@ def _is_junk(text):
 def _converse(transcriber):
     """One activated conversation: keep listening until the user goes silent."""
     conversation_id = agent.new_conversation_id()
-    logger.info(f"session_002: conversation {conversation_id}")
+    # Current character drives both the agent's tone and the TTS voice.
+    persona = agent.get_persona()
+    voice = config.PERSONA_VOICES.get(persona or "", config.TTS_VOICE)
+    logger.info(
+        f"session_002: conversation {conversation_id} persona={persona} voice={voice}"
+    )
     print("🔵 Activated. Speak your request.")
 
     while True:
@@ -55,7 +60,7 @@ def _converse(transcriber):
                 print("⚠️  Didn't catch that.")
                 continue
             print(f"👤 You: {text}")
-            answer = agent.ask(text, conversation_id)
+            answer = agent.ask(text, conversation_id, persona=persona)
         except Exception as e:
             logger.error(f"session_error_001: request failed: {e}")
             print("⚠️  Agent is unavailable.")
@@ -66,7 +71,7 @@ def _converse(transcriber):
 
         if answer:
             print(f"🤖 Archie: {answer}")
-            tts.speak(answer)
+            tts.speak(answer, voice=voice)
         # Answer done — cue the user and listen for a follow-up.
         audio.beep_ready()
 
