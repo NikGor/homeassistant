@@ -62,7 +62,7 @@ PERSONA_VOICES = {
     "bro": "Charon",  # Informative (male)
     "flirty": "Aoede",  # Breezy — warm, playful (female)
     "futurebot": "Charon",  # Informative — deep, techy (male)
-    "butler": "Algieba",  # Smooth — dignified
+    "butler": "Sadachbia",  # Lively
 }
 
 # --- Audio ------------------------------------------------------------------
