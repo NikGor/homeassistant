@@ -22,7 +22,9 @@ def _as_float(value, default):
 
 
 # --- Identity / agent -------------------------------------------------------
-USER_NAME = os.getenv("ARCHIE_USER_NAME", "Николай")
+# Must match the user_name whose state lives in Redis (user_state:name:<name>),
+# so the agent applies persona/city/language/etc.
+USER_NAME = os.getenv("ARCHIE_USER_NAME", "Niko")
 # Base URL of the Django webapp that proxies to the agent and persists messages.
 API_BASE = os.getenv("ARCHIE_API_BASE", "http://localhost:8000").rstrip("/")
 RESPONSE_FORMAT = os.getenv("ARCHIE_RESPONSE_FORMAT", "ssml")

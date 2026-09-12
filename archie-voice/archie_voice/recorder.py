@@ -19,20 +19,21 @@ FRAME_MS = 30
 FRAME_SAMPLES = int(config.SAMPLE_RATE * FRAME_MS / 1000)
 
 
-def record_utterance():
-    """Capture one utterance. Returns np.int16 array or None on silence timeout."""
-    vad = webrtcvad.Vad(3)  # aggressiveness 0..3 (3 = most aggressive)
+# Consecutive voiced frames required to commit speech onset (debounce noise).
+ONSET_FRAMES = 3
 
-    speech_started = False
-    silence_run = 0.0
-    elapsed = 0.0
-    voiced_s = 0.0
-    collected = []
+
+def record_utterance():
+    """Capture one utterance. Returns np.int16 array, or None only after
+    `SILENCE_TIMEOUT_S` of genuine silence. Short noise blips are discarded
+    without ending the session."""
+    vad = webrtcvad.Vad(2)  # aggressiveness 0..3
 
     frame_s = FRAME_MS / 1000.0
     max_wait = config.SILENCE_TIMEOUT_S
     end_silence = config.END_OF_SPEECH_SILENCE_S
     max_len = config.MAX_UTTERANCE_S
+    min_speech = config.MIN_SPEECH_S
 
     with sd.InputStream(
         samplerate=config.SAMPLE_RATE,
@@ -42,37 +43,53 @@ def record_utterance():
         device=config.MIC_DEVICE,
     ) as stream:
         print("🎙️  Listening...")
-        while True:
-            data, _ = stream.read(FRAME_SAMPLES)
-            frame = np.frombuffer(data, dtype=np.int16)
-            elapsed += frame_s
+        waited = 0.0  # silent time with no committed speech
+        while waited < max_wait:
+            speaking = False
+            onset = 0
+            silence_run = 0.0
+            voiced_s = 0.0
+            length = 0.0
+            collected = []
 
-            is_speech = vad.is_speech(frame.tobytes(), config.SAMPLE_RATE)
+            while True:
+                data, _ = stream.read(FRAME_SAMPLES)
+                frame = np.frombuffer(data, dtype=np.int16)
+                is_speech = vad.is_speech(frame.tobytes(), config.SAMPLE_RATE)
 
-            if not speech_started:
-                if is_speech:
-                    speech_started = True
-                    voiced_s += frame_s
-                    collected.append(frame)
-                elif elapsed >= max_wait:
-                    # No speech at all within the window -> end session.
-                    return None
-            else:
-                collected.append(frame)
-                if is_speech:
-                    silence_run = 0.0
-                    voiced_s += frame_s
+                if not speaking:
+                    waited += frame_s
+                    if is_speech:
+                        onset += 1
+                        collected.append(frame)
+                        if onset >= ONSET_FRAMES:
+                            speaking = True
+                            voiced_s = onset * frame_s
+                    else:
+                        onset = 0
+                        collected = []
+                    if waited >= max_wait:
+                        return None
                 else:
-                    silence_run += frame_s
-                    if silence_run >= end_silence:
+                    collected.append(frame)
+                    length += frame_s
+                    if is_speech:
+                        silence_run = 0.0
+                        voiced_s += frame_s
+                    else:
+                        silence_run += frame_s
+                        if silence_run >= end_silence:
+                            break
+                    if length >= max_len:
+                        logger.info("rec_001: max utterance length reached")
                         break
 
-                if elapsed >= max_len:
-                    logger.info("rec_001: max utterance length reached")
-                    break
+            # Utterance finished. Accept if it has enough real speech, else keep
+            # listening (a short blip must not end the session).
+            if voiced_s >= min_speech:
+                return np.concatenate(collected)
+            logger.info(
+                f"rec_002: discarded short blip ({voiced_s:.2f}s), still listening"
+            )
 
-    # Reject blips with too little actual speech (a common Whisper-hallucination
-    # trigger): treat them as silence.
-    if not collected or voiced_s < config.MIN_SPEECH_S:
-        return None
-    return np.concatenate(collected)
+    return None
