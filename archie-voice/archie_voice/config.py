@@ -59,7 +59,7 @@ TTS_PCM_RATE = _as_int(os.getenv("TTS_PCM_RATE"), 24000)
 # Falls back to TTS_VOICE for unknown personas.
 PERSONA_VOICES = {
     "business": "Achird",  # Friendly — professional
-    "bro": "Charon",  # Informative (male)
+    "bro": "Puck",  # Upbeat — casual (male)
     "flirty": "Zephyr",  # Bright (female)
     "futurebot": "Charon",  # Informative — deep, techy (male)
     "butler": "Sadachbia",  # Lively
