@@ -164,7 +164,7 @@ function renderLeftSidebar() {
     const settingsCollapsed = document.createElement('a');
     settingsCollapsed.href = "#";
     settingsCollapsed.className = "sidebar-item text-gray-300";
-    settingsCollapsed.title = "Настройки чата";
+    settingsCollapsed.title = "Настройки ассистента";
     settingsCollapsed.onclick = (e) => {
         e.preventDefault();
         openChatSettingsModal();
@@ -179,7 +179,7 @@ function renderLeftSidebar() {
         e.preventDefault();
         openChatSettingsModal();
     };
-    settingsExpanded.innerHTML = `<i data-lucide="sliders-horizontal" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Настройки чата</span>`;
+    settingsExpanded.innerHTML = `<i data-lucide="sliders-horizontal" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Настройки ассистента</span>`;
     leftSidebarExpandedMenu.appendChild(settingsExpanded);
 
     renderSpotifyConnectItem(leftSidebarCollapsedIcons, leftSidebarExpandedMenu);
@@ -732,13 +732,18 @@ function setSelectedResponseFormat(format) {
     window.selectedResponseFormat = format;
 }
 
-// Open chat settings modal
+// Assistant character options (mirror UserProfile.PERSONA_CHOICES)
+const ASSISTANT_PERSONAS = [
+    { value: 'business', label: 'Business' },
+    { value: 'bro', label: 'Bro' },
+    { value: 'flirty', label: 'Flirty' },
+    { value: 'futurebot', label: 'Futurebot' },
+    { value: 'butler', label: 'Butler' },
+];
+
+// Open assistant settings modal
 function openChatSettingsModal() {
     const currentLevel = getSelectedGenUILevel();
-    const currentCommandModel = getSelectedCommandModel();
-    const currentFinalOutputModel = getSelectedFinalOutputModel();
-    const currentFormat = getSelectedResponseFormat();
-    
     let selectedLevel = currentLevel;
     
     const modal = document.createElement('div');
@@ -756,9 +761,39 @@ function openChatSettingsModal() {
     
     const title = document.createElement('h2');
     title.className = 'text-xl font-bold text-white mb-6';
-    title.textContent = 'Настройки чата';
+    title.textContent = 'Настройки ассистента';
     modalContent.appendChild(title);
-    
+
+    // Assistant character (persona) — first setting
+    const personaSection = document.createElement('div');
+    personaSection.className = 'mb-6';
+
+    const personaLabel = document.createElement('label');
+    personaLabel.className = 'block text-sm font-medium text-gray-300 mb-2';
+    personaLabel.textContent = 'Характер ассистента';
+    personaSection.appendChild(personaLabel);
+
+    const personaSelect = document.createElement('select');
+    personaSelect.className = 'w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none';
+    personaSelect.style.color = 'white';
+    personaSelect.style.backgroundColor = '#1f2937';
+    ASSISTANT_PERSONAS.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.value;
+        option.textContent = p.label;
+        option.style.backgroundColor = '#1f2937';
+        option.style.color = 'white';
+        personaSelect.appendChild(option);
+    });
+    personaSection.appendChild(personaSelect);
+    modalContent.appendChild(personaSection);
+
+    // Prefill the current persona from the profile (authoritative source)
+    fetch('/api/profile/')
+        .then(r => (r.ok ? r.json() : null))
+        .then(p => { if (p && p.persona) personaSelect.value = p.persona; })
+        .catch(() => {});
+
     // Gen UI Level selection section
     const levelSection = document.createElement('div');
     levelSection.className = 'mb-6';
@@ -790,172 +825,37 @@ function openChatSettingsModal() {
     levelSection.appendChild(levelSelect);
     modalContent.appendChild(levelSection);
     
-    // Command Model selection section
-    const commandModelSection = document.createElement('div');
-    commandModelSection.className = 'mb-6';
-    
-    const commandModelLabel = document.createElement('label');
-    commandModelLabel.className = 'block text-sm font-medium text-gray-300 mb-2';
-    commandModelLabel.textContent = 'Модель для команд';
-    commandModelSection.appendChild(commandModelLabel);
-    
-    const commandModelSelect = document.createElement('select');
-    commandModelSelect.className = 'w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none';
-    commandModelSelect.style.color = 'white';
-    commandModelSelect.style.backgroundColor = '#1f2937';
-    
-    commandModelSection.appendChild(commandModelSelect);
-    modalContent.appendChild(commandModelSection);
-    
-    // Final Output Model selection section
-    const finalOutputModelSection = document.createElement('div');
-    finalOutputModelSection.className = 'mb-6';
-    
-    const finalOutputModelLabel = document.createElement('label');
-    finalOutputModelLabel.className = 'block text-sm font-medium text-gray-300 mb-2';
-    finalOutputModelLabel.textContent = 'Модель для финального ответа';
-    finalOutputModelSection.appendChild(finalOutputModelLabel);
-    
-    const finalOutputModelSelect = document.createElement('select');
-    finalOutputModelSelect.className = 'w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none';
-    finalOutputModelSelect.style.color = 'white';
-    finalOutputModelSelect.style.backgroundColor = '#1f2937';
-    
-    finalOutputModelSection.appendChild(finalOutputModelSelect);
-    modalContent.appendChild(finalOutputModelSection);
-    
-    // Response format selection section
-    const formatSection = document.createElement('div');
-    formatSection.className = 'mb-6';
-    
-    const formatLabel = document.createElement('label');
-    formatLabel.className = 'block text-sm font-medium text-gray-300 mb-2';
-    formatLabel.textContent = 'Формат ответа';
-    formatSection.appendChild(formatLabel);
-    
-    const formatSelect = document.createElement('select');
-    formatSelect.className = 'w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none';
-    formatSelect.style.color = 'white';
-    formatSelect.style.backgroundColor = '#1f2937';
-    
-    formatSection.appendChild(formatSelect);
-    modalContent.appendChild(formatSection);
-    
-    // Function to populate model selects based on level
-    function populateModelSelects(level) {
-        const config = GEN_UI_LEVELS[level];
-        
-        // Clear and populate command model select
-        commandModelSelect.innerHTML = '';
-        config.modelProviders.forEach(provider => {
-            const optgroup = document.createElement('optgroup');
-            optgroup.label = provider === 'openai' ? 'OpenAI' : 'OpenRouter';
-            optgroup.style.backgroundColor = '#374151';
-            optgroup.style.color = 'white';
-            AI_MODELS[provider].forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                option.selected = model === currentCommandModel;
-                option.style.backgroundColor = '#1f2937';
-                option.style.color = 'white';
-                optgroup.appendChild(option);
-            });
-            commandModelSelect.appendChild(optgroup);
-        });
-        
-        // Clear and populate final output model select
-        finalOutputModelSelect.innerHTML = '';
-        config.modelProviders.forEach(provider => {
-            const optgroup = document.createElement('optgroup');
-            optgroup.label = provider === 'openai' ? 'OpenAI' : 'OpenRouter';
-            optgroup.style.backgroundColor = '#374151';
-            optgroup.style.color = 'white';
-            AI_MODELS[provider].forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                option.selected = model === currentFinalOutputModel;
-                option.style.backgroundColor = '#1f2937';
-                option.style.color = 'white';
-                optgroup.appendChild(option);
-            });
-            finalOutputModelSelect.appendChild(optgroup);
-        });
-        
-        // Show/hide command model section
-        commandModelSection.style.display = config.showCommandModel ? 'block' : 'none';
-        
-        // Populate format select and show/hide section
-        formatSelect.innerHTML = '';
-        const availableFormats = RESPONSE_FORMATS.filter(f => config.responseFormats.includes(f.value));
-        
-        // Hide format section if no selectable formats (fixed format with empty responseFormats)
-        if (availableFormats.length === 0 && config.fixedFormat) {
-            formatSection.style.display = 'none';
-        } else {
-            formatSection.style.display = 'block';
-            availableFormats.forEach(format => {
-                const option = document.createElement('option');
-                option.value = format.value;
-                option.textContent = format.label;
-                option.selected = format.value === (config.fixedFormat || currentFormat);
-                option.style.backgroundColor = '#1f2937';
-                option.style.color = 'white';
-                formatSelect.appendChild(option);
-            });
-        }
-        
-        // Disable format select if fixed
-        if (config.fixedFormat) {
-            formatSelect.disabled = true;
-            formatSelect.style.opacity = '0.6';
-            formatSelect.style.cursor = 'not-allowed';
-        } else {
-            formatSelect.disabled = false;
-            formatSelect.style.opacity = '1';
-            formatSelect.style.cursor = 'pointer';
-        }
-    }
-    
-    // Initialize with current level
-    populateModelSelects(currentLevel);
-    
-    // Update selects when level changes
+    // Update the selected level when it changes
     levelSelect.onchange = () => {
         selectedLevel = parseInt(levelSelect.value);
-        populateModelSelects(selectedLevel);
     };
-    
-    // Current settings info
-    const currentInfo = document.createElement('div');
-    currentInfo.className = 'mb-4 p-3 bg-white/10 rounded-lg text-sm';
-    currentInfo.innerHTML = `
-        <div class="text-gray-400 mb-1">Текущие настройки:</div>
-        <div class="text-white">Level: <span class="font-medium">${GEN_UI_LEVELS[currentLevel].name}</span></div>
-        <div class="text-white">Команды: <span class="font-medium">${currentCommandModel}</span></div>
-        <div class="text-white">Финальный ответ: <span class="font-medium">${currentFinalOutputModel}</span></div>
-        <div class="text-white">Формат: <span class="font-medium">${RESPONSE_FORMATS.find(f => f.value === currentFormat)?.label || currentFormat}</span></div>
-    `;
-    modalContent.appendChild(currentInfo);
     
     // Buttons container
     const buttonsContainer = document.createElement('div');
     buttonsContainer.className = 'flex gap-3';
-    
+
     // Save button
     const saveBtn = document.createElement('button');
     saveBtn.className = 'flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors font-medium';
     saveBtn.textContent = 'Сохранить';
-    saveBtn.onclick = () => {
-        const levelConfig = GEN_UI_LEVELS[selectedLevel];
-        
+    saveBtn.onclick = async () => {
         setSelectedGenUILevel(selectedLevel);
-        setSelectedCommandModel(commandModelSelect.value);
-        setSelectedFinalOutputModel(finalOutputModelSelect.value);
-        setSelectedResponseFormat(levelConfig.fixedFormat || formatSelect.value);
-        
-        console.log(`Settings saved - Level: ${selectedLevel}, Command Model: ${commandModelSelect.value}, Final Output Model: ${finalOutputModelSelect.value}, Format: ${levelConfig.fixedFormat || formatSelect.value}`);
+
+        // Persist the assistant character to the profile (DB + Redis via signal)
+        const persona = personaSelect.value;
+        try {
+            await fetch('/api/profile/update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ persona })
+            });
+            window.selectedStyle = persona;
+        } catch (error) {
+            console.error('Failed to save assistant character:', error);
+        }
         document.body.removeChild(modal);
     };
     buttonsContainer.appendChild(saveBtn);

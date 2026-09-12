@@ -12,7 +12,7 @@ const ChatInput = ({
     const [addMenuOpen, setAddMenuOpen] = useState(false);
     const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);
-    const [settingsSubmenu, setSettingsSubmenu] = useState(null); // null, 'commandModel', 'responseModel', 'style'
+    const [settingsSubmenu, setSettingsSubmenu] = useState(null); // null, 'commandModel', 'responseModel'
     
     // Settings state
     const [demoMode, setDemoMode] = useState(() => {
@@ -32,11 +32,6 @@ const ChatInput = ({
         const value = stored === 'true';
         window.noImage = value;
         return value;
-    });
-    const [selectedStyle, setSelectedStyle] = useState(() => {
-        const stored = localStorage.getItem('selectedStyle') || 'Butler';
-        window.selectedStyle = stored;
-        return stored;
     });
     const [selectedFormat, setSelectedFormat] = useState(() => {
         const stored = localStorage.getItem('selectedResponseFormat') || 'ui_answer';
@@ -75,7 +70,6 @@ const ChatInput = ({
     const MIN_HEIGHT = 48;
     const MAX_HEIGHT = 200;
     
-    const styles = ['Business', 'Bro', 'Flirty', 'Futurebot', 'Butler'];
     const formats = [
         { value: 'plain', label: 'Plain Text' },
         { value: 'formatted', label: 'Formatted Text' },
@@ -188,29 +182,6 @@ const ChatInput = ({
         window.noImage = newValue;
     }, [noImage]);
 
-    const handleStyleSelect = useCallback(async (style) => {
-        setSelectedStyle(style);
-        localStorage.setItem('selectedStyle', style);
-        window.selectedStyle = style;
-        
-        // Update user persona via API
-        try {
-            const userName = window.CURRENT_USER_NAME || 'guest';
-            await fetch('/api/user/state/', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_name: userName,
-                    persona: style.toLowerCase()
-                })
-            });
-        } catch (error) {
-            console.error('Failed to update user style:', error);
-        }
-        
-        setSettingsSubmenu(null);
-    }, []);
-    
     const handleFormatSelect = useCallback((format) => {
         setSelectedFormat(format);
         localStorage.setItem('selectedResponseFormat', format);
@@ -482,13 +453,6 @@ const ChatInput = ({
                         label: 'Response Model',
                         hasSubmenu: true,
                         onClick: () => setSettingsSubmenu('responseModel')
-                    }),
-                    React.createElement(MenuItem, {
-                        key: 'style',
-                        icon: 'palette',
-                        label: 'Use style',
-                        hasSubmenu: true,
-                        onClick: () => setSettingsSubmenu('style')
                     })
                 ])
             ]);
@@ -555,52 +519,6 @@ const ChatInput = ({
                             onClick: () => handleResponseModelSelect(model)
                         })
                     ),
-                    React.createElement(BackButton, { key: 'back' })
-                ])
-            ]);
-        }
-        
-        // Style submenu
-        if (settingsSubmenu === 'style') {
-            return React.createElement('div', {
-                ref: settingsMenuRef,
-                className: 'absolute bottom-full left-8 mb-2 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px] z-50'
-            }, [
-                React.createElement('div', {
-                    key: 'header',
-                    className: 'px-3 py-2 border-b border-white/10'
-                }, [
-                    React.createElement('span', {
-                        key: 'title',
-                        className: 'text-sm font-medium text-white'
-                    }, 'Use style')
-                ]),
-                React.createElement('div', {
-                    key: 'menu-content',
-                    className: 'p-2'
-                }, [
-                    ...styles.map(style => 
-                        React.createElement(MenuItem, {
-                            key: style,
-                            icon: 'sparkles',
-                            label: style,
-                            isActive: selectedStyle === style,
-                            onClick: () => handleStyleSelect(style)
-                        })
-                    ),
-                    React.createElement('div', {
-                        key: 'divider',
-                        className: 'h-px bg-white/10 my-2'
-                    }),
-                    React.createElement(MenuItem, {
-                        key: 'create-edit',
-                        icon: 'edit-3',
-                        label: 'Create & edit styles',
-                        onClick: () => {
-                            console.log('Create & edit styles clicked');
-                            setSettingsSubmenu(null);
-                        }
-                    }),
                     React.createElement(BackButton, { key: 'back' })
                 ])
             ]);
