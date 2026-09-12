@@ -1,7 +1,9 @@
 """Microphone helpers and audio playback."""
 
 import logging
+import os
 import subprocess
+import wave
 
 import numpy as np
 import sounddevice as sd
@@ -9,6 +11,8 @@ import sounddevice as sd
 from . import config
 
 logger = logging.getLogger(__name__)
+
+SAMPLES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "samples")
 
 
 def list_input_devices():
@@ -69,25 +73,50 @@ def play_beep(freq=880, ms=140, rate=16000, volume=0.3):
         logger.error(f"audio_error_001: beep failed: {e}")
 
 
-# Distinct cues (different pitch so they're easy to tell apart)
+def play_wav(name, blocking=True, fallback_freq=880):
+    """Play a WAV cue from samples/, normalized loud (~0.95 peak).
+    Falls back to a generated tone if the file is missing/unreadable."""
+    path = os.path.join(SAMPLES_DIR, name)
+    try:
+        with wave.open(path, "rb") as w:
+            rate = w.getframerate()
+            channels = w.getnchannels()
+            frames = w.readframes(w.getnframes())
+        data = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
+        peak = np.max(np.abs(data))
+        if peak > 0:
+            data = data * (0.95 * 32767 / peak)  # normalize to a high, consistent level
+        data = data.astype(np.int16)
+        if channels > 1:
+            data = data.reshape(-1, channels)
+        sd.play(data, samplerate=rate)
+        if blocking:
+            sd.wait()
+    except Exception as e:
+        logger.error(f"audio_error_001: play_wav {name} failed: {e}; using tone")
+        play_beep(freq=fallback_freq)
+
+
+# Distinct cues (real samples in samples/, tone fallback)
 def beep_wake():
     """'I heard you' — right after the wake word."""
-    play_beep(freq=880, ms=140)
+    play_wav("wake.wav", fallback_freq=880)
 
 
 def beep_received():
-    """'Got it, processing' — finished capturing the user's utterance."""
-    play_beep(freq=1046, ms=90)
+    """'Got it, processing' — finished capturing the user's utterance.
+    Non-blocking so it overlaps STT/agent latency instead of adding to it."""
+    play_wav("received.wav", blocking=False, fallback_freq=1046)
 
 
 def beep_ready():
     """'Your turn' — answer finished, listening again."""
-    play_beep(freq=1318, ms=100)
+    play_wav("ready.wav", fallback_freq=1318)
 
 
 def beep_end():
     """'Session closed' — went back to waiting for the wake word."""
-    play_beep(freq=440, ms=200)
+    play_wav("end.wav", fallback_freq=440)
 
 
 def play_pcm(pcm_bytes, rate):
