@@ -31,7 +31,10 @@ class Transcriber:
         segments, _info = self.model.transcribe(
             audio,
             language=config.STT_LANGUAGE,
-            vad_filter=True,  # drop non-speech before decoding
+            # Our webrtcvad recorder already gates on real speech; faster-whisper's
+            # own Silero VAD over-filters the narrowband BT mic and drops whole
+            # utterances (transcribes to ''), so keep it off.
+            vad_filter=False,
             condition_on_previous_text=False,  # don't let prior text bias output
             no_speech_threshold=0.6,
             log_prob_threshold=-1.0,
