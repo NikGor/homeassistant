@@ -17,6 +17,7 @@ from . import config
 logger = logging.getLogger(__name__)
 
 _TAG_RE = re.compile(r"<[^>]+>")
+_BRACKET_RE = re.compile(r"\[[^\]]*\]")  # Gemini inline audio tags, e.g. [excited]
 _WS_RE = re.compile(r"\s+")
 
 
@@ -68,7 +69,10 @@ def get_persona():
 
 
 def ask(user_input, conversation_id, persona=None):
-    """Send the user's text to the agent; return cleaned plain-text answer."""
+    """Send the user's text to the agent; return the raw spoken text.
+
+    Use for_tts() / for_display() on the result depending on the target.
+    """
     url = f"{config.API_BASE}/ai-assistant/api/messages/"
     payload = {
         "user_name": config.USER_NAME,
@@ -81,6 +85,29 @@ def ask(user_input, conversation_id, persona=None):
     resp = requests.post(url, json=payload, timeout=120)
     resp.raise_for_status()
     data = resp.json()
-    cleaned = strip_ssml(_extract_ssml(data))
-    logger.info(f"agent_001: answer ({len(cleaned)} chars): '{cleaned[:80]}'")
-    return cleaned
+    raw = _extract_ssml(data)
+    logger.info(f"agent_001: answer ({len(raw)} chars): '{for_display(raw)[:80]}'")
+    return raw
+
+
+def for_tts(raw):
+    """Text to feed the TTS engine.
+
+    In "gemini_tts" mode keep Gemini inline audio tags (e.g. [excited]) — the
+    model interprets them. Otherwise strip SSML <tags> (Gemini can't read them).
+    """
+    if not raw:
+        return ""
+    if config.RESPONSE_FORMAT == "gemini_tts":
+        return _WS_RE.sub(" ", html.unescape(str(raw))).strip()
+    return strip_ssml(raw)
+
+
+def for_display(raw):
+    """Clean text for the screen/log: drop both <tags> and [inline tags]."""
+    if not raw:
+        return ""
+    text = _TAG_RE.sub(" ", str(raw))
+    text = _BRACKET_RE.sub(" ", text)
+    text = html.unescape(text)
+    return _WS_RE.sub(" ", text).strip()

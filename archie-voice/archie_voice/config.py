@@ -27,6 +27,8 @@ def _as_float(value, default):
 USER_NAME = os.getenv("ARCHIE_USER_NAME", "Niko")
 # Base URL of the Django webapp that proxies to the agent and persists messages.
 API_BASE = os.getenv("ARCHIE_API_BASE", "http://localhost:8000").rstrip("/")
+# "ssml" (agent returns SSML, tags stripped) or "gemini_tts" (agent returns text
+# with Gemini inline audio tags like [excited]; kept and fed straight to the TTS).
 RESPONSE_FORMAT = os.getenv("ARCHIE_RESPONSE_FORMAT", "ssml")
 
 # --- Wake word (OpenWakeWord) ----------------------------------------------

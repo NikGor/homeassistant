@@ -70,8 +70,8 @@ def _converse(transcriber):
             audio.stop_thinking()
 
         if answer:
-            print(f"🤖 Archie: {answer}")
-            tts.speak(answer, voice=voice)
+            print(f"🤖 Archie: {agent.for_display(answer)}")
+            tts.speak(agent.for_tts(answer), voice=voice)
         # Answer done — cue the user and listen for a follow-up.
         audio.beep_ready()
 
