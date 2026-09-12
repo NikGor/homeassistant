@@ -51,6 +51,24 @@ def test_microphone(device_id=None, seconds=2):
     return True
 
 
+def play_beep(freq=880, ms=140, rate=16000, volume=0.3):
+    """Play a short confirmation beep (generated tone, no file needed)."""
+    n = int(rate * ms / 1000)
+    t = np.arange(n) / rate
+    tone = np.sin(2 * np.pi * freq * t)
+    # 10 ms fade in/out to avoid clicks
+    fade = max(1, int(rate * 0.01))
+    env = np.ones(n)
+    env[:fade] = np.linspace(0, 1, fade)
+    env[-fade:] = np.linspace(1, 0, fade)
+    samples = (tone * env * volume * 32767).astype(np.int16)
+    try:
+        sd.play(samples, samplerate=rate)
+        sd.wait()
+    except Exception as e:
+        logger.error(f"audio_error_001: beep failed: {e}")
+
+
 def play_pcm(pcm_bytes, rate):
     """Play raw 16-bit little-endian mono PCM."""
     data = np.frombuffer(pcm_bytes, dtype=np.int16)

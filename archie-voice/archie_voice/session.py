@@ -2,7 +2,7 @@
 
 import logging
 
-from . import agent, config, recorder, tts
+from . import agent, audio, config, recorder, tts
 from .stt import Transcriber
 from .wake import WakeWord
 
@@ -74,6 +74,7 @@ def run():
         while True:
             wake.wait_for_wake()
             print("🎯 Wake word detected!")
+            audio.play_beep()  # audible "I heard you" cue
             _converse(transcriber)
     except KeyboardInterrupt:
         print("\n👋 Stopping.")
