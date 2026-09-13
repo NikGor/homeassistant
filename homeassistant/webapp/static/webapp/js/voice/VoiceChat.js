@@ -38,7 +38,9 @@ const VoiceChat = () => {
     const listenDeadlineRef = useRef(0);
     const turnGotResultRef = useRef(false);
     const audioCtxRef = useRef(null);
-    const currentSourceRef = useRef(null); // active WAV BufferSource, for stop()
+    const currentSourceRef = useRef(null); // active answer BufferSource, for stop()
+    const cueBuffersRef = useRef({}); // cue type -> decoded AudioBuffer (cached)
+    const thinkingSourceRef = useRef(null); // looping "thinking" cue source
 
     const LISTEN_WINDOW_MS = 10000; // end the session after 10s of silence
 
@@ -54,6 +56,48 @@ const VoiceChat = () => {
         return ctx;
     };
 
+    // Real WAV cue samples (same files the Pi assistant uses), resolved to
+    // hashed static URLs in the template. Fetched + decoded once, then cached.
+    const loadCueBuffer = async (type) => {
+        if (cueBuffersRef.current[type]) return cueBuffersRef.current[type];
+        const url = (window.VOICE_CUE_URLS || {})[type];
+        const ctx = getAudioCtx();
+        if (!url || !ctx) return null;
+        try {
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error(`cue HTTP ${resp.status}`);
+            const buf = await ctx.decodeAudioData(await resp.arrayBuffer());
+            cueBuffersRef.current[type] = buf;
+            return buf;
+        } catch (e) {
+            console.warn(`VoiceChat: cue "${type}" load failed, using tone`, e);
+            return null;
+        }
+    };
+
+    // Warm the cache on session start so cues fire without a decode delay.
+    const preloadCues = () => {
+        ['start', 'received', 'ready', 'end', 'thinking'].forEach(loadCueBuffer);
+    };
+
+    const playCueBuffer = (ctx, buffer, loop = false) => {
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        src.loop = loop;
+        src.connect(ctx.destination);
+        src.start();
+        return src;
+    };
+
+    // Synthesized fallback for when a WAV cue has no URL (error) or fails to load.
+    const TONE_CUES = {
+        start: [[660, 0, 0.12], [880, 0.10, 0.14]],
+        received: [[540, 0, 0.11]],
+        ready: [[784, 0, 0.13]],
+        end: [[540, 0, 0.11], [340, 0.10, 0.17]],
+        error: [[220, 0, 0.28, 0.12]],
+    };
+
     const tone = (ctx, freq, startAt, dur, peak = 0.14) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -67,22 +111,52 @@ const VoiceChat = () => {
         osc.stop(startAt + dur + 0.03);
     };
 
-    // [freq, offset (s), duration (s)] sequences — short, distinct tones
-    const CUES = {
-        start: [[660, 0, 0.12], [880, 0.10, 0.14]],   // rising: session opened
-        received: [[540, 0, 0.11]],                    // single tick: got your words
-        ready: [[784, 0, 0.13]],                       // bright: answer ready
-        end: [[540, 0, 0.11], [340, 0.10, 0.17]],      // falling: session closed
-        error: [[220, 0, 0.28, 0.12]],                 // low buzz
+    const toneFallback = (type) => {
+        const ctx = getAudioCtx();
+        const seq = TONE_CUES[type];
+        if (!ctx || !seq) return;
+        const t0 = ctx.currentTime + 0.01;
+        seq.forEach(([f, off, dur, peak]) => tone(ctx, f, t0 + off, dur, peak));
     };
 
+    // Play a one-shot cue: prefer the WAV sample, fall back to a tone.
     const beep = (type) => {
         const ctx = getAudioCtx();
         if (!ctx) return;
-        const seq = CUES[type];
-        if (!seq) return;
-        const t0 = ctx.currentTime + 0.01;
-        seq.forEach(([f, off, dur, peak]) => tone(ctx, f, t0 + off, dur, peak));
+        const buf = cueBuffersRef.current[type];
+        if (buf) { playCueBuffer(ctx, buf); return; }
+        if ((window.VOICE_CUE_URLS || {})[type]) {
+            loadCueBuffer(type).then((b) => {
+                const c = getAudioCtx();
+                if (b && c) playCueBuffer(c, b);
+                else toneFallback(type);
+            });
+            return;
+        }
+        toneFallback(type);
+    };
+
+    // Loop the "thinking" cue while waiting for the agent (matches the Pi).
+    const startThinking = () => {
+        stopThinking();
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const buf = cueBuffersRef.current['thinking'];
+        if (buf) {
+            thinkingSourceRef.current = playCueBuffer(ctx, buf, true);
+            return;
+        }
+        loadCueBuffer('thinking').then((b) => {
+            const c = getAudioCtx();
+            if (b && c && sessionActiveRef.current && !thinkingSourceRef.current) {
+                thinkingSourceRef.current = playCueBuffer(c, b, true);
+            }
+        });
+    };
+
+    const stopThinking = () => {
+        try { thinkingSourceRef.current?.stop?.(); } catch (_) { /* noop */ }
+        thinkingSourceRef.current = null;
     };
 
     // ── Helpers ────────────────────────────────────────────────────────────
@@ -133,6 +207,7 @@ const VoiceChat = () => {
     };
 
     const stopPlayback = () => {
+        stopThinking();
         try { currentSourceRef.current?.stop?.(); } catch (_) { /* noop */ }
         currentSourceRef.current = null;
         if (ttsSupported) {
@@ -216,6 +291,7 @@ const VoiceChat = () => {
     const handleUserInput = useCallback(async (transcript) => {
         if (!sessionActiveRef.current) return;
         setStatus('thinking');
+        startThinking();
 
         await saveMessage('user', transcript);
 
@@ -236,12 +312,14 @@ const VoiceChat = () => {
             cleaned = stripSsml(extractSsml(data));
         } catch (e) {
             console.error('VoiceChat: agent request failed', e);
+            stopThinking();
             beep('error');
             setError('Voice assistant is unavailable');
             endSession(false);
             return;
         }
 
+        stopThinking();
         if (!sessionActiveRef.current) return;
 
         if (cleaned) {
@@ -342,7 +420,8 @@ const VoiceChat = () => {
         setAnswer('');
         conversationIdRef.current = genUUID();
         sessionActiveRef.current = true;
-        beep('start'); // also unlocks the AudioContext on this user gesture
+        preloadCues();  // unlocks the AudioContext on this user gesture + warms cache
+        beep('start');
         startListening();
     }, [supported, startListening]);
 

@@ -206,6 +206,17 @@
     <script src="{% static 'webapp/js/chat.js' %}"></script>
 
     <!-- Voice Chat -->
+    <script>
+        // Hashed static URLs for the voice audio cues (ManifestStaticFilesStorage
+        // in production), resolved here so VoiceChat.js can fetch them at runtime.
+        window.VOICE_CUE_URLS = {
+            start: "{% static 'webapp/audio/wake.wav' %}",
+            received: "{% static 'webapp/audio/received.wav' %}",
+            ready: "{% static 'webapp/audio/ready.wav' %}",
+            end: "{% static 'webapp/audio/end.wav' %}",
+            thinking: "{% static 'webapp/audio/thinking.wav' %}"
+        };
+    </script>
     <script src="{% static 'webapp/js/voice/VoiceChat.js' %}"></script>
 
     <!-- Main Initialization -->
