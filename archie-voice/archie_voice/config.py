@@ -78,6 +78,16 @@ except ImportError:
         "butler": "Sadachbia",
     }
 
+# --- Announce (scheduled voice messages over Redis pub/sub) -----------------
+# The agent's cron publishes to ANNOUNCE_CHANNEL; we synthesize + speak it.
+# archie-voice runs on the host, so Redis is reached via the mapped localhost
+# port (not the "redis" Docker hostname the agent container uses).
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = _as_int(os.getenv("REDIS_PORT"), 6379)
+REDIS_DB = _as_int(os.getenv("REDIS_DB"), 0)
+ANNOUNCE_CHANNEL = os.getenv("ANNOUNCE_CHANNEL", "archie:voice:announce")
+ANNOUNCE_ENABLED = os.getenv("ANNOUNCE_ENABLED", "1") not in ("0", "false", "False", "")
+
 # --- Audio ------------------------------------------------------------------
 SAMPLE_RATE = 16000
 MIC_DEVICE = _as_int(os.getenv("MIC_DEVICE"), None)  # None -> system default

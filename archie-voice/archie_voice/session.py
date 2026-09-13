@@ -2,7 +2,7 @@
 
 import logging
 
-from . import agent, audio, config, recorder, tts, wavutil
+from . import agent, announce, audio, config, recorder, tts, wavutil
 from .stt import Transcriber
 from .wake import WakeWord
 
@@ -78,7 +78,9 @@ def _converse(transcriber):
 
         if answer:
             print(f"🤖 Archie: {agent.for_display(answer)}")
-            tts_bytes = tts.speak(agent.for_tts(answer), voice=voice)
+            # Hold the shared lock so a scheduled announcement can't play on top.
+            with announce.PLAYBACK_LOCK:
+                tts_bytes = tts.speak(agent.for_tts(answer), voice=voice)
             # Save the assistant's spoken answer to its message.
             if tts_bytes and ids.get("message_id"):
                 if config.TTS_FORMAT == "pcm":
@@ -99,6 +101,7 @@ def run():
     print(f"user_name={config.USER_NAME}  api={config.API_BASE}")
     transcriber = Transcriber()
     wake = WakeWord()
+    announce.start_listener()  # speak scheduled messages pushed over Redis
 
     try:
         while True:
