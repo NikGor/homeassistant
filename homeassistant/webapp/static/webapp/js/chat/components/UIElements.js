@@ -2033,11 +2033,17 @@ const ChatMessage = ({ message, onExecute }) => {
                         ? React.createElement('span', {
                             key: 'eq', className: 'voice-eq', 'aria-hidden': 'true'
                         }, [0, 1, 2].map(i => React.createElement('span', { key: i })))
-                        : React.createElement('i', {
+                        // Inline SVG (not a lucide <i>): lucide.createIcons() would
+                        // swap the <i> for an <svg> outside React, and toggling to the
+                        // equalizer then crashes reconciliation (removeChild), blanking
+                        // the whole chat.
+                        : React.createElement('svg', {
                             key: 'play',
-                            'data-lucide': 'play',
+                            viewBox: '0 0 24 24',
+                            fill: 'currentColor',
+                            'aria-hidden': 'true',
                             className: 'w-3.5 h-3.5 translate-x-[1px]'
-                        }))
+                        }, React.createElement('path', { d: 'M8 5v14l11-7z' })))
                 ]),
                 React.createElement('div', {
                     key: 'message-content',
