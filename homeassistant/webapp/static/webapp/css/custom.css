@@ -1005,3 +1005,136 @@ body.voice-mode .orb {
 @media (prefers-reduced-motion: reduce) {
     .voice-eq > span { animation: none; transform: scaleY(0.6); }
 }
+
+/* ============================================================
+   Mobile layout (≤768px)
+   The desktop shell is a rigid three-column flex row
+   (left rail | content | right rail). On a phone those rails
+   crush the content, so here the sidebars become off-canvas
+   drawers that slide in over a full-width content area, driven
+   by a fixed glass top bar and a tap-to-dismiss scrim.
+   ============================================================ */
+
+/* Hidden on desktop; the media query below reveals them. */
+.mobile-header { display: none; }
+#mobile-scrim { display: none; }
+
+@keyframes brand-dot-pulse {
+    0%, 100% { opacity: 0.55; transform: scale(0.85); box-shadow: 0 0 6px 0 rgba(0, 191, 255, 0.5); }
+    50%      { opacity: 1;    transform: scale(1.1);  box-shadow: 0 0 12px 2px rgba(0, 191, 255, 0.8); }
+}
+
+@media (max-width: 768px) {
+    /* Avoid the mobile-browser 100vh bug clipping the input bar. */
+    body, html { height: 100dvh; }
+
+    /* ── Fixed translucent top bar ─────────────────────────── */
+    .mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3.5rem;
+        padding: 0 0.5rem;
+        z-index: 45;
+        background: rgba(10, 10, 12, 0.72);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .mobile-header__btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 0.75rem;
+        color: #cbd5e1;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+    .mobile-header__btn:active { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+    .mobile-header__brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        font-size: 1.05rem;
+        letter-spacing: 0.01em;
+        color: #f1f5f9;
+        user-select: none;
+    }
+    .mobile-header__brand-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #00bfff;
+        animation: brand-dot-pulse 2.6s ease-in-out infinite;
+    }
+
+    /* ── Content sits below the bar and spans full width ───── */
+    #main-content-area {
+        margin-top: 3.5rem;
+        height: calc(100% - 3.5rem);
+    }
+
+    /* ── Sidebars become off-canvas drawers ────────────────── */
+    #left-sidebar,
+    #right-sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        width: min(86vw, 340px) !important;
+        z-index: 50;
+        padding: 1rem 0.75rem;
+        overflow-y: auto;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.55);
+    }
+    #left-sidebar {
+        left: 0;
+        transform: translateX(-100%);
+    }
+    #right-sidebar {
+        right: 0;
+        transform: translateX(100%);
+    }
+
+    /* Open state — the toggle logic adds `w-72` when expanded. */
+    #left-sidebar.w-72,
+    #right-sidebar.w-72 { transform: translateX(0); }
+
+    /* Collapsed rails must never occupy a column on mobile. */
+    #left-sidebar.w-20 { transform: translateX(-100%); }
+    #right-sidebar.w-20 { transform: translateX(100%); }
+
+    /* Header + scrim drive the drawers — the in-panel chevrons are noise. */
+    #left-sidebar-toggle-btn,
+    #right-sidebar-toggle-btn { display: none; }
+
+    /* The desktop height cap on the chat list breaks inside a full drawer. */
+    #chats-container-expanded { max-height: none !important; }
+
+    /* ── Scrim behind an open drawer ───────────────────────── */
+    #mobile-scrim {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 44;
+        background: rgba(0, 0, 0, 0.55);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    body.drawer-open #mobile-scrim {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}

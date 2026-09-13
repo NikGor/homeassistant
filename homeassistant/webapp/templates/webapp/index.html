@@ -57,6 +57,26 @@
     <!-- Анимированный фоновый элемент (дышащий круг) -->
     <div class="orb"></div>
 
+    <!--
+      МОБИЛЬНАЯ ШАПКА (видна только на узких экранах, ≤768px)
+      Кнопки открывают сайдбары-drawer'ы.
+    -->
+    <header class="mobile-header">
+        <button id="mobile-open-chats" class="mobile-header__btn" title="Chats" aria-label="Open chats">
+            <i data-lucide="messages-square" class="w-6 h-6"></i>
+        </button>
+        <div class="mobile-header__brand">
+            <span class="mobile-header__brand-dot"></span>
+            <span>Archie</span>
+        </div>
+        <button id="mobile-open-apps" class="mobile-header__btn" title="Menu" aria-label="Open menu">
+            <i data-lucide="layout-grid" class="w-6 h-6"></i>
+        </button>
+    </header>
+
+    <!-- Затемнение под открытым drawer'ом (тап закрывает) -->
+    <div id="mobile-scrim"></div>
+
     <!-- 
       ЛЕВАЯ БОКОВАЯ ПАНЕЛЬ ("Арчи")
     -->
@@ -224,6 +244,9 @@
 
     <!-- Main Initialization -->
     <script src="{% static_v 'webapp/js/main.js' %}"></script>
+
+    <!-- Mobile drawer wiring (top-bar buttons + scrim) -->
+    <script src="{% static_v 'webapp/js/mobile.js' %}"></script>
 </body>
 
 </html>
