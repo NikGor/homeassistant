@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import struct
 import uuid
 
 import requests
@@ -20,8 +21,54 @@ from .models import Conversation, Message
 # AI Agent URL - keep for AI functionality
 AI_AGENT_URL = os.getenv("AI_AGENT_URL", "http://archie-ai-agent:8005")
 
+# --- Persona-voice TTS (OpenRouter Gemini) ---------------------------------
+# Mirrors archie-voice: the frontend Voice Chat sends the assistant's answer here
+# and gets back audio spoken in the persona's own voice. Requires OPENROUTER_API_KEY
+# in the webapp environment; when it is absent the endpoint returns 503 and the
+# frontend falls back to the browser's built-in speechSynthesis.
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE = os.getenv("OPENROUTER_BASE", "https://openrouter.ai/api/v1").rstrip(
+    "/"
+)
+TTS_MODEL = os.getenv("TTS_MODEL", "google/gemini-3.1-flash-tts-preview")
+TTS_PCM_RATE = int(os.getenv("TTS_PCM_RATE", "24000"))
+TTS_DEFAULT_VOICE = os.getenv("TTS_VOICE", "Kore")
+
+# Assistant persona -> Gemini TTS voice (kept in sync with archie-voice config).
+PERSONA_VOICES = {
+    "business": "Achird",  # Friendly — professional
+    "bro": "Puck",  # Upbeat — casual (male)
+    "flirty": "Zephyr",  # Bright (female)
+    "futurebot": "Charon",  # Informative — deep, techy (male)
+    "butler": "Sadachbia",  # Lively
+}
+
 # Setup logging
 logger = logging.getLogger(__name__)
+
+
+def _pcm_to_wav(pcm_bytes, sample_rate=24000, channels=1, sample_width=2):
+    """Wrap raw little-endian PCM16 in a minimal WAV container.
+
+    Gemini TTS only returns headerless PCM; the browser's decodeAudioData needs a
+    real container, so we prepend a 44-byte WAV header (no extra deps).
+    """
+    data_size = len(pcm_bytes)
+    byte_rate = sample_rate * channels * sample_width
+    block_align = channels * sample_width
+    header = b"RIFF" + struct.pack("<I", 36 + data_size) + b"WAVE"
+    header += b"fmt " + struct.pack(
+        "<IHHIIHH",
+        16,  # PCM fmt chunk size
+        1,  # audio format = PCM
+        channels,
+        sample_rate,
+        byte_rate,
+        block_align,
+        sample_width * 8,  # bits per sample
+    )
+    header += b"data" + struct.pack("<I", data_size)
+    return header + pcm_bytes
 
 
 def add_cors_headers(response):
@@ -59,9 +106,9 @@ def aggregate_message_trace(llm_trace, pipeline_trace):
         totals["output_tokens"] += trace.get("output_tokens") or 0
         totals["total_tokens"] += trace.get("total_tokens") or 0
         totals["total_cost"] += trace.get("total_cost") or 0.0
-        totals["input_cached_tokens"] += (
-            trace.get("input_tokens_details") or {}
-        ).get("cached_tokens") or 0
+        totals["input_cached_tokens"] += (trace.get("input_tokens_details") or {}).get(
+            "cached_tokens"
+        ) or 0
         totals["output_reasoning_tokens"] += (
             trace.get("output_tokens_details") or {}
         ).get("reasoning_tokens") or 0
@@ -355,9 +402,7 @@ def proxy_send_message(request):
 
         # Per-message cost is the sum of all pipeline stages (command_call may
         # run on a different, pricier model than create_output).
-        totals = aggregate_message_trace(
-            assistant_llm_trace, assistant_pipeline_trace
-        )
+        totals = aggregate_message_trace(assistant_llm_trace, assistant_pipeline_trace)
         input_tokens = totals["input_tokens"]
         output_tokens = totals["output_tokens"]
         total_tokens = totals["total_tokens"]
@@ -649,3 +694,78 @@ def save_message(request):
         logger.error(f"ai_assistant_error_050: Failed to save message: {e}")
         error_response = JsonResponse({"error": str(e)}, status=500)
         return add_cors_headers(error_response)
+
+
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def synth_speech(request):
+    """Synthesize an assistant answer in the caller's persona voice.
+
+    Body: {"text": str, "persona"?: str, "user_name"?: str}. The persona picks the
+    Gemini voice (PERSONA_VOICES); if it is omitted we resolve it from the user's
+    Redis state. Returns audio/wav (PCM16 @ 24 kHz). Used by the frontend Voice
+    Chat; on 4xx/5xx the frontend falls back to browser speechSynthesis.
+    """
+    logger.info("ai_assistant_060: Processing TTS request")
+    if request.method == "OPTIONS":
+        return add_cors_headers(HttpResponse())
+    try:
+        data = json.loads(request.body) if request.body else {}
+        text = (data.get("text") or "").strip()
+        if not text:
+            return add_cors_headers(
+                JsonResponse({"error": "text is required"}, status=400)
+            )
+        if not OPENROUTER_API_KEY:
+            logger.warning(
+                "ai_assistant_061: TTS requested but OPENROUTER_API_KEY is not set"
+            )
+            return add_cors_headers(
+                JsonResponse({"error": "TTS not configured"}, status=503)
+            )
+
+        persona = data.get("persona")
+        if not persona:
+            user_name = data.get("user_name")
+            if user_name:
+                try:
+                    state = redis_client.get_user_state_by_name(user_name)
+                    persona = getattr(state, "persona", None) if state else None
+                except Exception as e:
+                    logger.error(f"ai_assistant_error_060: persona lookup failed: {e}")
+        voice = PERSONA_VOICES.get(persona, TTS_DEFAULT_VOICE)
+
+        resp = requests.post(
+            f"{OPENROUTER_BASE}/audio/speech",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": TTS_MODEL,
+                "input": text,
+                "voice": voice,
+                "response_format": "pcm",
+            },
+            timeout=120,
+        )
+        if resp.status_code >= 400:
+            logger.error(
+                f"ai_assistant_error_061: TTS upstream {resp.status_code}: "
+                f"{resp.text[:300]}"
+            )
+            return add_cors_headers(
+                JsonResponse({"error": "TTS upstream error"}, status=502)
+            )
+
+        wav = _pcm_to_wav(resp.content, TTS_PCM_RATE)
+        logger.info(
+            f"ai_assistant_062: Synthesized {len(wav)} bytes "
+            f"(persona={persona}, voice={voice})"
+        )
+        audio_response = HttpResponse(wav, content_type="audio/wav")
+        audio_response["X-Voice"] = voice
+        return add_cors_headers(audio_response)
+    except Exception as e:
+        logger.error(f"ai_assistant_error_062: TTS failed: {e}")
+        return add_cors_headers(JsonResponse({"error": str(e)}, status=500))

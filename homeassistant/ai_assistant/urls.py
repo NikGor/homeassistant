@@ -24,4 +24,5 @@ urlpatterns = [
     path("api/generate-title/", views.generate_title, name="generate_title"),
     path("api/process-images/", views.process_images, name="process_images"),
     path("api/save-message/", views.save_message, name="save_message"),
+    path("api/tts/", views.synth_speech, name="synth_speech"),
 ]
