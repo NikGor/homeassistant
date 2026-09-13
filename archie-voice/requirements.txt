@@ -22,3 +22,8 @@ numpy>=1.24
 # Agent / TTS over HTTP
 requests>=2.31
 python-dotenv>=1.0
+
+# Shared constants (persona -> TTS voice), same package the webapp uses.
+# Editable install of the sibling dir; requires Python >=3.11 (Pi OS is 3.12).
+# Run from the archie-voice/ directory: `pip install -r requirements.txt`.
+-e ../archie-shared

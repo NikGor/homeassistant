@@ -6,6 +6,7 @@ import struct
 import uuid
 
 import requests
+from archie_shared.voice import DEFAULT_TTS_VOICE, voice_for_persona
 from asgiref.sync import async_to_sync
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
@@ -32,16 +33,9 @@ OPENROUTER_BASE = os.getenv("OPENROUTER_BASE", "https://openrouter.ai/api/v1").r
 )
 TTS_MODEL = os.getenv("TTS_MODEL", "google/gemini-3.1-flash-tts-preview")
 TTS_PCM_RATE = int(os.getenv("TTS_PCM_RATE", "24000"))
-TTS_DEFAULT_VOICE = os.getenv("TTS_VOICE", "Kore")
-
-# Assistant persona -> Gemini TTS voice (kept in sync with archie-voice config).
-PERSONA_VOICES = {
-    "business": "Achird",  # Friendly — professional
-    "bro": "Puck",  # Upbeat — casual (male)
-    "flirty": "Zephyr",  # Bright (female)
-    "futurebot": "Charon",  # Informative — deep, techy (male)
-    "butler": "Sadachbia",  # Lively
-}
+# Persona -> Gemini voice lives in archie-shared (single source of truth, shared
+# with archie-voice). TTS_VOICE env can still override the default fallback.
+TTS_DEFAULT_VOICE = os.getenv("TTS_VOICE", DEFAULT_TTS_VOICE)
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -733,7 +727,7 @@ def synth_speech(request):
                     persona = getattr(state, "persona", None) if state else None
                 except Exception as e:
                     logger.error(f"ai_assistant_error_060: persona lookup failed: {e}")
-        voice = PERSONA_VOICES.get(persona, TTS_DEFAULT_VOICE)
+        voice = voice_for_persona(persona) if persona else TTS_DEFAULT_VOICE
 
         resp = requests.post(
             f"{OPENROUTER_BASE}/audio/speech",

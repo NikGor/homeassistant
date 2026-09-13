@@ -57,15 +57,26 @@ TTS_VOICE = os.getenv("TTS_VOICE", "Kore")
 TTS_FORMAT = os.getenv("TTS_FORMAT", "pcm")
 TTS_PCM_RATE = _as_int(os.getenv("TTS_PCM_RATE"), 24000)
 
-# Assistant persona -> Gemini TTS voice (style-matched, male/female mix).
-# Falls back to TTS_VOICE for unknown personas.
-PERSONA_VOICES = {
-    "business": "Achird",  # Friendly — professional
-    "bro": "Puck",  # Upbeat — casual (male)
-    "flirty": "Zephyr",  # Bright (female)
-    "futurebot": "Charon",  # Informative — deep, techy (male)
-    "butler": "Sadachbia",  # Lively
-}
+# Assistant persona -> Gemini TTS voice. Single source of truth in archie-shared
+# (shared with the webapp Voice Chat). If the package is not installed in this
+# venv we fall back to a local copy so the systemd service still runs; install
+# archie-shared (`pip install -e ../archie-shared`) to keep the two in sync.
+try:
+    from archie_shared.voice import PERSONA_VOICES  # noqa: F401
+except ImportError:
+    import logging
+
+    logging.getLogger(__name__).warning(
+        "config_warn_001: archie_shared not installed — using bundled PERSONA_VOICES "
+        "fallback; run `pip install -e ../archie-shared` to share with the webapp"
+    )
+    PERSONA_VOICES = {
+        "business": "Achird",
+        "bro": "Puck",
+        "flirty": "Zephyr",
+        "futurebot": "Charon",
+        "butler": "Sadachbia",
+    }
 
 # --- Audio ------------------------------------------------------------------
 SAMPLE_RATE = 16000
