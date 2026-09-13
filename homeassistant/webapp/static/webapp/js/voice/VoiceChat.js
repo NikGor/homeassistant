@@ -251,9 +251,13 @@ const VoiceChat = () => {
         }
     };
 
-    const startUserRecording = () => {
-        const stream = micStreamRef.current;
-        if (!stream || typeof MediaRecorder === 'undefined') return;
+    const startUserRecording = async () => {
+        // Wait for the mic stream so the first utterance is recorded too (getUserMedia
+        // may still be resolving when the first recognition turn begins).
+        const stream = await ensureMicStream();
+        if (!stream || typeof MediaRecorder === 'undefined' || !sessionActiveRef.current) {
+            return;
+        }
         // Discard any previous recorder (e.g. a silent retry within the window).
         const prev = recorderRef.current;
         if (prev && prev.state !== 'inactive') {
@@ -523,7 +527,7 @@ const VoiceChat = () => {
         }
     }, [ttsSupported]);
 
-    const startSession = useCallback(() => {
+    const startSession = useCallback(async () => {
         if (sessionActiveRef.current) return;
         if (!supported) {
             setError('Voice chat is not supported in this browser');
@@ -534,8 +538,10 @@ const VoiceChat = () => {
         conversationIdRef.current = genUUID();
         sessionActiveRef.current = true;
         preloadCues();  // unlocks the AudioContext on this user gesture + warms cache
-        ensureMicStream(); // request the mic for recording (parallel to STT)
         beep('start');
+        // Acquire the mic up front so the first utterance is recorded (not just STT).
+        await ensureMicStream();
+        if (!sessionActiveRef.current) return; // cancelled during the permission prompt
         startListening();
     }, [supported, startListening]);
 
