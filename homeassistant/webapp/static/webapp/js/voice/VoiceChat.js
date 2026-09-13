@@ -1,15 +1,16 @@
 // VoiceChat — real-time, hands-free voice assistant.
 //
 // Flow (one session == one saved conversation):
-//   mic press -> listen (STT, ru-RU) -> send {input, response_format: "ssml"}
-//   to the agent -> receive SSML -> strip tags -> speak in the persona's voice
-//   (backend Gemini TTS, browser speechSynthesis fallback) + show on screen ->
+//   mic press -> listen (STT, ru-RU) -> send {input, response_format:"gemini_tts"}
+//   to the agent -> receive a director's-note + transcript block -> feed the whole
+//   block verbatim to the persona's Gemini voice (POST /ai-assistant/api/tts/,
+//   browser speechSynthesis fallback), show only the transcript on screen ->
 //   listen again. After 10s of silence, or on the cancel (X) button, the session
 //   ends. Every turn is persisted to the same conversation.
 //
-// Audio cues (Web Audio, synthesized — no files): start, received, ready, end,
-// error. Persona voice comes from POST /ai-assistant/api/tts/ (resolves the
-// Gemini voice from the user's persona server-side).
+// Audio cues are the real WAV samples the Pi assistant uses (start/received/
+// ready/end + looped thinking), with synthesized tones as fallback. Persona voice
+// resolves from the user's persona server-side (same mapping as archie-voice).
 
 const VoiceChat = () => {
     const { useState, useRef, useEffect, useCallback } = React;
@@ -178,13 +179,27 @@ const VoiceChat = () => {
         return t.value;
     };
 
-    // Strip SSML/XML markup down to plain readable text (for both TTS and display)
-    const stripSsml = (raw) => {
+    // gemini_tts marker separating the director's note from the spoken transcript.
+    const TRANSCRIPT_RE = /##\s*Transcript:\s*/i;
+
+    // What to feed the TTS engine: the whole gemini_tts block verbatim — the
+    // director's note + [inline tags] IS the prompt (Gemini reads it as style and
+    // speaks only the transcript). Mirrors archie-voice agent.for_tts().
+    const forTts = (raw) => {
         if (!raw) return '';
-        let s = String(raw);
-        s = s.replace(/<[^>]+>/g, ' ');
-        s = decodeEntities(s);
-        return s.replace(/\s+/g, ' ').trim();
+        return decodeEntities(String(raw)).trim(); // keep note + tags, unescape only
+    };
+
+    // What to show/persist: the spoken words only — keep the "## Transcript:"
+    // section, drop <tags> and [inline tags]. Mirrors agent.for_display().
+    const forDisplay = (raw) => {
+        if (!raw) return '';
+        let text = String(raw);
+        const parts = text.split(TRANSCRIPT_RE);
+        if (parts.length >= 2) text = parts.slice(1).join(' ');
+        text = text.replace(/<[^>]+>/g, ' ').replace(/\[[^\]]*\]/g, ' ');
+        text = decodeEntities(text);
+        return text.replace(/\s+/g, ' ').trim();
     };
 
     const extractSsml = (payload) => {
@@ -295,7 +310,8 @@ const VoiceChat = () => {
 
         await saveMessage('user', transcript);
 
-        let cleaned = '';
+        let spoken = '';   // verbatim gemini_tts block (note + tags) for the TTS
+        let display = '';  // transcript only, for the screen + persistence
         try {
             const resp = await fetch('/ai-assistant/api/chat/', {
                 method: 'POST',
@@ -303,13 +319,15 @@ const VoiceChat = () => {
                 body: JSON.stringify({
                     user_name: window.CURRENT_USER_NAME || 'guest',
                     input: transcript,
-                    response_format: 'ssml',
+                    response_format: 'gemini_tts',
                     conversation_id: conversationIdRef.current
                 })
             });
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
-            cleaned = stripSsml(extractSsml(data));
+            const raw = extractSsml(data);
+            spoken = forTts(raw);
+            display = forDisplay(raw);
         } catch (e) {
             console.error('VoiceChat: agent request failed', e);
             stopThinking();
@@ -322,14 +340,16 @@ const VoiceChat = () => {
         stopThinking();
         if (!sessionActiveRef.current) return;
 
-        if (cleaned) {
+        if (spoken || display) {
             beep('ready');
-            setAnswer(cleaned);
-            await saveMessage('assistant', cleaned);
+            if (display) {
+                setAnswer(display);
+                await saveMessage('assistant', display);
+            }
         }
 
-        // Speak the answer, then listen for the next turn
-        speak(cleaned, () => {
+        // Speak the answer (director's note styles it), then listen for the next turn
+        speak(spoken || display, () => {
             if (sessionActiveRef.current) startListening();
         });
     }, [saveMessage, speak]);
