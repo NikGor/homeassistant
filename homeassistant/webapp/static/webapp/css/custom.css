@@ -859,3 +859,40 @@ body.voice-mode .orb {
 .leaflet-control-attribution a {
     color: rgba(255, 255, 255, 0.7) !important;
 }
+
+/* ── Voice-message play control ─────────────────────────────────────────────
+   Compact round button in the message header. Idle shows a play glyph; while
+   playing it morphs into a live equalizer of three bouncing bars. */
+.voice-play-btn {
+    backdrop-filter: blur(4px);
+}
+.voice-play-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.5);
+}
+
+.voice-eq {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    height: 13px;
+}
+.voice-eq > span {
+    width: 2.5px;
+    height: 100%;
+    background: currentColor;
+    border-radius: 2px;
+    transform-origin: center bottom;
+    animation: voice-eq-bounce 0.85s ease-in-out infinite;
+}
+.voice-eq > span:nth-child(2) { animation-delay: 0.18s; }
+.voice-eq > span:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes voice-eq-bounce {
+    0%, 100% { transform: scaleY(0.3); }
+    50%      { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .voice-eq > span { animation: none; transform: scaleY(0.6); }
+}

@@ -2015,32 +2015,30 @@ const ChatMessage = ({ message, onExecute }) => {
                     React.createElement('span', {
                         key: 'time',
                         className: 'text-xs opacity-70'
-                    }, formatTime(message.created_at))
+                    }, formatTime(message.created_at)),
+                    // Voice recording control — a compact round play/pause button in
+                    // the header corner; morphs into an animated equalizer while playing.
+                    hasRecording && React.createElement('button', {
+                        key: 'voice-play',
+                        type: 'button',
+                        onClick: handlePlayRecording,
+                        title: isPlayingAudio ? 'Pause voice' : 'Play voice',
+                        'aria-label': isPlayingAudio ? 'Pause voice' : 'Play voice',
+                        className: `voice-play-btn ml-auto shrink-0 w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-200 ${
+                            isPlayingAudio
+                                ? 'bg-cyan-500/25 border-cyan-300/50 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.45)]'
+                                : 'bg-white/5 border-white/15 text-white/55 hover:text-white hover:bg-white/10 hover:border-white/30 hover:scale-105 active:scale-95'
+                        }`
+                    }, isPlayingAudio
+                        ? React.createElement('span', {
+                            key: 'eq', className: 'voice-eq', 'aria-hidden': 'true'
+                        }, [0, 1, 2].map(i => React.createElement('span', { key: i })))
+                        : React.createElement('i', {
+                            key: 'play',
+                            'data-lucide': 'play',
+                            className: 'w-3.5 h-3.5 translate-x-[1px]'
+                        }))
                 ]),
-                // Voice recording player — under the header, only when saved audio exists
-                hasRecording && React.createElement('div', {
-                    key: 'recording',
-                    className: 'mb-3 -mt-1'
-                }, React.createElement('button', {
-                    type: 'button',
-                    onClick: handlePlayRecording,
-                    title: isPlayingAudio ? 'Pause recording' : 'Play recording',
-                    'aria-label': isPlayingAudio ? 'Pause recording' : 'Play recording',
-                    className: `inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                        isPlayingAudio
-                            ? 'border-cyan-400/40 bg-cyan-500/20 text-cyan-200'
-                            : 'border-white/20 bg-white/5 hover:bg-white/10 text-white/80'
-                    }`
-                }, [
-                    React.createElement('i', {
-                        key: 'icon',
-                        'data-lucide': isPlayingAudio ? 'pause' : 'play',
-                        className: 'w-3.5 h-3.5'
-                    }),
-                    React.createElement('span', {
-                        key: 'label'
-                    }, isPlayingAudio ? 'Playing…' : 'Play voice')
-                ])),
                 React.createElement('div', {
                     key: 'message-content',
                     className: 'message-content'
