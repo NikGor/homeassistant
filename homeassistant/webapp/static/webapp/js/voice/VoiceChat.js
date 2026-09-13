@@ -662,30 +662,35 @@ const VoiceChat = () => {
         : status === 'speaking' ? 'voice-orb--speaking' : '';
 
     return React.createElement('div', {
-        className: 'relative h-full w-full overflow-hidden'
+        className: `voice-stage voice-stage--${status} relative h-full w-full overflow-hidden`
     }, [
-        // Breathing planet — dead center of the view (never moves)
+        // Reactive orb — dead center. Rings + core stacked in one cell.
         React.createElement('div', {
             key: 'orb-wrap',
-            className: 'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none'
-        }, React.createElement('div', {
-            className: `voice-orb ${orbStateClass}`
-        })),
+            className: 'voice-orb-stage absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1]'
+        }, [
+            React.createElement('span', { key: 'r1', className: 'voice-ring r1' }),
+            React.createElement('span', { key: 'r2', className: 'voice-ring r2' }),
+            React.createElement('div', { key: 'orb', className: `voice-orb ${orbStateClass}` })
+        ]),
 
-        // Status + answer text, centered horizontally above the planet
+        // Status + spoken answer, upper third, centered above the orb
         React.createElement('div', {
             key: 'stage',
-            className: 'absolute left-1/2 -translate-x-1/2 top-[16%] w-full max-w-2xl px-6 flex flex-col items-center gap-4 text-center pointer-events-none'
+            className: 'absolute left-1/2 -translate-x-1/2 top-[14%] w-full max-w-2xl px-6 flex flex-col items-center gap-5 text-center pointer-events-none z-[2]'
         }, [
             React.createElement('div', {
                 key: 'status',
-                className: `text-sm uppercase tracking-widest ${
-                    isActive ? 'text-cyan-300/80' : 'text-white/40'
+                className: `flex items-center gap-2 text-[0.7rem] font-medium uppercase tracking-[0.28em] ${
+                    isActive ? 'text-cyan-300' : 'text-white/40'
                 }`
-            }, statusLabel),
+            }, [
+                isActive && React.createElement('span', { key: 'dot', className: 'voice-dot' }),
+                React.createElement('span', { key: 'lbl' }, statusLabel)
+            ].filter(Boolean)),
             answer && React.createElement('div', {
-                key: 'answer',
-                className: 'max-w-2xl text-xl md:text-2xl leading-relaxed text-white/90 bg-black/30 backdrop-blur-sm rounded-2xl px-6 py-4'
+                key: answer, // re-key on a new answer so the entrance re-triggers
+                className: 'voice-answer max-w-xl text-2xl md:text-[1.7rem] font-light leading-snug tracking-tight text-white/95 [text-shadow:0_2px_20px_rgba(0,0,0,0.6)]'
             }, answer),
             error && React.createElement('div', {
                 key: 'error',
@@ -693,27 +698,36 @@ const VoiceChat = () => {
             }, error)
         ]),
 
-        // Bottom controls: microphone (left) + cancel (right)
+        // Bottom controls: mic (primary) + end (secondary), centered cluster
         React.createElement('div', {
             key: 'controls',
-            className: 'absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-md px-6 flex items-center justify-between'
+            className: 'absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[3]'
         }, [
-            React.createElement('button', {
-                key: 'mic',
-                type: 'button',
-                onClick: startSession,
-                disabled: isActive,
-                title: 'Start voice chat',
-                'aria-label': 'Start voice chat',
-                className: `w-16 h-16 rounded-full flex items-center justify-center border transition-all ${
-                    isActive
-                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40 animate-pulse cursor-default'
-                        : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
-                }`
-            }, React.createElement('i', {
-                'data-lucide': 'mic',
-                className: 'w-6 h-6'
-            })),
+            React.createElement('div', {
+                key: 'mic-wrap',
+                className: 'relative'
+            }, [
+                status === 'listening' && React.createElement('span', {
+                    key: 'ping',
+                    className: 'voice-mic-ping'
+                }),
+                React.createElement('button', {
+                    key: 'mic',
+                    type: 'button',
+                    onClick: startSession,
+                    disabled: isActive,
+                    title: 'Start voice chat',
+                    'aria-label': 'Start voice chat',
+                    className: `voice-ctl relative w-[4.5rem] h-[4.5rem] rounded-full flex items-center justify-center border ${
+                        isActive
+                            ? 'bg-cyan-500/20 text-cyan-200 border-cyan-400/40 cursor-default'
+                            : 'bg-white/10 text-white border-white/20 hover:bg-white/15 hover:border-white/35'
+                    }`
+                }, React.createElement('i', {
+                    'data-lucide': 'mic',
+                    className: 'w-7 h-7'
+                }))
+            ].filter(Boolean)),
             React.createElement('button', {
                 key: 'cancel',
                 type: 'button',
@@ -721,10 +735,10 @@ const VoiceChat = () => {
                 disabled: !isActive,
                 title: 'Stop voice chat',
                 'aria-label': 'Stop voice chat',
-                className: `w-16 h-16 rounded-full flex items-center justify-center border transition-all ${
+                className: `voice-ctl w-14 h-14 rounded-full flex items-center justify-center border ${
                     isActive
-                        ? 'bg-red-500/20 text-red-300 border-red-400/40 hover:bg-red-500/30'
-                        : 'bg-white/5 text-white/30 border-white/10 cursor-not-allowed'
+                        ? 'bg-red-500/15 text-red-300 border-red-400/40 hover:bg-red-500/25'
+                        : 'bg-white/5 text-white/25 border-white/10 cursor-not-allowed'
                 }`
             }, React.createElement('i', {
                 'data-lucide': 'x',
