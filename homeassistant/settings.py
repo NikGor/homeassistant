@@ -11,12 +11,18 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import time
 from pathlib import Path
 
 import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Cache-busting version appended to static asset URLs (see static_v template tag).
+# Changes on every deploy (the container restarts), so browsers pick up new JS/CSS
+# without a manual hard reload even though DEBUG serves unhashed static URLs.
+STATIC_VERSION = os.getenv("STATIC_VERSION") or str(int(time.time()))
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 

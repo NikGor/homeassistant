@@ -1,4 +1,5 @@
 {% load static %}
+{% load static_ext %}
 
 <!DOCTYPE html>
 <html lang="ru">
@@ -14,7 +15,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{% static 'webapp/images/favicon.svg' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static_v 'webapp/images/favicon.svg' %}">
 
     <!-- Подключение шрифта Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -49,7 +50,7 @@
         mermaid.initialize({ startOnLoad: false, theme: 'dark' });
     </script>
 
-    <link rel="stylesheet" href="{% static 'webapp/css/custom.css' %}">
+    <link rel="stylesheet" href="{% static_v 'webapp/css/custom.css' %}">
 </head>
 <body class="bg-black text-gray-300 h-screen overflow-hidden flex">
 
@@ -184,45 +185,45 @@
         window.CURRENT_USER_NAME = "{{ user_name }}";
         window.AI_AGENT_WS_URL = "{{ ai_agent_ws_url }}";
     </script>
-    <script src="{% static 'webapp/js/globals.js' %}"></script>
-    <script src="{% static 'webapp/js/utils.js' %}"></script>
-    <script src="{% static 'webapp/js/data.js' %}"></script>
-    <script src="{% static 'webapp/js/sidebar.js' %}"></script>
-    <script src="{% static 'webapp/js/dashboard-api.js' %}"></script>
-    <script src="{% static 'webapp/js/dashboard.js' %}"></script>
-    <script src="{% static 'webapp/js/widget.js' %}"></script>
-    <script src="{% static 'webapp/js/spotify/spotifyPlayer.js' %}"></script>
+    <script src="{% static_v 'webapp/js/globals.js' %}"></script>
+    <script src="{% static_v 'webapp/js/utils.js' %}"></script>
+    <script src="{% static_v 'webapp/js/data.js' %}"></script>
+    <script src="{% static_v 'webapp/js/sidebar.js' %}"></script>
+    <script src="{% static_v 'webapp/js/dashboard-api.js' %}"></script>
+    <script src="{% static_v 'webapp/js/dashboard.js' %}"></script>
+    <script src="{% static_v 'webapp/js/widget.js' %}"></script>
+    <script src="{% static_v 'webapp/js/spotify/spotifyPlayer.js' %}"></script>
     <!-- Loaded after spotifyPlayer.js so window.onSpotifyWebPlaybackSDKReady is defined first -->
     <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
     <!-- React Components -->
-    <script src="{% static 'webapp/js/chat/utils.js' %}"></script>
-    <script src="{% static 'webapp/js/chat/api.js' %}"></script>
-    <script src="{% static 'webapp/js/chat/components/ChartComponent.js' %}"></script>
-    <script src="{% static 'webapp/js/chat/components/MapComponent.js' %}"></script>
-    <script src="{% static 'webapp/js/chat/components/UIElements.js' %}"></script>
-    <script src="{% static 'webapp/js/chat/components/ChatInput.js' %}"></script>
-    <script src="{% static 'webapp/js/chat/ChatAssistant.js' %}"></script>
-    <script src="{% static 'webapp/js/chat.js' %}"></script>
+    <script src="{% static_v 'webapp/js/chat/utils.js' %}"></script>
+    <script src="{% static_v 'webapp/js/chat/api.js' %}"></script>
+    <script src="{% static_v 'webapp/js/chat/components/ChartComponent.js' %}"></script>
+    <script src="{% static_v 'webapp/js/chat/components/MapComponent.js' %}"></script>
+    <script src="{% static_v 'webapp/js/chat/components/UIElements.js' %}"></script>
+    <script src="{% static_v 'webapp/js/chat/components/ChatInput.js' %}"></script>
+    <script src="{% static_v 'webapp/js/chat/ChatAssistant.js' %}"></script>
+    <script src="{% static_v 'webapp/js/chat.js' %}"></script>
 
     <!-- Voice Chat -->
     <script>
         // Hashed static URLs for the voice audio cues (ManifestStaticFilesStorage
         // in production), resolved here so VoiceChat.js can fetch them at runtime.
         window.VOICE_CUE_URLS = {
-            start: "{% static 'webapp/audio/wake.wav' %}",
-            received: "{% static 'webapp/audio/received.wav' %}",
-            ready: "{% static 'webapp/audio/ready.wav' %}",
-            end: "{% static 'webapp/audio/end.wav' %}",
-            thinking: "{% static 'webapp/audio/thinking.wav' %}"
+            start: "{% static_v 'webapp/audio/wake.wav' %}",
+            received: "{% static_v 'webapp/audio/received.wav' %}",
+            ready: "{% static_v 'webapp/audio/ready.wav' %}",
+            end: "{% static_v 'webapp/audio/end.wav' %}",
+            thinking: "{% static_v 'webapp/audio/thinking.wav' %}"
         };
         // AudioWorklet module for glitch-free user-voice PCM capture.
-        window.VOICE_WORKLET_URL = "{% static 'webapp/js/voice/pcm-recorder-worklet.js' %}";
+        window.VOICE_WORKLET_URL = "{% static_v 'webapp/js/voice/pcm-recorder-worklet.js' %}";
     </script>
-    <script src="{% static 'webapp/js/voice/VoiceChat.js' %}"></script>
+    <script src="{% static_v 'webapp/js/voice/VoiceChat.js' %}"></script>
 
     <!-- Main Initialization -->
-    <script src="{% static 'webapp/js/main.js' %}"></script>
+    <script src="{% static_v 'webapp/js/main.js' %}"></script>
 </body>
 
 </html>
