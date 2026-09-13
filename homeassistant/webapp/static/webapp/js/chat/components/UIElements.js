@@ -1750,6 +1750,30 @@ const ChatMessage = ({ message, onExecute }) => {
     const hasDebugData = message.llm_trace || (message.pipeline_steps && message.pipeline_steps.length > 0) || message.pipeline_trace;
     const showDebugButton = window.debugMode && hasDebugData;
 
+    // ── Saved voice recording (message.has_audio) ──────────────────────────
+    // Plays the stored recording — the user's spoken input or the assistant's TTS
+    // answer — captured when the turn went through a voice channel.
+    const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+    const audioElRef = useRef(null);
+    const hasRecording = !!message.has_audio;
+
+    const handlePlayRecording = () => {
+        let el = audioElRef.current;
+        if (isPlayingAudio && el) { el.pause(); return; }
+        if (!el) {
+            el = new Audio(`/ai-assistant/api/messages/${message.message_id}/audio/`);
+            el.onplay = () => setIsPlayingAudio(true);
+            el.onpause = () => setIsPlayingAudio(false);
+            el.onended = () => setIsPlayingAudio(false);
+            el.onerror = () => setIsPlayingAudio(false);
+            audioElRef.current = el;
+        }
+        el.play().catch((e) => {
+            console.error('ChatMessage: recording playback failed', e);
+            setIsPlayingAudio(false);
+        });
+    };
+
     // ── Text-to-speech (browser SpeechSynthesis) ───────────────────────────
     const [isSpeaking, setIsSpeaking] = useState(false);
     const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -1813,7 +1837,7 @@ const ChatMessage = ({ message, onExecute }) => {
         setIsSpeaking(true);
     };
 
-    // Stop speech and refresh icons when speaking state changes / on unmount
+    // Stop speech/recording and refresh icons when playback state changes / unmount
     useEffect(() => {
         if (typeof lucide !== 'undefined') {
             setTimeout(() => lucide.createIcons(), 0);
@@ -1822,8 +1846,9 @@ const ChatMessage = ({ message, onExecute }) => {
             if (isSpeaking && ttsSupported) {
                 window.speechSynthesis.cancel();
             }
+            try { audioElRef.current?.pause?.(); } catch (_) { /* noop */ }
         };
-    }, [isSpeaking]);
+    }, [isSpeaking, isPlayingAudio]);
 
     const renderDebugPanel = () => {
         const pt = message.pipeline_trace;
@@ -1987,6 +2012,30 @@ const ChatMessage = ({ message, onExecute }) => {
                         className: 'text-xs opacity-70'
                     }, formatTime(message.created_at))
                 ]),
+                // Voice recording player — under the header, only when saved audio exists
+                hasRecording && React.createElement('div', {
+                    key: 'recording',
+                    className: 'mb-3 -mt-1'
+                }, React.createElement('button', {
+                    type: 'button',
+                    onClick: handlePlayRecording,
+                    title: isPlayingAudio ? 'Pause recording' : 'Play recording',
+                    'aria-label': isPlayingAudio ? 'Pause recording' : 'Play recording',
+                    className: `inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                        isPlayingAudio
+                            ? 'border-cyan-400/40 bg-cyan-500/20 text-cyan-200'
+                            : 'border-white/20 bg-white/5 hover:bg-white/10 text-white/80'
+                    }`
+                }, [
+                    React.createElement('i', {
+                        key: 'icon',
+                        'data-lucide': isPlayingAudio ? 'pause' : 'play',
+                        className: 'w-3.5 h-3.5'
+                    }),
+                    React.createElement('span', {
+                        key: 'label'
+                    }, isPlayingAudio ? 'Playing…' : 'Play voice')
+                ])),
                 React.createElement('div', {
                     key: 'message-content',
                     className: 'message-content'

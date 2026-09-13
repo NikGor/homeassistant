@@ -42,6 +42,9 @@ const VoiceChat = () => {
     const currentSourceRef = useRef(null); // active answer BufferSource, for stop()
     const cueBuffersRef = useRef({}); // cue type -> decoded AudioBuffer (cached)
     const thinkingSourceRef = useRef(null); // looping "thinking" cue source
+    const micStreamRef = useRef(null); // getUserMedia stream for recording the user
+    const recorderRef = useRef(null); // MediaRecorder for the current utterance
+    const recChunksRef = useRef([]); // recorded chunks for the current utterance
 
     const LISTEN_WINDOW_MS = 10000; // end the session after 10s of silence
 
@@ -230,8 +233,68 @@ const VoiceChat = () => {
         }
     };
 
+    // ── User audio recording (MediaRecorder alongside SpeechRecognition) ─────
+    // SpeechRecognition yields only text, so to keep the user's actual recording
+    // we capture the mic in parallel with a MediaRecorder, one clip per utterance.
+    const ensureMicStream = async () => {
+        if (micStreamRef.current) return micStreamRef.current;
+        if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+            return null;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            micStreamRef.current = stream;
+            return stream;
+        } catch (e) {
+            console.warn('VoiceChat: mic for recording unavailable', e);
+            return null;
+        }
+    };
+
+    const startUserRecording = () => {
+        const stream = micStreamRef.current;
+        if (!stream || typeof MediaRecorder === 'undefined') return;
+        // Discard any previous recorder (e.g. a silent retry within the window).
+        const prev = recorderRef.current;
+        if (prev && prev.state !== 'inactive') {
+            prev.onstop = null;
+            try { prev.stop(); } catch (_) { /* noop */ }
+        }
+        try {
+            const rec = new MediaRecorder(stream);
+            recChunksRef.current = [];
+            rec.ondataavailable = (e) => {
+                if (e.data && e.data.size) recChunksRef.current.push(e.data);
+            };
+            rec.start();
+            recorderRef.current = rec;
+        } catch (e) {
+            console.warn('VoiceChat: MediaRecorder start failed', e);
+        }
+    };
+
+    // Stop the current recorder and resolve with its Blob (or null).
+    const stopUserRecording = () => new Promise((resolve) => {
+        const rec = recorderRef.current;
+        recorderRef.current = null;
+        if (!rec || rec.state === 'inactive') { resolve(null); return; }
+        rec.onstop = () => {
+            const chunks = recChunksRef.current;
+            recChunksRef.current = [];
+            resolve(chunks.length ? new Blob(chunks, { type: rec.mimeType || 'audio/webm' }) : null);
+        };
+        try { rec.stop(); } catch (_) { resolve(null); }
+    });
+
+    const releaseMicStream = () => {
+        try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch (_) { /* noop */ }
+        micStreamRef.current = null;
+    };
+
     // ── Persistence ────────────────────────────────────────────────────────
+    // Save a message and return its id (so the caller can attach an audio clip).
     const saveMessage = useCallback(async (role, text) => {
+        const messageId = genUUID();
         try {
             await fetch('/ai-assistant/api/save-message/', {
                 method: 'POST',
@@ -239,7 +302,7 @@ const VoiceChat = () => {
                 body: JSON.stringify({
                     conversation_id: conversationIdRef.current,
                     message: {
-                        message_id: genUUID(),
+                        message_id: messageId,
                         role,
                         content: { content_format: 'plain', text }
                     }
@@ -248,7 +311,22 @@ const VoiceChat = () => {
         } catch (e) {
             console.error('VoiceChat: failed to save message', e);
         }
+        return messageId;
     }, []);
+
+    // Attach a voice recording (Blob) to a saved message.
+    const uploadAudio = async (messageId, blob) => {
+        if (!messageId || !blob || !blob.size) return;
+        try {
+            await fetch(`/ai-assistant/api/messages/${messageId}/audio/`, {
+                method: 'POST',
+                headers: { 'Content-Type': blob.type || 'audio/webm' },
+                body: blob
+            });
+        } catch (e) {
+            console.error('VoiceChat: audio upload failed', e);
+        }
+    };
 
     // ── TTS ────────────────────────────────────────────────────────────────
     // Browser speechSynthesis — fallback when persona TTS is unavailable.
@@ -264,43 +342,49 @@ const VoiceChat = () => {
         window.speechSynthesis.speak(utterance);
     };
 
-    // Persona voice via backend Gemini TTS; falls back to the browser voice.
-    const speak = useCallback(async (text, onDone) => {
-        if (!text) { onDone && onDone(); return; }
-        setStatus('speaking');
-
-        const ctx = getAudioCtx();
-        if (ctx) {
-            try {
-                const resp = await fetch('/ai-assistant/api/tts/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        text,
-                        user_name: window.CURRENT_USER_NAME || 'guest'
-                    })
-                });
-                if (!resp.ok) throw new Error(`TTS HTTP ${resp.status}`);
-                const buf = await resp.arrayBuffer();
-                const audioBuffer = await ctx.decodeAudioData(buf);
-                if (!sessionActiveRef.current) { onDone && onDone(); return; }
-                const src = ctx.createBufferSource();
-                src.buffer = audioBuffer;
-                src.connect(ctx.destination);
-                src.onended = () => {
-                    if (currentSourceRef.current === src) currentSourceRef.current = null;
-                    onDone && onDone();
-                };
-                currentSourceRef.current = src;
-                src.start();
-                return;
-            } catch (e) {
-                // 503 (not configured), network, or decode error -> browser voice
-                console.warn('VoiceChat: persona TTS unavailable, using browser voice', e);
-            }
+    // Fetch persona-voice TTS as raw WAV bytes (for both playback and saving);
+    // returns an ArrayBuffer, or null when the backend TTS is unavailable.
+    const synthTts = async (text) => {
+        if (!text) return null;
+        try {
+            const resp = await fetch('/ai-assistant/api/tts/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text,
+                    user_name: window.CURRENT_USER_NAME || 'guest'
+                })
+            });
+            if (!resp.ok) throw new Error(`TTS HTTP ${resp.status}`);
+            return await resp.arrayBuffer();
+        } catch (e) {
+            console.warn('VoiceChat: persona TTS unavailable', e);
+            return null;
         }
-        speakBrowser(text, onDone);
-    }, [ttsSupported]);
+    };
+
+    // Play WAV bytes through the AudioContext; returns true if playback started.
+    const playWav = async (arrayBuffer, onDone) => {
+        const ctx = getAudioCtx();
+        if (!ctx || !arrayBuffer) return false;
+        try {
+            const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+            if (!sessionActiveRef.current) { onDone && onDone(); return true; }
+            const src = ctx.createBufferSource();
+            src.buffer = audioBuffer;
+            src.connect(ctx.destination);
+            src.onended = () => {
+                if (currentSourceRef.current === src) currentSourceRef.current = null;
+                onDone && onDone();
+            };
+            currentSourceRef.current = src;
+            src.start();
+            return true;
+        } catch (e) {
+            console.warn('VoiceChat: WAV playback failed', e);
+            return false;
+        }
+    };
 
     // ── One user turn ──────────────────────────────────────────────────────
     const handleUserInput = useCallback(async (transcript) => {
@@ -308,7 +392,10 @@ const VoiceChat = () => {
         setStatus('thinking');
         startThinking();
 
-        await saveMessage('user', transcript);
+        // Finish the user's recording, save the message, attach the clip.
+        const userBlob = await stopUserRecording();
+        const userMsgId = await saveMessage('user', transcript);
+        if (userBlob) uploadAudio(userMsgId, userBlob);
 
         let spoken = '';   // verbatim gemini_tts block (note + tags) for the TTS
         let display = '';  // transcript only, for the screen + persistence
@@ -337,22 +424,25 @@ const VoiceChat = () => {
             return;
         }
 
+        // Synthesize the answer up front so we can both save and play the audio.
+        const wavBuf = await synthTts(spoken || display);
+
         stopThinking();
         if (!sessionActiveRef.current) return;
 
         if (spoken || display) {
             beep('ready');
-            if (display) {
-                setAnswer(display);
-                await saveMessage('assistant', display);
-            }
+            if (display) setAnswer(display);
+            const asstMsgId = await saveMessage('assistant', display || '');
+            if (wavBuf) uploadAudio(asstMsgId, new Blob([wavBuf], { type: 'audio/wav' }));
         }
 
-        // Speak the answer (director's note styles it), then listen for the next turn
-        speak(spoken || display, () => {
-            if (sessionActiveRef.current) startListening();
-        });
-    }, [saveMessage, speak]);
+        // Speak the answer (director's note styles it), then listen for the next turn.
+        setStatus('speaking');
+        const onDone = () => { if (sessionActiveRef.current) startListening(); };
+        const played = wavBuf ? await playWav(wavBuf, onDone) : false;
+        if (!played) speakBrowser(display || '', onDone);
+    }, [saveMessage]);
 
     // ── STT (one listening turn, auto-restarts until the 10s window closes) ──
     const startListening = useCallback(() => {
@@ -402,6 +492,7 @@ const VoiceChat = () => {
             };
 
             recognitionRef.current = recognition;
+            startUserRecording(); // record this utterance in parallel with STT
             try {
                 recognition.start();
             } catch (e) {
@@ -421,6 +512,8 @@ const VoiceChat = () => {
         clearListenTimers();
         turnGotResultRef.current = true; // stop any pending onend restart
         try { recognitionRef.current?.abort?.(); } catch (_) { /* noop */ }
+        stopUserRecording();
+        releaseMicStream();
         stopPlayback();
         if (cue && wasActive) beep('end');
         setStatus('idle');
@@ -441,6 +534,7 @@ const VoiceChat = () => {
         conversationIdRef.current = genUUID();
         sessionActiveRef.current = true;
         preloadCues();  // unlocks the AudioContext on this user gesture + warms cache
+        ensureMicStream(); // request the mic for recording (parallel to STT)
         beep('start');
         startListening();
     }, [supported, startListening]);

@@ -17,7 +17,7 @@ from homeassistant.redis_client import redis_client
 
 from .image_processor import (IMAGE_GENERATION_COST_PER_IMAGE,
                               process_images_in_ui_answer)
-from .models import Conversation, Message
+from .models import Conversation, Message, MessageAudio
 
 # AI Agent URL - keep for AI functionality
 AI_AGENT_URL = os.getenv("AI_AGENT_URL", "http://archie-ai-agent:8005")
@@ -290,11 +290,19 @@ def proxy_conversation_messages(request, conversation_id):
             conversation__conversation_id=conversation_id
         ).order_by("created_at")
 
+        # Which of these messages have a saved voice recording (one query).
+        audio_ids = set(
+            MessageAudio.objects.filter(
+                message__conversation__conversation_id=conversation_id
+            ).values_list("message_id", flat=True)
+        )
+
         # Convert to Pydantic models for API compatibility
         message_data = []
         for msg in messages:
             pydantic_msg = msg.to_chat_message()
             msg_dict = pydantic_msg.model_dump()
+            msg_dict["has_audio"] = str(msg.message_id) in audio_ids
             logger.info(
                 f"ai_assistant_011a: Message {msg.message_id} dict keys: {msg_dict.keys()}"
             )
@@ -430,6 +438,11 @@ def proxy_send_message(request):
             pipeline_trace=assistant_pipeline_trace,
         )
         logger.info(f"ai_assistant_016: Saved assistant message {assistant_message_id}")
+
+        # Expose the user message id so voice clients can attach the user's audio
+        # recording (the assistant id is already in ai_data["message_id"]).
+        if isinstance(ai_data, dict):
+            ai_data["user_message_id"] = user_message_id
 
         json_response = JsonResponse(ai_data, safe=False)
         return add_cors_headers(json_response)
@@ -762,4 +775,62 @@ def synth_speech(request):
         return add_cors_headers(audio_response)
     except Exception as e:
         logger.error(f"ai_assistant_error_062: TTS failed: {e}")
+        return add_cors_headers(JsonResponse({"error": str(e)}, status=500))
+
+
+# Cap on a single stored recording (keeps the DB and uploads sane).
+MAX_AUDIO_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST", "OPTIONS"])
+def message_audio(request, message_id):
+    """Store or serve the voice recording for a message.
+
+    POST: raw audio bytes in the request body, mime type in the Content-Type
+    header (e.g. audio/webm for a user recording, audio/wav for a TTS answer).
+    GET: returns the stored bytes with their content type (200) or 404 if none.
+    Audio lives in the DB (MessageAudio), one recording per message.
+    """
+    if request.method == "OPTIONS":
+        return add_cors_headers(HttpResponse())
+
+    if request.method == "GET":
+        try:
+            rec = MessageAudio.objects.get(message_id=message_id)
+        except MessageAudio.DoesNotExist:
+            return add_cors_headers(JsonResponse({"error": "no audio"}, status=404))
+        resp = HttpResponse(bytes(rec.audio), content_type=rec.content_type)
+        resp["Cache-Control"] = "private, max-age=31536000"
+        return add_cors_headers(resp)
+
+    # POST — store the recording
+    try:
+        data = request.body or b""
+        if not data:
+            return add_cors_headers(
+                JsonResponse({"error": "empty audio body"}, status=400)
+            )
+        if len(data) > MAX_AUDIO_BYTES:
+            return add_cors_headers(
+                JsonResponse({"error": "audio too large"}, status=413)
+            )
+        try:
+            message = Message.objects.get(message_id=message_id)
+        except Message.DoesNotExist:
+            return add_cors_headers(
+                JsonResponse({"error": "message not found"}, status=404)
+            )
+        content_type = request.content_type or "audio/webm"
+        MessageAudio.objects.update_or_create(
+            message=message,
+            defaults={"audio": data, "content_type": content_type},
+        )
+        logger.info(
+            f"ai_assistant_070: Saved {len(data)} bytes of {content_type} "
+            f"for message {message_id}"
+        )
+        return add_cors_headers(JsonResponse({"success": True, "bytes": len(data)}))
+    except Exception as e:
+        logger.error(f"ai_assistant_error_070: Failed to save audio: {e}")
         return add_cors_headers(JsonResponse({"error": str(e)}, status=500))

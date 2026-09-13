@@ -245,6 +245,33 @@ class Message(models.Model):
         )
 
 
+class MessageAudio(models.Model):
+    """Voice recording attached to a message.
+
+    Stored in the DB (not on disk) because the web container has no media volume
+    and its filesystem is ephemeral. One recording per message: the user's spoken
+    input, or the assistant's TTS answer. Written when a turn goes through a voice
+    channel (Voice Chat, archie-voice) or the assistant generated speech.
+    """
+
+    message = models.OneToOneField(
+        Message,
+        on_delete=models.CASCADE,
+        related_name="audio",
+        primary_key=True,
+        to_field="message_id",
+    )
+    audio = models.BinaryField()
+    content_type = models.CharField(max_length=50, default="audio/webm")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "ai_assistant_message_audio"
+
+    def __str__(self):
+        return f"audio for {self.message_id} ({len(self.audio or b'')} bytes)"
+
+
 class ConversationFlag(models.Model):
     """Flag raised by the Conversation-Monitor / Monitor-Analyzer LLM-judge
     agent for an unsatisfactory AI response.

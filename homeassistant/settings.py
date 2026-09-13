@@ -147,6 +147,10 @@ LOGGING = {
     },
 }
 
+# Allow voice recordings (raw audio POSTed to /ai-assistant/api/messages/<id>/audio/)
+# up to ~12 MB; Django's default 2.5 MB body cap would reject longer TTS answers.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
+
 # Redis Configuration
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))

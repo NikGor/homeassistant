@@ -2,7 +2,7 @@
 
 import logging
 
-from . import agent, audio, config, recorder, tts
+from . import agent, audio, config, recorder, tts, wavutil
 from .stt import Transcriber
 from .wake import WakeWord
 
@@ -60,7 +60,7 @@ def _converse(transcriber):
                 print("⚠️  Didn't catch that.")
                 continue
             print(f"👤 You: {text}")
-            answer = agent.ask(text, conversation_id, persona=persona)
+            answer, ids = agent.ask(text, conversation_id, persona=persona)
         except Exception as e:
             logger.error(f"session_error_001: request failed: {e}")
             print("⚠️  Agent is unavailable.")
@@ -69,9 +69,27 @@ def _converse(transcriber):
         finally:
             audio.stop_thinking()
 
+        # Save the user's recording (PCM16 @ SAMPLE_RATE -> WAV) to their message.
+        if ids.get("user_message_id"):
+            agent.save_audio(
+                ids["user_message_id"],
+                wavutil.pcm_to_wav(pcm.tobytes(), config.SAMPLE_RATE),
+            )
+
         if answer:
             print(f"🤖 Archie: {agent.for_display(answer)}")
-            tts.speak(agent.for_tts(answer), voice=voice)
+            tts_bytes = tts.speak(agent.for_tts(answer), voice=voice)
+            # Save the assistant's spoken answer to its message.
+            if tts_bytes and ids.get("message_id"):
+                if config.TTS_FORMAT == "pcm":
+                    agent.save_audio(
+                        ids["message_id"],
+                        wavutil.pcm_to_wav(tts_bytes, config.TTS_PCM_RATE),
+                    )
+                else:
+                    agent.save_audio(
+                        ids["message_id"], tts_bytes, content_type="audio/mpeg"
+                    )
         # Answer done — cue the user and listen for a follow-up.
         audio.beep_ready()
 

@@ -70,9 +70,11 @@ def get_persona():
 
 
 def ask(user_input, conversation_id, persona=None):
-    """Send the user's text to the agent; return the raw spoken text.
+    """Send the user's text to the agent; return (raw_text, ids).
 
-    Use for_tts() / for_display() on the result depending on the target.
+    `ids` holds the persisted message ids so the caller can attach audio:
+    {"user_message_id": ..., "message_id": <assistant>}. Use for_tts() /
+    for_display() on the raw text depending on the target.
     """
     url = f"{config.API_BASE}/ai-assistant/api/messages/"
     payload = {
@@ -87,8 +89,32 @@ def ask(user_input, conversation_id, persona=None):
     resp.raise_for_status()
     data = resp.json()
     raw = _extract_ssml(data)
+    ids = {
+        "user_message_id": (data or {}).get("user_message_id"),
+        "message_id": (data or {}).get("message_id"),
+    }
     logger.info(f"agent_001: answer ({len(raw)} chars): '{for_display(raw)[:80]}'")
-    return raw
+    return raw, ids
+
+
+def save_audio(message_id, audio_bytes, content_type="audio/wav"):
+    """Attach a voice recording to a persisted message (best-effort)."""
+    if not message_id or not audio_bytes:
+        return
+    url = f"{config.API_BASE}/ai-assistant/api/messages/{message_id}/audio/"
+    try:
+        resp = requests.post(
+            url,
+            data=audio_bytes,
+            headers={"Content-Type": content_type},
+            timeout=30,
+        )
+        if not resp.ok:
+            logger.error(
+                f"agent_err_003: save_audio {resp.status_code}: {resp.text[:200]}"
+            )
+    except Exception as e:
+        logger.error(f"agent_err_003: save_audio failed: {e}")
 
 
 def for_tts(raw):
