@@ -43,8 +43,11 @@ const VoiceChat = () => {
     const cueBuffersRef = useRef({}); // cue type -> decoded AudioBuffer (cached)
     const thinkingSourceRef = useRef(null); // looping "thinking" cue source
     const micStreamRef = useRef(null); // getUserMedia stream for recording the user
-    const recorderRef = useRef(null); // MediaRecorder for the current utterance
-    const recChunksRef = useRef([]); // recorded chunks for the current utterance
+    const recSourceRef = useRef(null); // MediaStreamAudioSourceNode
+    const recProcessorRef = useRef(null); // ScriptProcessorNode capturing PCM
+    const recSinkRef = useRef(null); // zero-gain sink so the mic isn't echoed
+    const recPcmRef = useRef([]); // Float32Array chunks for the current utterance
+    const recRateRef = useRef(16000); // AudioContext sample rate at capture time
 
     const LISTEN_WINDOW_MS = 10000; // end the session after 10s of silence
 
@@ -251,46 +254,90 @@ const VoiceChat = () => {
         }
     };
 
+    // Tear down the capture graph (called before a new utterance and on stop).
+    const teardownRecordingNodes = () => {
+        try { recProcessorRef.current?.disconnect(); } catch (_) { /* noop */ }
+        try { recSourceRef.current?.disconnect(); } catch (_) { /* noop */ }
+        try { recSinkRef.current?.disconnect(); } catch (_) { /* noop */ }
+        if (recProcessorRef.current) recProcessorRef.current.onaudioprocess = null;
+        recProcessorRef.current = null;
+        recSourceRef.current = null;
+        recSinkRef.current = null;
+    };
+
+    // Capture the user's mic as raw PCM via Web Audio. We avoid MediaRecorder here
+    // because its opus/webm output plays back at the wrong speed when the mic rate
+    // differs from opus' fixed 48 kHz. Raw PCM lets us write a WAV whose header
+    // rate matches the data, so playback speed is always correct.
     const startUserRecording = async () => {
-        // Wait for the mic stream so the first utterance is recorded too (getUserMedia
-        // may still be resolving when the first recognition turn begins).
         const stream = await ensureMicStream();
-        if (!stream || typeof MediaRecorder === 'undefined' || !sessionActiveRef.current) {
-            return;
-        }
-        // Discard any previous recorder (e.g. a silent retry within the window).
-        const prev = recorderRef.current;
-        if (prev && prev.state !== 'inactive') {
-            prev.onstop = null;
-            try { prev.stop(); } catch (_) { /* noop */ }
-        }
+        if (!stream || !sessionActiveRef.current) return;
+        const ctx = getAudioCtx();
+        if (!ctx || !ctx.createScriptProcessor) return;
+        teardownRecordingNodes(); // discard a previous (e.g. silent) utterance
         try {
-            const rec = new MediaRecorder(stream);
-            recChunksRef.current = [];
-            rec.ondataavailable = (e) => {
-                if (e.data && e.data.size) recChunksRef.current.push(e.data);
+            recRateRef.current = ctx.sampleRate;
+            recPcmRef.current = [];
+            const source = ctx.createMediaStreamSource(stream);
+            const processor = ctx.createScriptProcessor(4096, 1, 1);
+            const sink = ctx.createGain();
+            sink.gain.value = 0; // don't echo the mic to the speakers
+            processor.onaudioprocess = (e) => {
+                const ch = e.inputBuffer.getChannelData(0);
+                recPcmRef.current.push(new Float32Array(ch));
             };
-            rec.start();
-            recorderRef.current = rec;
+            source.connect(processor);
+            processor.connect(sink);
+            sink.connect(ctx.destination); // keeps the processor "pulled"
+            recSourceRef.current = source;
+            recProcessorRef.current = processor;
+            recSinkRef.current = sink;
         } catch (e) {
-            console.warn('VoiceChat: MediaRecorder start failed', e);
+            console.warn('VoiceChat: PCM capture start failed', e);
+            teardownRecordingNodes();
         }
     };
 
-    // Stop the current recorder and resolve with its Blob (or null).
-    const stopUserRecording = () => new Promise((resolve) => {
-        const rec = recorderRef.current;
-        recorderRef.current = null;
-        if (!rec || rec.state === 'inactive') { resolve(null); return; }
-        rec.onstop = () => {
-            const chunks = recChunksRef.current;
-            recChunksRef.current = [];
-            resolve(chunks.length ? new Blob(chunks, { type: rec.mimeType || 'audio/webm' }) : null);
-        };
-        try { rec.stop(); } catch (_) { resolve(null); }
-    });
+    // Stop capture and return a WAV Blob of the utterance (or null).
+    const stopUserRecording = () => {
+        const chunks = recPcmRef.current;
+        recPcmRef.current = [];
+        const rate = recRateRef.current;
+        teardownRecordingNodes();
+        if (!chunks.length) return null;
+        let total = 0;
+        for (const c of chunks) total += c.length;
+        if (!total) return null;
+        // Concatenate float32 chunks, convert to PCM16, wrap in a WAV container.
+        const pcm16 = new Int16Array(total);
+        let off = 0;
+        for (const c of chunks) {
+            for (let i = 0; i < c.length; i++) {
+                let s = c[i];
+                s = s < -1 ? -1 : s > 1 ? 1 : s;
+                pcm16[off++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+            }
+        }
+        return pcm16ToWavBlob(pcm16, rate);
+    };
+
+    // Build a mono 16-bit WAV Blob from PCM16 samples at `rate`.
+    const pcm16ToWavBlob = (pcm16, rate) => {
+        const dataSize = pcm16.length * 2;
+        const buf = new ArrayBuffer(44 + dataSize);
+        const dv = new DataView(buf);
+        const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+        ws(0, 'RIFF'); dv.setUint32(4, 36 + dataSize, true); ws(8, 'WAVE');
+        ws(12, 'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true);
+        dv.setUint16(22, 1, true); dv.setUint32(24, rate, true);
+        dv.setUint32(28, rate * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+        ws(36, 'data'); dv.setUint32(40, dataSize, true);
+        new Int16Array(buf, 44).set(pcm16);
+        return new Blob([buf], { type: 'audio/wav' });
+    };
 
     const releaseMicStream = () => {
+        teardownRecordingNodes();
         try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch (_) { /* noop */ }
         micStreamRef.current = null;
     };
@@ -397,7 +444,7 @@ const VoiceChat = () => {
         startThinking();
 
         // Finish the user's recording, save the message, attach the clip.
-        const userBlob = await stopUserRecording();
+        const userBlob = stopUserRecording();
         const userMsgId = await saveMessage('user', transcript);
         if (userBlob) uploadAudio(userMsgId, userBlob);
 
