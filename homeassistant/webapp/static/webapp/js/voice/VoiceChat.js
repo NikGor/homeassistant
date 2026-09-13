@@ -48,6 +48,7 @@ const VoiceChat = () => {
     const recSinkRef = useRef(null); // zero-gain sink so the mic isn't echoed
     const recPcmRef = useRef([]); // Float32Array chunks for the current utterance
     const recRateRef = useRef(16000); // AudioContext sample rate at capture time
+    const workletReadyRef = useRef(null); // Promise<bool>: AudioWorklet module loaded
 
     const LISTEN_WINDOW_MS = 10000; // end the session after 10s of silence
 
@@ -256,41 +257,72 @@ const VoiceChat = () => {
 
     // Tear down the capture graph (called before a new utterance and on stop).
     const teardownRecordingNodes = () => {
-        try { recProcessorRef.current?.disconnect(); } catch (_) { /* noop */ }
+        const node = recProcessorRef.current;
+        if (node) {
+            node.onaudioprocess = null;        // ScriptProcessorNode
+            if (node.port) node.port.onmessage = null; // AudioWorkletNode
+        }
+        try { node?.disconnect(); } catch (_) { /* noop */ }
         try { recSourceRef.current?.disconnect(); } catch (_) { /* noop */ }
         try { recSinkRef.current?.disconnect(); } catch (_) { /* noop */ }
-        if (recProcessorRef.current) recProcessorRef.current.onaudioprocess = null;
         recProcessorRef.current = null;
         recSourceRef.current = null;
         recSinkRef.current = null;
     };
 
+    // Load the AudioWorklet module once (cached). Returns false if unavailable.
+    const ensureWorklet = (ctx) => {
+        if (!ctx.audioWorklet || !window.VOICE_WORKLET_URL) return Promise.resolve(false);
+        if (!workletReadyRef.current) {
+            workletReadyRef.current = ctx.audioWorklet
+                .addModule(window.VOICE_WORKLET_URL)
+                .then(() => true)
+                .catch((e) => {
+                    console.warn('VoiceChat: AudioWorklet load failed', e);
+                    return false;
+                });
+        }
+        return workletReadyRef.current;
+    };
+
     // Capture the user's mic as raw PCM via Web Audio. We avoid MediaRecorder here
     // because its opus/webm output plays back at the wrong speed when the mic rate
-    // differs from opus' fixed 48 kHz. Raw PCM lets us write a WAV whose header
-    // rate matches the data, so playback speed is always correct.
+    // differs from opus' fixed 48 kHz. Raw PCM lets us write a WAV whose header rate
+    // matches the data. Prefer an AudioWorklet (audio-thread capture, glitch-free);
+    // fall back to a ScriptProcessorNode where AudioWorklet is unavailable.
     const startUserRecording = async () => {
         const stream = await ensureMicStream();
         if (!stream || !sessionActiveRef.current) return;
         const ctx = getAudioCtx();
-        if (!ctx || !ctx.createScriptProcessor) return;
+        if (!ctx) return;
+        const useWorklet = await ensureWorklet(ctx);
+        if (!sessionActiveRef.current) return;
         teardownRecordingNodes(); // discard a previous (e.g. silent) utterance
         try {
             recRateRef.current = ctx.sampleRate;
             recPcmRef.current = [];
             const source = ctx.createMediaStreamSource(stream);
-            const processor = ctx.createScriptProcessor(4096, 1, 1);
             const sink = ctx.createGain();
             sink.gain.value = 0; // don't echo the mic to the speakers
-            processor.onaudioprocess = (e) => {
-                const ch = e.inputBuffer.getChannelData(0);
-                recPcmRef.current.push(new Float32Array(ch));
-            };
-            source.connect(processor);
-            processor.connect(sink);
-            sink.connect(ctx.destination); // keeps the processor "pulled"
+
+            let node;
+            if (useWorklet && typeof AudioWorkletNode !== 'undefined') {
+                node = new AudioWorkletNode(ctx, 'pcm-recorder');
+                node.port.onmessage = (e) => recPcmRef.current.push(e.data);
+            } else if (ctx.createScriptProcessor) {
+                node = ctx.createScriptProcessor(4096, 1, 1);
+                node.onaudioprocess = (e) => {
+                    recPcmRef.current.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+                };
+            } else {
+                return;
+            }
+
+            source.connect(node);
+            node.connect(sink);
+            sink.connect(ctx.destination); // keeps the node "pulled"
             recSourceRef.current = source;
-            recProcessorRef.current = processor;
+            recProcessorRef.current = node;
             recSinkRef.current = sink;
         } catch (e) {
             console.warn('VoiceChat: PCM capture start failed', e);

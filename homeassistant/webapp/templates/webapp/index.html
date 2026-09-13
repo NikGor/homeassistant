@@ -216,6 +216,8 @@
             end: "{% static 'webapp/audio/end.wav' %}",
             thinking: "{% static 'webapp/audio/thinking.wav' %}"
         };
+        // AudioWorklet module for glitch-free user-voice PCM capture.
+        window.VOICE_WORKLET_URL = "{% static 'webapp/js/voice/pcm-recorder-worklet.js' %}";
     </script>
     <script src="{% static 'webapp/js/voice/VoiceChat.js' %}"></script>
 
