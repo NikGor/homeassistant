@@ -1837,18 +1837,23 @@ const ChatMessage = ({ message, onExecute }) => {
         setIsSpeaking(true);
     };
 
-    // Stop speech/recording and refresh icons when playback state changes / unmount
+    // Refresh icons when playback state changes.
     useEffect(() => {
         if (typeof lucide !== 'undefined') {
             setTimeout(() => lucide.createIcons(), 0);
         }
+    }, [isSpeaking, isPlayingAudio]);
+
+    // Stop any playback on unmount only — must NOT run on state changes, or it
+    // would pause the recording right as it starts (AbortError) and re-render.
+    useEffect(() => {
         return () => {
-            if (isSpeaking && ttsSupported) {
-                window.speechSynthesis.cancel();
+            if (ttsSupported) {
+                try { window.speechSynthesis.cancel(); } catch (_) { /* noop */ }
             }
             try { audioElRef.current?.pause?.(); } catch (_) { /* noop */ }
         };
-    }, [isSpeaking, isPlayingAudio]);
+    }, []);
 
     const renderDebugPanel = () => {
         const pt = message.pipeline_trace;
