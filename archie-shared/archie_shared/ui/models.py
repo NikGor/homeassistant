@@ -426,6 +426,29 @@ class ContactCard(BaseModel):
     )
 
 
+class EmailCard(BaseModel):
+    """Use for an email message from the user's mailbox (Gmail). One card per message. Include assistant/frontend buttons (reply, open in Gmail)."""
+
+    type: Literal["email_card"] = Field(
+        "email_card", description="Type of the card for frontend rendering"
+    )
+    subject: str = Field(description="Email subject line; '(no subject)' if empty")
+    sender_name: str = Field(description="Sender display name, or the address if there is no name")
+    sender_email: Optional[str] = Field(default=None, description="Sender email address")
+    snippet: Optional[str] = Field(
+        default=None, description="Short plain-text preview of the message body, 1-2 sentences"
+    )
+    received_at: Optional[str] = Field(
+        default=None, description="When the message was received, human-readable (e.g. 'Today 14:30', '12 Oct')"
+    )
+    is_unread: bool = Field(default=False, description="True if the message is unread")
+    has_attachments: bool = Field(default=False, description="True if the message has attachments")
+    buttons: List[Union[FrontendButton, AssistantButton]] = Field(
+        default=None,
+        description="Action buttons: summarize/reply via AssistantButton, 'url_to' FrontendButton to open in Gmail. Max 3.",
+    )
+
+
 class CardGrid(BaseModel):
     """Grid layout for multiple cards to enhance visual scanning and comparison"""
 
@@ -437,6 +460,7 @@ class CardGrid(BaseModel):
             Card,
             LocationCard,
             ContactCard,
+            EmailCard,
             ProductCard,
             MovieCard,
             SeriesCard,
