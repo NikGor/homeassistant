@@ -770,6 +770,8 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
                 return `${baseStyle} border-2 border-cyan-500 hover:border-cyan-400 shadow-cyan-500/20`;
             case 'contact_card': 
                 return `${baseStyle} border-2 border-indigo-500 hover:border-indigo-400 shadow-indigo-500/20`;
+            case 'email_card':
+                return `${baseStyle} border-2 border-rose-500 hover:border-rose-400 shadow-rose-500/20`;
             case 'card':
             default: 
                 return `${baseStyle} border border-white/20 hover:border-white/40`;
@@ -779,8 +781,34 @@ const ChatCardGrid = ({ cardGrid, onExecute }) => {
     const renderCardContent = (card, isTwoColumns) => {
         const elements = [];
         
+        // Email Card
+        if (card.type === 'email_card') {
+            const sender = [card.sender_name, card.sender_email && card.sender_email !== card.sender_name ? `<${card.sender_email}>` : null]
+                .filter(Boolean).join(' ');
+            elements.push(React.createElement('div', {
+                key: 'email-header',
+                className: 'flex items-center justify-between gap-2 mb-1'
+            }, [
+                React.createElement('span', {
+                    key: 'sender',
+                    className: `text-sm truncate ${card.is_unread ? 'font-semibold text-white' : 'text-white/80'}`
+                }, `${card.is_unread ? '● ' : ''}${sender}`),
+                card.received_at && React.createElement('span', {
+                    key: 'date',
+                    className: 'text-xs text-white/50 whitespace-nowrap'
+                }, card.received_at)
+            ]));
+            elements.push(React.createElement('h3', {
+                key: 'subject',
+                className: `text-white mb-1 ${card.is_unread ? 'font-semibold' : 'font-medium'}`
+            }, `${card.has_attachments ? '📎 ' : ''}${card.subject}`));
+            card.snippet && elements.push(React.createElement('p', {
+                key: 'snippet',
+                className: 'text-sm text-white/70 mb-3 line-clamp-3'
+            }, card.snippet));
+        }
         // Contact Card
-        if (card.type === 'contact_card') {
+        else if (card.type === 'contact_card') {
             card.name && elements.push(React.createElement('h3', {
                 key: 'name',
                 className: 'font-semibold text-white mb-1'
