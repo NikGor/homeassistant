@@ -170,6 +170,14 @@ class ImageAttachment(BaseModel):
     data: str = Field(description="Base64-encoded image bytes (no data: URL prefix)")
 
 
+class FileAttachment(BaseModel):
+    """Document (PDF, text, DOCX, ...) attached by the user to a chat request"""
+
+    name: str = Field(description="Original file name, including extension")
+    media_type: str = Field(description="MIME type of the file")
+    data: str = Field(description="Base64-encoded file bytes (no data: URL prefix)")
+
+
 class ChatRequest(BaseModel):
     """Request to send a chat message"""
 
@@ -223,6 +231,10 @@ class ChatRequest(BaseModel):
     images: Optional[List[ImageAttachment]] = Field(
         default=None,
         description="Images attached by the user; analyzed by the command model (must support vision)",
+    )
+    files: Optional[List[FileAttachment]] = Field(
+        default=None,
+        description="Documents attached by the user; their extracted text is added to the request input",
     )
 
 
