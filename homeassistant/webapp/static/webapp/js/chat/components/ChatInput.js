@@ -43,6 +43,36 @@ const prepareImage = (file) => new Promise((resolve, reject) => {
     img.src = url;
 });
 
+const MAX_FILES = 5;
+const MAX_FILE_BYTES = 8 * 1024 * 1024;
+const MAX_TOTAL_FILE_BYTES = 8 * 1024 * 1024; // the agent WebSocket payload is capped at ~16 MB
+const ACCEPTED_FILE_EXTENSIONS = [
+    '.pdf', '.docx', '.txt', '.md', '.csv', '.tsv', '.json', '.xml', '.yaml', '.yml',
+    '.log', '.html', '.htm', '.ini', '.toml', '.py', '.js', '.ts', '.sql', '.sh',
+];
+
+const formatFileSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+};
+
+const readFileBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onerror = () => reject(new Error(`Cannot read file: ${file.name}`));
+    reader.readAsDataURL(file);
+});
+
+// Inline SVG (not lucide <i>) so React reconciliation is not broken by createIcons()
+const FileGlyph = ({ className }) => React.createElement('svg', {
+    viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8,
+    strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true', className
+}, [
+    React.createElement('path', { key: 'a', d: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z' }),
+    React.createElement('path', { key: 'b', d: 'M14 3v5h5' })
+]);
+
 const ChatInput = ({
     value,
     onChange,
@@ -50,7 +80,9 @@ const ChatInput = ({
     disabled,
     isLoading,
     images = [],
-    onImagesChange
+    onImagesChange,
+    files = [],
+    onFilesChange
 }) => {
     const { useState, useRef, useEffect, useCallback } = React;
     
@@ -168,6 +200,50 @@ const ChatInput = ({
     const removeImage = useCallback((id) => {
         onImagesChange?.(imagesRef.current.filter(img => img.id !== id));
     }, [onImagesChange]);
+
+    // Documents are read as text by the agent, so (unlike images) they work with any model
+    const docInputRef = useRef(null);
+    const filesRef = useRef(files);
+    filesRef.current = files;
+    const [fileError, setFileError] = useState('');
+
+    const addDocFiles = useCallback(async (picked) => {
+        if (!onFilesChange) return;
+        const current = filesRef.current;
+        const accepted = [];
+        let total = current.reduce((sum, f) => sum + f.size, 0);
+        let error = '';
+        for (const file of Array.from(picked)) {
+            const ext = `.${file.name.split('.').pop().toLowerCase()}`;
+            if (!ACCEPTED_FILE_EXTENSIONS.includes(ext)) { error = `Unsupported file type: ${file.name}`; continue; }
+            if (current.length + accepted.length >= MAX_FILES) { error = `Up to ${MAX_FILES} files`; break; }
+            if (file.size > MAX_FILE_BYTES || total + file.size > MAX_TOTAL_FILE_BYTES) {
+                error = `Files are too large (max 8 MB in total): ${file.name}`; continue;
+            }
+            total += file.size;
+            accepted.push(file);
+        }
+        setFileError(error);
+        if (!accepted.length) return;
+        try {
+            const prepared = await Promise.all(accepted.map(async (file) => ({
+                id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                name: file.name,
+                size: file.size,
+                media_type: file.type || 'application/octet-stream',
+                data: await readFileBase64(file)
+            })));
+            onFilesChange([...filesRef.current, ...prepared]);
+        } catch (err) {
+            console.error('ChatInput: file processing failed', err);
+            setFileError('Could not read the file');
+        }
+    }, [onFilesChange]);
+
+    const removeDocFile = useCallback((id) => {
+        setFileError('');
+        onFilesChange?.(filesRef.current.filter(f => f.id !== id));
+    }, [onFilesChange]);
 
     // Drop attachments when the selected model can't process them
     useEffect(() => {
@@ -457,8 +533,10 @@ const ChatInput = ({
                     key: 'attach-file',
                     icon: 'paperclip',
                     label: 'Attach file',
+                    disabled: files.length >= MAX_FILES,
+                    title: files.length >= MAX_FILES ? `Up to ${MAX_FILES} files` : 'PDF, DOCX, TXT, CSV, JSON and other text files',
                     onClick: () => {
-                        console.log('Attach file clicked');
+                        docInputRef.current?.click();
                         setAddMenuOpen(false);
                     }
                 }),
@@ -686,6 +764,40 @@ const ChatInput = ({
                         className: 'absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 text-white text-xs leading-none flex items-center justify-center hover:bg-black'
                     }, '\u00d7')
                 ]))),
+                // Attached document chips
+                (files.length > 0 || fileError) && React.createElement('div', {
+                    key: 'file-chips',
+                    className: 'flex flex-wrap gap-2 pb-2'
+                }, [
+                    ...files.map(f => React.createElement('div', {
+                        key: f.id,
+                        className: 'file-chip'
+                    }, [
+                        React.createElement(FileGlyph, { key: 'icon', className: 'w-4 h-4 shrink-0 text-cyan-300' }),
+                        React.createElement('span', { key: 'name', className: 'file-chip__name' }, f.name),
+                        React.createElement('span', { key: 'size', className: 'file-chip__size' }, formatFileSize(f.size)),
+                        React.createElement('button', {
+                            key: 'remove', type: 'button', title: 'Remove file', 'aria-label': 'Remove file',
+                            onClick: () => removeDocFile(f.id),
+                            className: 'file-chip__remove'
+                        }, '\u00d7')
+                    ])),
+                    fileError && React.createElement('span', {
+                        key: 'error', className: 'text-xs text-red-400 self-center'
+                    }, fileError)
+                ]),
+                React.createElement('input', {
+                    key: 'doc-input',
+                    ref: docInputRef,
+                    type: 'file',
+                    accept: ACCEPTED_FILE_EXTENSIONS.join(','),
+                    multiple: true,
+                    className: 'hidden',
+                    onChange: (e) => {
+                        addDocFiles(e.target.files);
+                        e.target.value = '';
+                    }
+                }),
                 React.createElement('input', {
                     key: 'image-input',
                     ref: fileInputRef,
