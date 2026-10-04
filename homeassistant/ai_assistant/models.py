@@ -272,6 +272,37 @@ class MessageAudio(models.Model):
         return f"audio for {self.message_id} ({len(self.audio or b'')} bytes)"
 
 
+class MessageImage(models.Model):
+    """Image attached by the user to a message.
+
+    Stored in the DB for the same reason as MessageAudio (no media volume,
+    ephemeral container filesystem). `position` keeps the attachment order.
+    """
+
+    message = models.ForeignKey(
+        Message,
+        on_delete=models.CASCADE,
+        related_name="images",
+        to_field="message_id",
+    )
+    position = models.PositiveSmallIntegerField(default=0)
+    image = models.BinaryField()
+    content_type = models.CharField(max_length=50, default="image/jpeg")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "ai_assistant_message_image"
+        ordering = ["position"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["message", "position"], name="unique_message_image_position"
+            )
+        ]
+
+    def __str__(self):
+        return f"image {self.position} for {self.message_id} ({len(self.image or b'')} bytes)"
+
+
 class ConversationFlag(models.Model):
     """Flag raised by the Conversation-Monitor / Monitor-Analyzer LLM-judge
     agent for an unsatisfactory AI response.
