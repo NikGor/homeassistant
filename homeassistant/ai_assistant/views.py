@@ -1,4 +1,6 @@
 import asyncio
+import base64
+import binascii
 import json
 import logging
 import os
@@ -8,6 +10,8 @@ import uuid
 import requests
 from archie_shared.voice import DEFAULT_TTS_VOICE, voice_for_persona
 from asgiref.sync import async_to_sync
+from django.db import transaction
+from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -17,7 +21,7 @@ from homeassistant.redis_client import redis_client
 
 from .image_processor import (IMAGE_GENERATION_COST_PER_IMAGE,
                               process_images_in_ui_answer)
-from .models import Conversation, Message, MessageAudio
+from .models import Conversation, Message, MessageAudio, MessageImage
 
 # AI Agent URL - keep for AI functionality
 AI_AGENT_URL = os.getenv("AI_AGENT_URL", "http://archie-ai-agent:8005")
@@ -297,12 +301,23 @@ def proxy_conversation_messages(request, conversation_id):
             ).values_list("message_id", flat=True)
         )
 
+        # Number of attached images per message (one query).
+        image_counts = dict(
+            MessageImage.objects.filter(
+                message__conversation__conversation_id=conversation_id
+            )
+            .values("message_id")
+            .annotate(n=Count("pk"))
+            .values_list("message_id", "n")
+        )
+
         # Convert to Pydantic models for API compatibility
         message_data = []
         for msg in messages:
             pydantic_msg = msg.to_chat_message()
             msg_dict = pydantic_msg.model_dump()
             msg_dict["has_audio"] = str(msg.message_id) in audio_ids
+            msg_dict["image_count"] = image_counts.get(str(msg.message_id), 0)
             logger.info(
                 f"ai_assistant_011a: Message {msg.message_id} dict keys: {msg_dict.keys()}"
             )
@@ -834,3 +849,81 @@ def message_audio(request, message_id):
     except Exception as e:
         logger.error(f"ai_assistant_error_070: Failed to save audio: {e}")
         return add_cors_headers(JsonResponse({"error": str(e)}, status=500))
+
+
+# Limits for user-attached images (the frontend downsizes to ~1568px JPEG first).
+MAX_IMAGES_PER_MESSAGE = 4
+MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB per image
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def message_images(request, message_id):
+    """Store the images a user attached to a message.
+
+    POST JSON: {"images": [{"media_type": "image/jpeg", "data": "<base64>"}, ...]}
+    Replaces any previously stored images for the message. Images live in the DB
+    (MessageImage) and are served by `message_image`.
+    """
+    if request.method == "OPTIONS":
+        return add_cors_headers(HttpResponse())
+
+    try:
+        payload = json.loads(request.body or b"{}")
+        items = payload.get("images") or []
+        if not items:
+            return add_cors_headers(JsonResponse({"error": "no images"}, status=400))
+        if len(items) > MAX_IMAGES_PER_MESSAGE:
+            return add_cors_headers(JsonResponse({"error": "too many images"}, status=413))
+        try:
+            message = Message.objects.get(message_id=message_id)
+        except Message.DoesNotExist:
+            return add_cors_headers(JsonResponse({"error": "message not found"}, status=404))
+
+        records = []
+        for position, item in enumerate(items):
+            media_type = item.get("media_type")
+            if media_type not in ALLOWED_IMAGE_TYPES:
+                return add_cors_headers(
+                    JsonResponse({"error": f"unsupported media_type: {media_type}"}, status=400)
+                )
+            try:
+                data = base64.b64decode(item.get("data") or "", validate=True)
+            except (binascii.Error, ValueError):
+                return add_cors_headers(JsonResponse({"error": "invalid base64"}, status=400))
+            if not data:
+                return add_cors_headers(JsonResponse({"error": "empty image"}, status=400))
+            if len(data) > MAX_IMAGE_BYTES:
+                return add_cors_headers(JsonResponse({"error": "image too large"}, status=413))
+            records.append(
+                MessageImage(
+                    message=message, position=position, image=data, content_type=media_type
+                )
+            )
+
+        with transaction.atomic():
+            MessageImage.objects.filter(message=message).delete()
+            MessageImage.objects.bulk_create(records)
+        logger.info(f"ai_assistant_071: Saved {len(records)} image(s) for message {message_id}")
+        return add_cors_headers(JsonResponse({"success": True, "count": len(records)}))
+    except json.JSONDecodeError:
+        return add_cors_headers(JsonResponse({"error": "invalid JSON"}, status=400))
+    except Exception as e:
+        logger.error(f"ai_assistant_error_071: Failed to save images: {e}")
+        return add_cors_headers(JsonResponse({"error": str(e)}, status=500))
+
+
+@csrf_exempt
+@require_http_methods(["GET", "OPTIONS"])
+def message_image(request, message_id, position):
+    """Serve one stored attachment image (200) or 404."""
+    if request.method == "OPTIONS":
+        return add_cors_headers(HttpResponse())
+    try:
+        rec = MessageImage.objects.get(message_id=message_id, position=position)
+    except MessageImage.DoesNotExist:
+        return add_cors_headers(JsonResponse({"error": "no image"}, status=404))
+    resp = HttpResponse(bytes(rec.image), content_type=rec.content_type)
+    resp["Cache-Control"] = "private, max-age=31536000"
+    return add_cors_headers(resp)
