@@ -202,7 +202,10 @@ const IntegratedChatAssistant = () => {
 
         try {
             const msgs = await api.current.getMessages(conversationId);
-            setMessages(msgs);
+            // Stored attachments are served by URL (browser-cached), same shape as live previews
+            setMessages(msgs.map(msg => msg.image_count > 0
+                ? { ...msg, _attachments: Array.from({ length: msg.image_count }, (_, i) => api.current.imageUrl(msg.message_id, i)) }
+                : msg));
         } catch (err) {
             setError(`Не удалось загрузить сообщения: ${err.message}`);
         }
@@ -386,6 +389,11 @@ const IntegratedChatAssistant = () => {
             
             // Save user message to DB
             await api.current.saveMessage(currentConversation, userMessage);
+            if (sentImages.length) {
+                // Persist attachments so they survive reloads; a failure must not block the chat
+                api.current.saveMessageImages(userMessage.message_id, sentImages)
+                    .catch(err => console.error('ChatAssistant: failed to save images', err));
+            }
             
             // Find last assistant message for threading
             let previousMessageId = null;
