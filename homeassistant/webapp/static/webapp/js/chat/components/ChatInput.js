@@ -1,10 +1,56 @@
 // ChatInput - Advanced chat input component with settings and menus
+
+// Models that accept image input (mirrored in archie-ai-agent app/config.py VISION_MODELS)
+const VISION_MODELS = new Set([
+    'gpt-5.6-luna', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
+    'gpt-5.4', 'gpt-5.4-pro', 'gpt-5.4-mini', 'gpt-5.4-nano',
+    'google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview', 'google/gemini-3.1-flash-lite-preview',
+    'anthropic/claude-opus-4.6', 'anthropic/claude-sonnet-4.6',
+    'anthropic/claude-opus-4.5', 'anthropic/claude-sonnet-4.5', 'anthropic/claude-haiku-4.5',
+    'x-ai/grok-4.20-beta', 'x-ai/grok-4.1-fast',
+]);
+const MAX_IMAGES = 4;
+const MAX_IMAGE_SIDE = 1568;
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+// Downscale to MAX_IMAGE_SIDE and re-encode as JPEG to keep the WebSocket payload small.
+// GIFs are flattened to their first frame.
+const prepareImage = (file) => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+        const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            media_type: 'image/jpeg',
+            data: dataUrl.split(',')[1],
+            preview: dataUrl
+        });
+    };
+    img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error(`Cannot read image: ${file.name}`));
+    };
+    img.src = url;
+});
+
 const ChatInput = ({
     value,
     onChange,
     onSubmit,
     disabled,
-    isLoading
+    isLoading,
+    images = [],
+    onImagesChange
 }) => {
     const { useState, useRef, useEffect, useCallback } = React;
     
@@ -100,6 +146,44 @@ const ChatInput = ({
     }, []);
     
     const currentModels = getModelsForFormat(selectedFormat);
+
+    // Images are analyzed by the command model (Stage 1), so it decides availability
+    const imagesSupported = VISION_MODELS.has(selectedCommandModel);
+    const fileInputRef = useRef(null);
+    const imagesRef = useRef(images);
+    imagesRef.current = images;
+
+    const addImageFiles = useCallback(async (files) => {
+        const picked = Array.from(files).filter(f => ACCEPTED_IMAGE_TYPES.includes(f.type));
+        const room = MAX_IMAGES - imagesRef.current.length;
+        if (!picked.length || room <= 0 || !onImagesChange) return;
+        try {
+            const prepared = await Promise.all(picked.slice(0, room).map(prepareImage));
+            onImagesChange([...imagesRef.current, ...prepared]);
+        } catch (err) {
+            console.error('ChatInput: image processing failed', err);
+        }
+    }, [onImagesChange]);
+
+    const removeImage = useCallback((id) => {
+        onImagesChange?.(imagesRef.current.filter(img => img.id !== id));
+    }, [onImagesChange]);
+
+    // Drop attachments when the selected model can't process them
+    useEffect(() => {
+        if (!imagesSupported && imagesRef.current.length && onImagesChange) {
+            onImagesChange([]);
+        }
+    }, [imagesSupported, onImagesChange]);
+
+    const handlePaste = useCallback((e) => {
+        if (!imagesSupported) return;
+        const files = Array.from(e.clipboardData?.files || []).filter(f => f.type.startsWith('image/'));
+        if (files.length) {
+            e.preventDefault();
+            addImageFiles(files);
+        }
+    }, [imagesSupported, addImageFiles]);
     
     // Auto-resize textarea
     useEffect(() => {
@@ -285,12 +369,17 @@ const ChatInput = ({
     const currentFormatLabel = formats.find(f => f.value === selectedFormat)?.label || 'UI Answer';
     
     // Menu item component
-    const MenuItem = ({ icon, label, onClick, isActive, hasSubmenu }) => {
+    const MenuItem = ({ icon, label, onClick, isActive, hasSubmenu, disabled: itemDisabled, title }) => {
         return React.createElement('button', {
+            type: 'button',
+            disabled: itemDisabled,
+            title: title,
             className: `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                isActive 
-                    ? 'bg-cyan-500/20 text-cyan-400' 
-                    : 'text-gray-300 hover:bg-white/10'
+                itemDisabled
+                    ? 'text-gray-600 cursor-not-allowed'
+                    : isActive
+                        ? 'bg-cyan-500/20 text-cyan-400'
+                        : 'text-gray-300 hover:bg-white/10'
             }`,
             onClick: onClick
         }, [
@@ -377,8 +466,12 @@ const ChatInput = ({
                     key: 'add-image',
                     icon: 'image',
                     label: 'Add image',
+                    disabled: !imagesSupported || images.length >= MAX_IMAGES,
+                    title: !imagesSupported
+                        ? 'The selected Command Model does not support images'
+                        : images.length >= MAX_IMAGES ? `Up to ${MAX_IMAGES} images` : 'Add image',
                     onClick: () => {
-                        console.log('Add image clicked');
+                        fileInputRef.current?.click();
                         setAddMenuOpen(false);
                     }
                 })
@@ -570,6 +663,42 @@ const ChatInput = ({
                 className: 'relative flex flex-col p-3',
                 onSubmit: handleSubmit
             }, [
+                // Attached image previews
+                images.length > 0 && React.createElement('div', {
+                    key: 'image-previews',
+                    className: 'flex flex-wrap gap-2 pb-2'
+                }, images.map(img => React.createElement('div', {
+                    key: img.id,
+                    className: 'relative w-16 h-16 rounded-lg overflow-hidden border border-white/20'
+                }, [
+                    React.createElement('img', {
+                        key: 'thumb',
+                        src: img.preview,
+                        alt: 'Attached image',
+                        className: 'w-full h-full object-cover'
+                    }),
+                    React.createElement('button', {
+                        key: 'remove',
+                        type: 'button',
+                        title: 'Remove image',
+                        'aria-label': 'Remove image',
+                        onClick: () => removeImage(img.id),
+                        className: 'absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 text-white text-xs leading-none flex items-center justify-center hover:bg-black'
+                    }, '\u00d7')
+                ]))),
+                React.createElement('input', {
+                    key: 'image-input',
+                    ref: fileInputRef,
+                    type: 'file',
+                    accept: ACCEPTED_IMAGE_TYPES.join(','),
+                    multiple: true,
+                    className: 'hidden',
+                    onChange: (e) => {
+                        addImageFiles(e.target.files);
+                        e.target.value = '';
+                    }
+                }),
+
                 // Textarea (top)
                 React.createElement('div', {
                     key: 'textarea-container',
@@ -587,6 +716,7 @@ const ChatInput = ({
                         value: value,
                         onChange: (e) => onChange(e.target.value),
                         onKeyDown: handleKeyDown,
+                        onPaste: handlePaste,
                         disabled: disabled || isLoading,
                         rows: 1
                     })
