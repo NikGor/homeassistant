@@ -303,6 +303,39 @@ class MessageImage(models.Model):
         return f"image {self.position} for {self.message_id} ({len(self.image or b'')} bytes)"
 
 
+class MessageFile(models.Model):
+    """Document (PDF, text, DOCX, ...) attached by the user to a message.
+
+    Stored in the DB for the same reason as MessageAudio/MessageImage. `size` is
+    kept separately so listings never have to load the binary column.
+    """
+
+    message = models.ForeignKey(
+        Message,
+        on_delete=models.CASCADE,
+        related_name="files",
+        to_field="message_id",
+    )
+    position = models.PositiveSmallIntegerField(default=0)
+    name = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=100, default="application/octet-stream")
+    size = models.PositiveIntegerField(default=0)
+    data = models.BinaryField()
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "ai_assistant_message_file"
+        ordering = ["position"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["message", "position"], name="unique_message_file_position"
+            )
+        ]
+
+    def __str__(self):
+        return f"file {self.name} for {self.message_id} ({self.size} bytes)"
+
+
 class ConversationFlag(models.Model):
     """Flag raised by the Conversation-Monitor / Monitor-Analyzer LLM-judge
     agent for an unsatisfactory AI response.
