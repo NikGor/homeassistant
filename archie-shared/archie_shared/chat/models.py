@@ -161,6 +161,15 @@ class Conversation(BaseModel):
             self.llm_trace = calculate_conversation_llm_trace(self.messages)
 
 
+class ImageAttachment(BaseModel):
+    """Image attached by the user to a chat request"""
+
+    media_type: Literal["image/jpeg", "image/png", "image/webp", "image/gif"] = Field(
+        description="MIME type of the image"
+    )
+    data: str = Field(description="Base64-encoded image bytes (no data: URL prefix)")
+
+
 class ChatRequest(BaseModel):
     """Request to send a chat message"""
 
@@ -210,6 +219,10 @@ class ChatRequest(BaseModel):
     )
     final_output_model: Optional[str] = Field(
         default=None, description="LLM model to use for final output generation"
+    )
+    images: Optional[List[ImageAttachment]] = Field(
+        default=None,
+        description="Images attached by the user; analyzed by the command model (must support vision)",
     )
 
 
