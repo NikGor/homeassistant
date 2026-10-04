@@ -36,6 +36,16 @@ urlpatterns = [
         name="message_images",
     ),
     path(
+        "api/messages/<str:message_id>/files/",
+        views.message_files,
+        name="message_files",
+    ),
+    path(
+        "api/messages/<str:message_id>/files/<int:position>/",
+        views.message_file,
+        name="message_file",
+    ),
+    path(
         "api/messages/<str:message_id>/images/<int:position>/",
         views.message_image,
         name="message_image",
