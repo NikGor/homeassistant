@@ -94,6 +94,7 @@ const IntegratedChatAssistant = () => {
     const [currentConversation, setCurrentConversation] = useState(null);
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState('');
+    const [attachedImages, setAttachedImages] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [statusInfo, setStatusInfo] = useState({ message: '', step: '', status: '' });
     const [error, setError] = useState(null);
@@ -256,7 +257,7 @@ const IntegratedChatAssistant = () => {
             let currentStep = null;
             let currentStepStart = null;
             ws.onopen = () => {
-                console.log('ChatAssistant: WebSocket connected, sending payload', payload);
+                console.log('ChatAssistant: WebSocket connected, sending payload', { ...payload, images: payload.images ? `[${payload.images.length} image(s)]` : null });
                 ws.send(JSON.stringify(payload));
             };
             ws.onmessage = (event) => {
@@ -334,6 +335,8 @@ const IntegratedChatAssistant = () => {
         shouldFollowLatest.current = true;
 
         const isFirstMessage = messages.length === 0;
+        // Attachments only go with a typed message (not quick-action buttons)
+        const sentImages = overrideText === undefined ? attachedImages : [];
         const userMessage = {
             message_id: `temp-user-${Date.now()}`,
             role: 'user',
@@ -344,7 +347,10 @@ const IntegratedChatAssistant = () => {
             created_at: new Date().toISOString()
         };
 
-        setMessages(prev => [...prev, userMessage]);
+        // _attachments is a session-only preview; it is never saved to the DB
+        setMessages(prev => [...prev, sentImages.length
+            ? { ...userMessage, _attachments: sentImages.map(img => img.preview) }
+            : userMessage]);
         const streamingMsgId = `streaming-${Date.now()}`;
         const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
         setMessages(prev => [...prev, {
@@ -354,6 +360,7 @@ const IntegratedChatAssistant = () => {
             created_at: new Date().toISOString(),
         }]);
         setInputValue('');
+        if (overrideText === undefined) setAttachedImages([]);
         setIsLoading(true);
 
         try {
@@ -396,6 +403,9 @@ const IntegratedChatAssistant = () => {
                 user_name: userName,
                 response_format: backendFormat,
                 input: messageText,
+                images: sentImages.length
+                    ? sentImages.map(({ media_type, data }) => ({ media_type, data }))
+                    : null,
                 conversation_id: currentConversation,
                 command_model: selectedCommandModel,
                 final_output_model: selectedFinalOutputModel,
@@ -831,7 +841,9 @@ const IntegratedChatAssistant = () => {
                 onChange: setInputValue,
                 onSubmit: sendMessage,
                 disabled: !currentConversation,
-                isLoading: isLoading
+                isLoading: isLoading,
+                images: attachedImages,
+                onImagesChange: setAttachedImages
             })
         ]),
 
