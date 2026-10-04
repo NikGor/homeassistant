@@ -2073,6 +2073,15 @@ const ChatMessage = ({ message, onExecute }) => {
                             className: 'w-3.5 h-3.5 translate-x-[1px]'
                         }, React.createElement('path', { d: 'M8 5v14l11-7z' })))
                 ]),
+                message._attachments && message._attachments.length > 0 && React.createElement('div', {
+                    key: 'attachments',
+                    className: 'flex flex-wrap gap-2 mb-2'
+                }, message._attachments.map((src, i) => React.createElement('img', {
+                    key: i,
+                    src: src,
+                    alt: 'Attached image',
+                    className: 'w-32 h-32 object-cover rounded-lg border border-white/20'
+                }))),
                 React.createElement('div', {
                     key: 'message-content',
                     className: 'message-content'
