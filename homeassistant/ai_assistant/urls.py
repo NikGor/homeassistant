@@ -30,4 +30,14 @@ urlpatterns = [
         views.message_audio,
         name="message_audio",
     ),
+    path(
+        "api/messages/<str:message_id>/images/",
+        views.message_images,
+        name="message_images",
+    ),
+    path(
+        "api/messages/<str:message_id>/images/<int:position>/",
+        views.message_image,
+        name="message_image",
+    ),
 ]
