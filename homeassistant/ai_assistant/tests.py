@@ -75,3 +75,70 @@ class MessageImageApiTests(TestCase):
         body = resp.json()
         messages = body if isinstance(body, list) else body.get("messages", body)
         self.assertEqual(messages[0]["image_count"], 2)
+
+
+class MessageFileApiTests(TestCase):
+    def setUp(self):
+        conversation = Conversation.objects.create(conversation_id="conv-f", title="t")
+        self.message = Message.objects.create(
+            message_id="msg-f",
+            conversation=conversation,
+            role="user",
+            content={"content_format": "plain", "text": "hi"},
+        )
+
+    @staticmethod
+    def _b64(raw):
+        return base64.b64encode(raw).decode()
+
+    def _post(self, files, message_id="msg-f"):
+        return self.client.post(
+            reverse("message_files", args=[message_id]),
+            data=json.dumps({"files": files}),
+            content_type="application/json",
+        )
+
+    def test_pdf_served_inline_with_name(self):
+        pdf = b"%PDF-1.4 fake"
+        self.assertEqual(
+            self._post(
+                [{"name": "Отчёт.pdf", "media_type": "application/pdf", "data": self._b64(pdf)}]
+            ).status_code,
+            200,
+        )
+        resp = self.client.get(reverse("message_file", args=["msg-f", 0]))
+        self.assertEqual(resp["Content-Type"], "application/pdf")
+        self.assertTrue(resp["Content-Disposition"].startswith("inline;"))
+        self.assertIn("%D0%9E%D1%82%D1%87", resp["Content-Disposition"])
+        self.assertEqual(resp.content, pdf)
+
+    def test_html_is_never_served_inline(self):
+        self._post(
+            [{"name": "x.html", "media_type": "text/html", "data": self._b64(b"<script>1</script>")}]
+        )
+        resp = self.client.get(reverse("message_file", args=["msg-f", 0]))
+        self.assertEqual(resp["Content-Type"], "application/octet-stream")
+        self.assertTrue(resp["Content-Disposition"].startswith("attachment;"))
+        self.assertEqual(resp["X-Content-Type-Options"], "nosniff")
+
+    def test_fake_pdf_extension_is_not_trusted(self):
+        self._post([{"name": "evil.pdf", "media_type": "application/pdf", "data": self._b64(b"<html>")}])
+        resp = self.client.get(reverse("message_file", args=["msg-f", 0]))
+        self.assertEqual(resp["Content-Type"], "application/octet-stream")
+
+    def test_rejects_bad_input(self):
+        ok = {"name": "a.txt", "media_type": "text/plain", "data": self._b64(b"x")}
+        self.assertEqual(self._post([]).status_code, 400)
+        self.assertEqual(self._post([ok] * 6).status_code, 413)
+        self.assertEqual(self._post([{**ok, "name": ""}]).status_code, 400)
+        self.assertEqual(self._post([{**ok, "data": "!!"}]).status_code, 400)
+        self.assertEqual(self._post([ok], message_id="nope").status_code, 404)
+
+    def test_listing_includes_file_metadata(self):
+        self._post([{"name": "a.txt", "media_type": "text/plain", "data": self._b64(b"hello")}])
+        resp = self.client.get(reverse("proxy_conversation_messages", args=["conv-f"]))
+        body = resp.json()
+        messages = body if isinstance(body, list) else body.get("messages", body)
+        self.assertEqual(
+            [(f["name"], f["size"]) for f in messages[0]["files"]], [("a.txt", 5)]
+        )
