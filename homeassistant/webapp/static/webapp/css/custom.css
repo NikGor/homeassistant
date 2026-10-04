@@ -1138,3 +1138,84 @@ body.voice-mode .orb {
         pointer-events: auto;
     }
 }
+
+/* ── Image lightbox (user attachments) ─────────────────────────────── */
+.attachment-thumb {
+    padding: 0;
+    cursor: zoom-in;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.attachment-thumb:hover {
+    transform: translateY(-2px) scale(1.03);
+    border-color: rgba(103, 232, 249, 0.6);
+    box-shadow: 0 8px 24px rgba(34, 211, 238, 0.18);
+}
+.attachment-thumb:focus-visible {
+    outline: 2px solid rgb(103, 232, 249);
+    outline-offset: 2px;
+}
+
+.lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1rem;
+    background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.82), rgba(2, 6, 14, 0.95));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    animation: lightbox-fade 0.18s ease-out;
+}
+.lightbox__img {
+    max-width: min(92vw, 1400px);
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.04), 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 60px rgba(34, 211, 238, 0.12);
+    animation: lightbox-pop 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    cursor: default;
+}
+.lightbox__btn {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(8px);
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.lightbox__btn:hover { background: rgba(255, 255, 255, 0.18); color: #fff; transform: scale(1.08); }
+.lightbox__btn:focus-visible { outline: 2px solid rgb(103, 232, 249); outline-offset: 2px; }
+.lightbox__btn--close { top: 1rem; right: 1rem; }
+.lightbox__btn--prev { left: 1rem; top: 50%; margin-top: -1.375rem; }
+.lightbox__btn--next { right: 1rem; top: 50%; margin-top: -1.375rem; }
+.lightbox__counter {
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.25rem 0.875rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.75);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+}
+@keyframes lightbox-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lightbox-pop { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+    .lightbox, .lightbox__img { animation: none; }
+    .attachment-thumb { transition: none; }
+}
