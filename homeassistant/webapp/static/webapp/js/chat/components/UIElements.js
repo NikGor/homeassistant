@@ -2135,7 +2135,7 @@ const ChatMessage = ({ message, onExecute }) => {
                 ]),
                 message._attachments && message._attachments.length > 0 && React.createElement('div', {
                     key: 'attachments',
-                    className: 'flex flex-wrap gap-2 mb-2'
+                    className: `attachments attachments--${Math.min(message._attachments.length, 4)}`
                 }, message._attachments.map((src, i) => React.createElement('button', {
                     key: i,
                     type: 'button',
@@ -2146,7 +2146,8 @@ const ChatMessage = ({ message, onExecute }) => {
                 }, React.createElement('img', {
                     src: src,
                     alt: 'Attached image',
-                    className: 'block w-32 h-32 object-cover'
+                    loading: 'lazy',
+                    draggable: false
                 })))),
                 lightboxIndex !== null && message._attachments && React.createElement(ImageLightbox, {
                     key: 'lightbox',
