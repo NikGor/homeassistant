@@ -115,6 +115,20 @@ class ChatAPI {
         }
     }
 
+    async saveMessageImages(messageId, images) {
+        const response = await fetch(`${this.baseUrl}/messages/${encodeURIComponent(messageId)}/images/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ images: images.map(({ media_type, data }) => ({ media_type, data })) })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+    }
+
+    imageUrl(messageId, position) {
+        return `${this.baseUrl}/messages/${encodeURIComponent(messageId)}/images/${position}/`;
+    }
+
     async saveMessage(conversationId, message) {
         try {
             const response = await fetch(`${this.baseUrl}/save-message/`, {
