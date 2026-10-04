@@ -125,6 +125,20 @@ class ChatAPI {
         return await response.json();
     }
 
+    async saveMessageFiles(messageId, files) {
+        const response = await fetch(`${this.baseUrl}/messages/${encodeURIComponent(messageId)}/files/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ files: files.map(({ name, media_type, data }) => ({ name, media_type, data })) })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+    }
+
+    fileUrl(messageId, position) {
+        return `${this.baseUrl}/messages/${encodeURIComponent(messageId)}/files/${position}/`;
+    }
+
     imageUrl(messageId, position) {
         return `${this.baseUrl}/messages/${encodeURIComponent(messageId)}/images/${position}/`;
     }
