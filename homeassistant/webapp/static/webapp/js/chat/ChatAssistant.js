@@ -95,6 +95,7 @@ const IntegratedChatAssistant = () => {
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState('');
     const [attachedImages, setAttachedImages] = useState([]);
+    const [attachedFiles, setAttachedFiles] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [statusInfo, setStatusInfo] = useState({ message: '', step: '', status: '' });
     const [error, setError] = useState(null);
@@ -203,9 +204,15 @@ const IntegratedChatAssistant = () => {
         try {
             const msgs = await api.current.getMessages(conversationId);
             // Stored attachments are served by URL (browser-cached), same shape as live previews
-            setMessages(msgs.map(msg => msg.image_count > 0
-                ? { ...msg, _attachments: Array.from({ length: msg.image_count }, (_, i) => api.current.imageUrl(msg.message_id, i)) }
-                : msg));
+            setMessages(msgs.map(msg => ({
+                ...msg,
+                ...(msg.image_count > 0 && {
+                    _attachments: Array.from({ length: msg.image_count }, (_, i) => api.current.imageUrl(msg.message_id, i))
+                }),
+                ...(msg.files && msg.files.length > 0 && {
+                    _files: msg.files.map(f => ({ name: f.name, size: f.size, url: api.current.fileUrl(msg.message_id, f.position) }))
+                })
+            })));
         } catch (err) {
             setError(`Не удалось загрузить сообщения: ${err.message}`);
         }
@@ -260,7 +267,7 @@ const IntegratedChatAssistant = () => {
             let currentStep = null;
             let currentStepStart = null;
             ws.onopen = () => {
-                console.log('ChatAssistant: WebSocket connected, sending payload', { ...payload, images: payload.images ? `[${payload.images.length} image(s)]` : null });
+                console.log('ChatAssistant: WebSocket connected, sending payload', { ...payload, images: payload.images ? `[${payload.images.length} image(s)]` : null, files: payload.files ? `[${payload.files.length} file(s)]` : null });
                 ws.send(JSON.stringify(payload));
             };
             ws.onmessage = (event) => {
@@ -340,6 +347,7 @@ const IntegratedChatAssistant = () => {
         const isFirstMessage = messages.length === 0;
         // Attachments only go with a typed message (not quick-action buttons)
         const sentImages = overrideText === undefined ? attachedImages : [];
+        const sentFiles = overrideText === undefined ? attachedFiles : [];
         const userMessage = {
             message_id: `temp-user-${Date.now()}`,
             role: 'user',
@@ -351,8 +359,19 @@ const IntegratedChatAssistant = () => {
         };
 
         // _attachments is a session-only preview; it is never saved to the DB
-        setMessages(prev => [...prev, sentImages.length
-            ? { ...userMessage, _attachments: sentImages.map(img => img.preview) }
+        setMessages(prev => [...prev, (sentImages.length || sentFiles.length)
+            ? {
+                ...userMessage,
+                ...(sentImages.length && { _attachments: sentImages.map(img => img.preview) }),
+                ...(sentFiles.length && { _files: sentFiles.map(f => ({
+                    name: f.name,
+                    size: f.size,
+                    url: URL.createObjectURL(new Blob(
+                        [Uint8Array.from(atob(f.data), c => c.charCodeAt(0))],
+                        { type: f.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream' }
+                    ))
+                })) })
+            }
             : userMessage]);
         const streamingMsgId = `streaming-${Date.now()}`;
         const selectedFormat = window.selectedResponseFormat || localStorage.getItem('selectedResponseFormat') || 'ui_answer';
@@ -363,7 +382,7 @@ const IntegratedChatAssistant = () => {
             created_at: new Date().toISOString(),
         }]);
         setInputValue('');
-        if (overrideText === undefined) setAttachedImages([]);
+        if (overrideText === undefined) { setAttachedImages([]); setAttachedFiles([]); }
         setIsLoading(true);
 
         try {
@@ -389,6 +408,10 @@ const IntegratedChatAssistant = () => {
             
             // Save user message to DB
             await api.current.saveMessage(currentConversation, userMessage);
+            if (sentFiles.length) {
+                api.current.saveMessageFiles(userMessage.message_id, sentFiles)
+                    .catch(err => console.error('ChatAssistant: failed to save files', err));
+            }
             if (sentImages.length) {
                 // Persist attachments so they survive reloads; a failure must not block the chat
                 api.current.saveMessageImages(userMessage.message_id, sentImages)
@@ -413,6 +436,9 @@ const IntegratedChatAssistant = () => {
                 input: messageText,
                 images: sentImages.length
                     ? sentImages.map(({ media_type, data }) => ({ media_type, data }))
+                    : null,
+                files: sentFiles.length
+                    ? sentFiles.map(({ name, media_type, data }) => ({ name, media_type, data }))
                     : null,
                 conversation_id: currentConversation,
                 command_model: selectedCommandModel,
@@ -851,7 +877,9 @@ const IntegratedChatAssistant = () => {
                 disabled: !currentConversation,
                 isLoading: isLoading,
                 images: attachedImages,
-                onImagesChange: setAttachedImages
+                onImagesChange: setAttachedImages,
+                files: attachedFiles,
+                onFilesChange: setAttachedFiles
             })
         ]),
 
