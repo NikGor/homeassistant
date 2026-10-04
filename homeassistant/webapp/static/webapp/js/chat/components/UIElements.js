@@ -1749,10 +1749,70 @@ const ChatContent = ({ content, onExecute }) => {
     }, 'Unsupported content format');
 };
 
+// Fullscreen viewer for user-attached images. Uses inline SVG icons (not lucide <i>)
+// so React reconciliation is not broken by lucide.createIcons() swapping nodes.
+const ImageLightbox = ({ images, startIndex, onClose }) => {
+    const { useState, useEffect, useCallback } = React;
+    const [index, setIndex] = useState(startIndex);
+    const hasMany = images.length > 1;
+
+    const step = useCallback((delta) => {
+        setIndex(i => (i + delta + images.length) % images.length);
+    }, [images.length]);
+
+    useEffect(() => {
+        const onKey = (e) => {
+            if (e.key === 'Escape') onClose();
+            else if (e.key === 'ArrowLeft' && hasMany) step(-1);
+            else if (e.key === 'ArrowRight' && hasMany) step(1);
+        };
+        document.addEventListener('keydown', onKey);
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.body.style.overflow = prevOverflow;
+        };
+    }, [onClose, step, hasMany]);
+
+    const icon = (d) => React.createElement('svg', {
+        viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2,
+        strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true', className: 'w-5 h-5'
+    }, React.createElement('path', { d }));
+
+    const navBtn = (cls, label, delta, d) => React.createElement('button', {
+        key: cls, type: 'button', className: `lightbox__btn ${cls}`, title: label, 'aria-label': label,
+        onClick: (e) => { e.stopPropagation(); step(delta); }
+    }, icon(d));
+
+    return ReactDOM.createPortal(
+        React.createElement('div', {
+            className: 'lightbox', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Image preview',
+            onClick: onClose
+        }, [
+            React.createElement('img', {
+                key: 'img', src: images[index], alt: 'Attached image', className: 'lightbox__img',
+                onClick: (e) => e.stopPropagation()
+            }),
+            React.createElement('button', {
+                key: 'close', type: 'button', className: 'lightbox__btn lightbox__btn--close',
+                title: 'Close', 'aria-label': 'Close', onClick: (e) => { e.stopPropagation(); onClose(); }
+            }, icon('M18 6 6 18M6 6l12 12')),
+            hasMany && navBtn('lightbox__btn--prev', 'Previous image', -1, 'M15 18l-6-6 6-6'),
+            hasMany && navBtn('lightbox__btn--next', 'Next image', 1, 'M9 18l6-6-6-6'),
+            hasMany && React.createElement('div', {
+                key: 'counter', className: 'lightbox__counter'
+            }, `${index + 1} / ${images.length}`)
+        ]),
+        document.body
+    );
+};
+
 const ChatMessage = ({ message, onExecute }) => {
     const { useState, useRef, useEffect } = React;
     const isUser = message.role === 'user';
     const containerRef = useRef(null);
+    const [lightboxIndex, setLightboxIndex] = useState(null);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -2076,12 +2136,24 @@ const ChatMessage = ({ message, onExecute }) => {
                 message._attachments && message._attachments.length > 0 && React.createElement('div', {
                     key: 'attachments',
                     className: 'flex flex-wrap gap-2 mb-2'
-                }, message._attachments.map((src, i) => React.createElement('img', {
+                }, message._attachments.map((src, i) => React.createElement('button', {
                     key: i,
+                    type: 'button',
+                    className: 'attachment-thumb',
+                    title: 'Click to enlarge',
+                    'aria-label': `Enlarge image ${i + 1}`,
+                    onClick: () => setLightboxIndex(i)
+                }, React.createElement('img', {
                     src: src,
                     alt: 'Attached image',
-                    className: 'w-32 h-32 object-cover rounded-lg border border-white/20'
-                }))),
+                    className: 'block w-32 h-32 object-cover'
+                })))),
+                lightboxIndex !== null && message._attachments && React.createElement(ImageLightbox, {
+                    key: 'lightbox',
+                    images: message._attachments,
+                    startIndex: lightboxIndex,
+                    onClose: () => setLightboxIndex(null)
+                }),
                 React.createElement('div', {
                     key: 'message-content',
                     className: 'message-content'
