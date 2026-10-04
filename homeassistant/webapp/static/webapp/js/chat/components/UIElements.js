@@ -2149,6 +2149,30 @@ const ChatMessage = ({ message, onExecute }) => {
                     loading: 'lazy',
                     draggable: false
                 })))),
+                message._files && message._files.length > 0 && React.createElement('div', {
+                    key: 'files',
+                    className: 'flex flex-col gap-1.5 mb-2'
+                }, message._files.map((f, i) => React.createElement('a', {
+                    key: i,
+                    href: f.url,
+                    target: '_blank',
+                    rel: 'noopener noreferrer',
+                    download: /\.pdf$/i.test(f.name) ? undefined : f.name,
+                    className: 'file-chip file-chip--link',
+                    title: f.name
+                }, [
+                    React.createElement('svg', {
+                        key: 'icon', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8,
+                        strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true',
+                        className: 'w-4 h-4 shrink-0 text-cyan-300'
+                    }, [
+                        React.createElement('path', { key: 'a', d: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z' }),
+                        React.createElement('path', { key: 'b', d: 'M14 3v5h5' })
+                    ]),
+                    React.createElement('span', { key: 'name', className: 'file-chip__name' }, f.name),
+                    React.createElement('span', { key: 'size', className: 'file-chip__size' },
+                        f.size < 1024 ? `${f.size} B` : f.size < 1048576 ? `${Math.round(f.size / 1024)} KB` : `${(f.size / 1048576).toFixed(1)} MB`)
+                ]))),
                 lightboxIndex !== null && message._attachments && React.createElement(ImageLightbox, {
                     key: 'lightbox',
                     images: message._attachments,
