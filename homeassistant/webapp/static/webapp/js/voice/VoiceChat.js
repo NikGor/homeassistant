@@ -11,13 +11,25 @@
 // Audio cues are the real WAV samples the Pi assistant uses (start/received/
 // ready/end + looped thinking), with synthesized tones as fallback. Persona voice
 // resolves from the user's persona server-side (same mapping as archie-voice).
+//
+// "Live" mode (toggle, remembered per browser) swaps the STT -> agent -> TTS chain
+// for a realtime Gemini Live session (LiveSession.js); the agent is reached from
+// there through the ask_archie tool. Turns are persisted the same way.
+
+const VOICE_MODE_KEY = 'archie.voiceChat.mode';
+
+const readVoiceMode = () => {
+    try { return localStorage.getItem(VOICE_MODE_KEY) === 'live' ? 'live' : 'tts'; }
+    catch (_) { return 'tts'; }
+};
 
 const VoiceChat = () => {
     const { useState, useRef, useEffect, useCallback } = React;
 
-    const [status, setStatus] = useState('idle'); // idle | listening | thinking | speaking
+    const [status, setStatus] = useState('idle'); // idle | connecting | listening | thinking | speaking
     const [answer, setAnswer] = useState('');
     const [error, setError] = useState(null);
+    const [mode, setMode] = useState(readVoiceMode); // tts | live
 
     // Browser capability checks
     const SpeechRecognition = typeof window !== 'undefined'
@@ -28,9 +40,14 @@ const VoiceChat = () => {
         : undefined;
     const sttSupported = !!SpeechRecognition;
     const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
-    // STT is essential; playback works through Web Audio (persona TTS) or the
-    // browser fallback, so either audio path is enough.
-    const supported = sttSupported && (!!AudioCtx || ttsSupported);
+    // TTS mode: STT is essential; playback works through Web Audio (persona TTS)
+    // or the browser fallback, so either audio path is enough.
+    // Live mode: mic capture + Web Audio playback + a WebSocket to Gemini.
+    const liveSupported = !!AudioCtx && !!navigator.mediaDevices?.getUserMedia
+        && typeof WebSocket !== 'undefined' && typeof window.LiveVoiceSession === 'function';
+    const supported = mode === 'live'
+        ? liveSupported
+        : sttSupported && (!!AudioCtx || ttsSupported);
 
     // Session refs (kept in refs so async callbacks always see fresh values)
     const sessionActiveRef = useRef(false);
@@ -49,6 +66,8 @@ const VoiceChat = () => {
     const recPcmRef = useRef([]); // Float32Array chunks for the current utterance
     const recRateRef = useRef(16000); // AudioContext sample rate at capture time
     const workletReadyRef = useRef(null); // Promise<bool>: AudioWorklet module loaded
+    const liveRef = useRef(null); // active LiveVoiceSession (Live mode)
+    const liveSaveChainRef = useRef(Promise.resolve()); // keeps saved turns in order
 
     const LISTEN_WINDOW_MS = 10000; // end the session after 10s of silence
 
@@ -595,6 +614,8 @@ const VoiceChat = () => {
         clearListenTimers();
         turnGotResultRef.current = true; // stop any pending onend restart
         try { recognitionRef.current?.abort?.(); } catch (_) { /* noop */ }
+        liveRef.current?.stop();
+        liveRef.current = null;
         stopUserRecording();
         releaseMicStream();
         stopPlayback();
@@ -605,6 +626,51 @@ const VoiceChat = () => {
             try { window.loadChats(); } catch (_) { /* noop */ }
         }
     }, [ttsSupported]);
+
+    // Persist one Live turn (user + assistant transcripts with their audio clips).
+    const saveLiveTurn = useCallback(({ userText, userWav, assistantText, assistantWav }) => {
+        liveSaveChainRef.current = liveSaveChainRef.current.then(async () => {
+            if (userText) uploadAudio(await saveMessage('user', userText), userWav);
+            if (assistantText) uploadAudio(await saveMessage('assistant', assistantText), assistantWav);
+        });
+    }, [saveMessage]);
+
+    const startLiveSession = async () => {
+        setStatus('connecting');
+        const session = new window.LiveVoiceSession({
+            audioCtx: getAudioCtx(),
+            ensureWorklet,
+            userName: window.CURRENT_USER_NAME || 'guest',
+            conversationId: conversationIdRef.current,
+            idleTimeoutMs: LISTEN_WINDOW_MS,
+            on: {
+                status: (s) => {
+                    if (!sessionActiveRef.current) return;
+                    if (s === 'thinking') startThinking(); else stopThinking();
+                    setStatus(s);
+                },
+                transcript: (text) => sessionActiveRef.current && setAnswer(text),
+                turn: saveLiveTurn,
+                close: () => endSession(true),
+                error: (message) => {
+                    console.error('VoiceChat: Live session failed —', message);
+                    beep('error');
+                    setError('Live voice is unavailable');
+                    endSession(false);
+                }
+            }
+        });
+        liveRef.current = session;
+        try {
+            await session.start();
+        } catch (e) {
+            console.error('VoiceChat: Live session start failed', e);
+            if (liveRef.current !== session) return; // cancelled meanwhile
+            beep('error');
+            setError(e?.name === 'NotAllowedError' ? 'Microphone access is blocked' : 'Live voice is unavailable');
+            endSession(false);
+        }
+    };
 
     const startSession = useCallback(async () => {
         if (sessionActiveRef.current) return;
@@ -618,11 +684,19 @@ const VoiceChat = () => {
         sessionActiveRef.current = true;
         preloadCues();  // unlocks the AudioContext on this user gesture + warms cache
         beep('start');
+        if (mode === 'live') { await startLiveSession(); return; }
         // Acquire the mic up front so the first utterance is recorded (not just STT).
         await ensureMicStream();
         if (!sessionActiveRef.current) return; // cancelled during the permission prompt
         startListening();
-    }, [supported, startListening]);
+    }, [supported, mode, startListening, saveLiveTurn]);
+
+    const switchMode = (next) => {
+        if (sessionActiveRef.current || next === mode) return;
+        setMode(next);
+        setError(null);
+        try { localStorage.setItem(VOICE_MODE_KEY, next); } catch (_) { /* noop */ }
+    };
 
     // Allow external navigation (leaving the voice view) to stop the session
     useEffect(() => {
@@ -644,17 +718,48 @@ const VoiceChat = () => {
     const isActive = status !== 'idle';
     const statusLabel = {
         idle: 'Press the microphone to start',
+        connecting: 'Connecting…',
         listening: 'Listening…',
         thinking: 'Thinking…',
         speaking: 'Speaking…'
     }[status];
 
+    // TTS | Live segmented switch, locked while a session runs.
+    const modeSwitch = React.createElement('div', {
+        key: 'mode',
+        role: 'radiogroup',
+        'aria-label': 'Voice mode',
+        className: `absolute top-6 left-1/2 -translate-x-1/2 z-[3] flex p-1 rounded-full border border-white/10 bg-white/5 ${
+            isActive ? 'opacity-40' : ''
+        }`
+    }, [['tts', 'TTS', 'Speech recognition → Archie agent → persona TTS'],
+        ['live', 'Live', 'Realtime Gemini Live voice (agent as a tool)']].map(([value, label, hint]) =>
+        React.createElement('button', {
+            key: value,
+            type: 'button',
+            role: 'radio',
+            'aria-checked': mode === value,
+            title: hint,
+            disabled: isActive,
+            onClick: () => switchMode(value),
+            className: `px-4 py-1 rounded-full text-[0.65rem] font-medium uppercase tracking-[0.2em] transition-colors ${
+                mode === value ? 'bg-cyan-500/20 text-cyan-200' : 'text-white/45 hover:text-white/75'
+            } ${isActive ? 'cursor-not-allowed' : ''}`
+        }, label)
+    ));
+
     if (!supported) {
         return React.createElement('div', {
-            className: 'h-full w-full flex items-center justify-center text-center px-6'
-        }, React.createElement('p', {
-            className: 'text-white/70 max-w-md'
-        }, 'Voice chat needs a browser with Speech Recognition and Speech Synthesis (Chrome or Edge), served over HTTPS or localhost.'));
+            className: 'relative h-full w-full flex items-center justify-center text-center px-6'
+        }, [
+            modeSwitch,
+            React.createElement('p', {
+                key: 'msg',
+                className: 'text-white/70 max-w-md'
+            }, mode === 'live'
+                ? 'Live voice needs microphone access and Web Audio, served over HTTPS or localhost.'
+                : 'Voice chat needs a browser with Speech Recognition and Speech Synthesis (Chrome or Edge), served over HTTPS or localhost.')
+        ]);
     }
 
     const orbStateClass = status === 'listening'
@@ -664,6 +769,8 @@ const VoiceChat = () => {
     return React.createElement('div', {
         className: `voice-stage voice-stage--${status} relative h-full w-full overflow-hidden`
     }, [
+        modeSwitch,
+
         // Reactive orb — dead center. Rings + core stacked in one cell.
         React.createElement('div', {
             key: 'orb-wrap',
