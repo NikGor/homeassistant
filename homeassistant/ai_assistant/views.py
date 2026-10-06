@@ -20,6 +20,7 @@ from django.views.decorators.http import require_http_methods
 
 from homeassistant.redis_client import redis_client
 
+from . import live_session
 from .image_processor import (IMAGE_GENERATION_COST_PER_IMAGE,
                               process_images_in_ui_answer)
 from .models import Conversation, Message, MessageAudio, MessageFile, MessageImage
@@ -737,6 +738,50 @@ def save_message(request):
         return add_cors_headers(error_response)
 
 
+def _user_state(user_name):
+    """Redis UserState for `user_name` (persona, language…), or None."""
+    if not user_name:
+        return None
+    try:
+        return redis_client.get_user_state_by_name(user_name)
+    except Exception as e:
+        logger.error(f"ai_assistant_error_060: user state lookup failed: {e}")
+        return None
+
+
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def live_token(request):
+    """Mint an ephemeral Gemini Live token for the frontend Voice Chat (Live mode).
+
+    Body: {"user_name"?: str}. The persona/language come from the user's Redis
+    state and are locked into the token (voice, system instruction, ask_archie
+    tool), so the browser can open the Live WebSocket without GEMINI_API_KEY.
+    Returns {"token", "ws_url", "model", "voice"}; 503 when Live is not configured.
+    """
+    logger.info("ai_assistant_070: Processing Live token request")
+    if request.method == "OPTIONS":
+        return add_cors_headers(HttpResponse())
+    if not live_session.GEMINI_API_KEY:
+        logger.warning("ai_assistant_071: Live requested but GEMINI_API_KEY is not set")
+        return add_cors_headers(
+            JsonResponse({"error": "Live voice not configured"}, status=503)
+        )
+    try:
+        data = json.loads(request.body) if request.body else {}
+        state = _user_state(data.get("user_name"))
+        result = live_session.create_live_token(
+            persona=getattr(state, "persona", None) if state else None,
+            language=getattr(state, "language", None) if state else None,
+        )
+        return add_cors_headers(JsonResponse(result))
+    except Exception as e:
+        logger.error(f"ai_assistant_error_070: Live token failed: {e}")
+        return add_cors_headers(
+            JsonResponse({"error": "Live token upstream error"}, status=502)
+        )
+
+
 @csrf_exempt
 @require_http_methods(["POST", "OPTIONS"])
 def synth_speech(request):
@@ -767,13 +812,8 @@ def synth_speech(request):
 
         persona = data.get("persona")
         if not persona:
-            user_name = data.get("user_name")
-            if user_name:
-                try:
-                    state = redis_client.get_user_state_by_name(user_name)
-                    persona = getattr(state, "persona", None) if state else None
-                except Exception as e:
-                    logger.error(f"ai_assistant_error_060: persona lookup failed: {e}")
+            state = _user_state(data.get("user_name"))
+            persona = getattr(state, "persona", None) if state else None
         voice = voice_for_persona(persona) if persona else TTS_DEFAULT_VOICE
 
         resp = requests.post(
