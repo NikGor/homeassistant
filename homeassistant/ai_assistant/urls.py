@@ -25,6 +25,7 @@ urlpatterns = [
     path("api/process-images/", views.process_images, name="process_images"),
     path("api/save-message/", views.save_message, name="save_message"),
     path("api/tts/", views.synth_speech, name="synth_speech"),
+    path("api/live-token/", views.live_token, name="live_token"),
     path(
         "api/messages/<str:message_id>/audio/",
         views.message_audio,
