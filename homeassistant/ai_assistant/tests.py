@@ -1,9 +1,12 @@
 import base64
 import json
+from types import SimpleNamespace
+from unittest import mock
 
 from django.test import TestCase
 from django.urls import reverse
 
+from . import live_session, views
 from .models import Conversation, Message, MessageImage
 
 PNG_B64 = base64.b64encode(b"\x89PNG\r\n\x1a\nfake").decode()
@@ -142,3 +145,53 @@ class MessageFileApiTests(TestCase):
         self.assertEqual(
             [(f["name"], f["size"]) for f in messages[0]["files"]], [("a.txt", 5)]
         )
+
+
+class LiveTokenApiTests(TestCase):
+    url = "/ai-assistant/api/live-token/"
+
+    def _post(self, body):
+        return self.client.post(
+            self.url, data=json.dumps(body), content_type="application/json"
+        )
+
+    @mock.patch.object(live_session, "GEMINI_API_KEY", "")
+    def test_503_without_api_key(self):
+        self.assertEqual(self._post({}).status_code, 503)
+
+    @mock.patch.object(live_session, "GEMINI_API_KEY", "test-key")
+    @mock.patch.object(views, "redis_client")
+    @mock.patch.object(live_session.genai, "Client")
+    def test_token_locks_persona_voice_and_tool(self, client_cls, redis, *_):
+        redis.get_user_state_by_name.return_value = SimpleNamespace(
+            persona="bro", language="en"
+        )
+        create = client_cls.return_value.auth_tokens.create
+        create.return_value = SimpleNamespace(name="auth_tokens/abc")
+
+        resp = self._post({"user_name": "Niko"})
+
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["token"], "auth_tokens/abc")
+        self.assertEqual(body["voice"], "Puck")
+        self.assertIn("BidiGenerateContentConstrained", body["ws_url"])
+        cfg = create.call_args.kwargs["config"]
+        self.assertEqual(cfg["uses"], 1)
+        constraints = cfg["live_connect_constraints"]
+        self.assertEqual(constraints["model"], live_session.LIVE_MODEL)
+        speech = constraints["config"]["speech_config"]
+        self.assertEqual(speech["language_code"], "en-US")
+        tool = constraints["config"]["tools"][0]["function_declarations"][0]
+        self.assertEqual(tool["name"], live_session.ASK_ARCHIE_TOOL)
+
+    @mock.patch.object(live_session, "GEMINI_API_KEY", "test-key")
+    @mock.patch.object(live_session.genai, "Client")
+    def test_502_on_upstream_error(self, client_cls):
+        client_cls.return_value.auth_tokens.create.side_effect = RuntimeError("boom")
+        self.assertEqual(self._post({}).status_code, 502)
+
+    def test_language_code_mapping(self):
+        self.assertEqual(live_session.language_code_for(None), "ru-RU")
+        self.assertEqual(live_session.language_code_for("English"), "en-US")
+        self.assertEqual(live_session.language_code_for("xx"), "ru-RU")
