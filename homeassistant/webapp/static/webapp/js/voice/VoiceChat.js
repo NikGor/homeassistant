@@ -28,6 +28,7 @@ const VoiceChat = () => {
 
     const [status, setStatus] = useState('idle'); // idle | connecting | listening | thinking | speaking
     const [answer, setAnswer] = useState('');
+    const [buttons, setButtons] = useState([]); // Live: quick actions from the last agent answer
     const [error, setError] = useState(null);
     const [mode, setMode] = useState(readVoiceMode); // tts | live
 
@@ -635,7 +636,8 @@ const VoiceChat = () => {
         });
     }, [saveMessage]);
 
-    const startLiveSession = async () => {
+    // initialText: a quick-action request to send as soon as the session is up.
+    const startLiveSession = async (initialText) => {
         setStatus('connecting');
         const session = new window.LiveVoiceSession({
             audioCtx: getAudioCtx(),
@@ -646,10 +648,11 @@ const VoiceChat = () => {
             on: {
                 status: (s) => {
                     if (!sessionActiveRef.current) return;
-                    if (s === 'thinking') startThinking(); else stopThinking();
+                    if (s === 'thinking') { startThinking(); setButtons([]); } else stopThinking();
                     setStatus(s);
                 },
                 transcript: (text) => sessionActiveRef.current && setAnswer(text),
+                buttons: (list) => sessionActiveRef.current && setButtons(list),
                 turn: saveLiveTurn,
                 close: () => endSession(true),
                 error: (message) => {
@@ -661,6 +664,7 @@ const VoiceChat = () => {
             }
         });
         liveRef.current = session;
+        if (initialText) session.sendText(initialText); // queued until setupComplete
         try {
             await session.start();
         } catch (e) {
@@ -672,7 +676,7 @@ const VoiceChat = () => {
         }
     };
 
-    const startSession = useCallback(async () => {
+    const startSession = useCallback(async (initialText) => {
         if (sessionActiveRef.current) return;
         if (!supported) {
             setError('Voice chat is not supported in this browser');
@@ -680,20 +684,37 @@ const VoiceChat = () => {
         }
         setError(null);
         setAnswer('');
+        setButtons([]);
         conversationIdRef.current = genUUID();
         sessionActiveRef.current = true;
         preloadCues();  // unlocks the AudioContext on this user gesture + warms cache
         beep('start');
-        if (mode === 'live') { await startLiveSession(); return; }
+        if (mode === 'live') { await startLiveSession(initialText); return; }
         // Acquire the mic up front so the first utterance is recorded (not just STT).
         await ensureMicStream();
         if (!sessionActiveRef.current) return; // cancelled during the permission prompt
         startListening();
     }, [supported, mode, startListening, saveLiveTurn]);
 
+    // Quick action: assistant_button goes into the Live session as a typed turn
+    // (reopening the session if it has ended), frontend_button runs locally.
+    const runQuickAction = (button) => {
+        if (button.type === 'frontend_button') {
+            handleFrontendCommand(button.command, {}, button);
+            return;
+        }
+        if (button.type !== 'assistant_button' || !button.assistant_request) return;
+        if (sessionActiveRef.current && liveRef.current) {
+            liveRef.current.sendText(button.assistant_request);
+        } else {
+            startSession(button.assistant_request);
+        }
+    };
+
     const switchMode = (next) => {
         if (sessionActiveRef.current || next === mode) return;
         setMode(next);
+        setButtons([]);
         setError(null);
         try { localStorage.setItem(VOICE_MODE_KEY, next); } catch (_) { /* noop */ }
     };
@@ -712,7 +733,7 @@ const VoiceChat = () => {
         if (typeof lucide !== 'undefined') {
             setTimeout(() => lucide.createIcons(), 0);
         }
-    }, [status]);
+    }, [status, buttons]);
 
     // ── Render ───────────────────────────────────────────────────────────────
     const isActive = status !== 'idle';
@@ -799,6 +820,28 @@ const VoiceChat = () => {
                 key: answer, // re-key on a new answer so the entrance re-triggers
                 className: 'voice-answer max-w-xl text-2xl md:text-[1.7rem] font-light leading-snug tracking-tight text-white/95 [text-shadow:0_2px_20px_rgba(0,0,0,0.6)]'
             }, answer),
+            buttons.length > 0 && React.createElement('div', {
+                key: 'actions',
+                className: `voice-actions pointer-events-auto flex flex-wrap justify-center gap-2 ${
+                    status === 'connecting' || status === 'thinking' ? 'opacity-40 pointer-events-none' : ''
+                }`
+            }, buttons.map((button, i) => React.createElement('button', {
+                key: `${i}-${button.text}`,
+                type: 'button',
+                onClick: () => runQuickAction(button),
+                title: getButtonTooltip(button),
+                className: `flex items-center gap-2 px-4 py-2 rounded-full border text-sm transition-colors ${
+                    button.style === 'primary'
+                        ? 'bg-cyan-500/15 text-cyan-100 border-cyan-400/40 hover:bg-cyan-500/25'
+                        : 'bg-white/5 text-white/80 border-white/15 hover:bg-white/10 hover:text-white'
+                }`
+            }, [
+                // Wrapper span: lucide swaps the <i> for an <svg> behind React's back,
+                // so React must only ever remove the wrapper.
+                button.icon && React.createElement('span', { key: 'icon', className: 'flex' },
+                    React.createElement('i', { 'data-lucide': button.icon, className: 'w-4 h-4' })),
+                React.createElement('span', { key: 'text' }, button.text)
+            ].filter(Boolean)))),
             error && React.createElement('div', {
                 key: 'error',
                 className: 'text-red-400 text-sm'
@@ -821,7 +864,7 @@ const VoiceChat = () => {
                 React.createElement('button', {
                     key: 'mic',
                     type: 'button',
-                    onClick: startSession,
+                    onClick: () => startSession(),
                     disabled: isActive,
                     title: 'Start voice chat',
                     'aria-label': 'Start voice chat',
