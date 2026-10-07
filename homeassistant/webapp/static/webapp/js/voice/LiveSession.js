@@ -8,10 +8,14 @@
 //   `media` field) -> play the model's PCM16 @ 24 kHz as it arrives.
 //   Voice activity detection and barge-in happen on the model side.
 //   The model delegates real data/actions to the Archie agent via the ask_archie
-//   tool: we run it through /ai-assistant/api/chat/ and answer with a toolResponse.
+//   tool: we run it through /ai-assistant/api/chat/ as a level2_answer, answer the
+//   model with its text and hand its quick-action buttons to the UI.
+//   Typed input (a pressed assistant_button) goes in as realtimeInput.text —
+//   Gemini 3.x only accepts clientContent for seeding history.
 //
 // The session owns no UI and saves nothing itself: VoiceChat gets callbacks for
-// status, live transcript, finished turns (text + WAV) and close/error.
+// status, live transcript, quick-action buttons, finished turns (text + WAV) and
+// close/error.
 
 class LiveVoiceSession {
     static IN_RATE = 16000;
@@ -30,12 +34,14 @@ class LiveVoiceSession {
         this.userName = userName;
         this.conversationId = conversationId;
         this.idleTimeoutMs = idleTimeoutMs;
-        this.on = on; // { status, transcript, turn, close, error }
+        this.on = on; // { status, transcript, buttons, turn, close, error }
 
         this.ws = null;
         this.stream = null;
         this.nodes = [];
         this.closed = false;
+        this.ready = false; // setupComplete received, input is accepted
+        this.queuedText = null; // text sent before the session was ready
         this.status = 'connecting';
 
         // Playback queue
@@ -113,6 +119,20 @@ class LiveVoiceSession {
         this.on.status?.(status);
     }
 
+    // Typed user turn (a pressed quick-action button). Queued until setupComplete.
+    sendText(text) {
+        if (this.closed || !text) return;
+        if (!this.ready) { this.queuedText = text; return; }
+        // Cut off the current answer, like a spoken barge-in would.
+        this._stopPlayback();
+        this._flushTurn();
+        this.userText = text;
+        this.capturingUser = false; // no mic clip for a typed turn
+        this.lastActivity = Date.now();
+        this.ws.send(JSON.stringify({ realtimeInput: { text } }));
+        this._setStatus('thinking');
+    }
+
     // ── Server messages ──────────────────────────────────────────────────────
     _onMessage(data) {
         let msg;
@@ -122,7 +142,7 @@ class LiveVoiceSession {
             console.warn('LiveVoiceSession: bad frame', e);
             return;
         }
-        if (msg.setupComplete) { this._startMic(); return; }
+        if (msg.setupComplete) { this._onReady(); return; }
         if (msg.toolCall) { this._onToolCall(msg.toolCall); return; }
         if (msg.toolCallCancellation) {
             (msg.toolCallCancellation.ids || []).forEach(id => this.pendingTools.delete(id));
@@ -156,7 +176,16 @@ class LiveVoiceSession {
         }
     }
 
-    // ask_archie -> Archie agent (plain text) -> toolResponse
+    async _onReady() {
+        await this._startMic();
+        if (this.closed) return;
+        this.ready = true;
+        const text = this.queuedText;
+        this.queuedText = null;
+        if (text) this.sendText(text);
+    }
+
+    // ask_archie -> Archie agent (level2_answer) -> text as toolResponse, buttons to the UI
     async _onToolCall(toolCall) {
         this.capturingUser = false;
         const calls = toolCall.functionCalls || [];
@@ -168,7 +197,9 @@ class LiveVoiceSession {
                 response = { error: `Unknown tool ${fc.name}` };
             } else {
                 try {
-                    response = { result: await this._askArchie(fc.args?.request || '') };
+                    const { text, buttons } = await this._askArchie(fc.args?.request || '');
+                    response = { result: text };
+                    if (!this.closed && buttons.length) this.on.buttons?.(buttons);
                 } catch (e) {
                     console.error('LiveVoiceSession: ask_archie failed', e);
                     response = { error: 'Archie agent is unavailable right now.' };
@@ -189,14 +220,18 @@ class LiveVoiceSession {
             body: JSON.stringify({
                 user_name: this.userName,
                 input: request,
-                response_format: 'plain',
+                response_format: 'level2_answer',
                 conversation_id: this.conversationId
             })
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         const c = data?.content;
-        return (typeof c === 'string' ? c : c?.text) || data?.text || '';
+        if (typeof c === 'string') return { text: c, buttons: [] };
+        // level2_answer.text is a {type, text} block; fall back to plain content.text.
+        const l2 = c?.level2_answer;
+        const text = (typeof l2?.text === 'string' ? l2.text : l2?.text?.text) || c?.text || '';
+        return { text, buttons: l2?.quick_action_buttons?.buttons || [] };
     }
 
     // ── Mic -> PCM16 @ 16 kHz -> realtimeInput.audio ─────────────────────────
