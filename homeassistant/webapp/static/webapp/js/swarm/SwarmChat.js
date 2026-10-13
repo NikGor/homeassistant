@@ -100,12 +100,24 @@ function renderSwarmMessage(message) {
     const agent = swarmState.agents[message.sender] || {
         agent_id: message.sender, display_name: message.sender, icon: 'bot', color: '#888', role: '',
     };
+    if (message.kind === 'opinion') {
+        return `
+            <div class="swarm-msg swarm-msg--opinion" style="--agent-color:${agent.color}"
+                 title="${swarmFormatTime(message.created_at)}">
+                <i data-lucide="${agent.icon}" class="w-3 h-3"></i>
+                <span class="swarm-msg__name">@${agent.agent_id}</span>
+                <span>${swarmFormatText(message.text)}</span>
+            </div>`;
+    }
+    const decisionLabel = message.kind === 'decision'
+        ? '<span class="swarm-msg__label">⚖ решение совета</span>' : '';
     return `
         <div class="swarm-msg swarm-msg--agent swarm-msg--${message.kind}" style="--agent-color:${agent.color}">
             <div class="swarm-msg__avatar"><i data-lucide="${agent.icon}" class="w-4 h-4"></i></div>
             <div class="swarm-msg__body">
                 <div class="swarm-msg__head">
                     <span class="swarm-msg__name">@${agent.agent_id}</span>
+                    ${decisionLabel}
                     <span class="swarm-msg__meta">${swarmFormatTime(message.created_at)}</span>
                     ${renderSwarmUsage(message.usage)}
                 </div>
@@ -120,7 +132,7 @@ function renderSwarmFeed() {
     const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
     feed.innerHTML = swarmState.messages.length
         ? swarmState.messages.map(renderSwarmMessage).join('')
-        : '<div class="swarm-empty">Рой молчит. Напиши @light, @climate, @football, спроси совет у @council — или просто задай вопрос.</div>';
+        : '<div class="swarm-empty">Рой молчит. Просто напиши — ответит совет и поручит дело нужному агенту. Или обратись напрямую: @light, @climate, @football.</div>';
     lucide.createIcons({ nodes: [feed] });
     if (atBottom) feed.scrollTop = feed.scrollHeight;
 }
