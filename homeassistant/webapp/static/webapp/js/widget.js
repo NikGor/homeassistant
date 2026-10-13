@@ -407,6 +407,7 @@ async function showWidgetView(widgetType) {
     if (voiceView) voiceView.classList.add('hidden');
     document.body.classList.remove('voice-mode');
     if (typeof window.stopVoiceSession === 'function') window.stopVoiceSession();
+    if (typeof window.hideSwarmView === 'function') window.hideSwarmView();
     leftSidebar.classList.add('hidden');
 
     updateSidebarActiveState(widgetType);

@@ -6,6 +6,7 @@ function showChatView() {
     dashboardView.classList.add('hidden');
     widgetView.classList.add('hidden');
     if (voiceView) voiceView.classList.add('hidden');
+    if (typeof window.hideSwarmView === 'function') window.hideSwarmView();
     document.body.classList.remove('voice-mode');
     if (typeof window.stopVoiceSession === 'function') window.stopVoiceSession();
     leftSidebar.classList.remove('hidden'); // Показываем левый сайдбар в режиме чата
@@ -23,6 +24,7 @@ function showDashboardView() {
     dashboardView.classList.remove('hidden');
     widgetView.classList.add('hidden');
     if (voiceView) voiceView.classList.add('hidden');
+    if (typeof window.hideSwarmView === 'function') window.hideSwarmView();
     document.body.classList.remove('voice-mode');
     if (typeof window.stopVoiceSession === 'function') window.stopVoiceSession();
     leftSidebar.classList.add('hidden'); // Скрываем левый сайдбар в режиме дашборда
@@ -40,6 +42,7 @@ function showVoiceView() {
     dashboardView.classList.add('hidden');
     widgetView.classList.add('hidden');
     voiceView.classList.remove('hidden');
+    if (typeof window.hideSwarmView === 'function') window.hideSwarmView();
     document.body.classList.add('voice-mode'); // Прячем общий фоновый .orb
     leftSidebar.classList.add('hidden'); // Полноэкранный голосовой режим
     updateSidebarActiveState('voice');
@@ -117,6 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (category === 'voice') {
             e.preventDefault();
             showVoiceView();
+        } else if (category === 'swarm') {
+            e.preventDefault();
+            showSwarmView();
         } else if (category === 'home') {
             e.preventDefault();
             
