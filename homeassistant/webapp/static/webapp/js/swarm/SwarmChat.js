@@ -179,7 +179,9 @@ function handleSwarmEvent(event) {
 
 function connectSwarm() {
     clearTimeout(swarmState.reconnectTimer);
-    const ws = new WebSocket(`${window.AI_AGENT_WS_URL}/ws_swarm`);
+    // user_name makes the logged-in user the swarm owner (their UserState is used).
+    const userName = encodeURIComponent(window.CURRENT_USER_NAME || '');
+    const ws = new WebSocket(`${window.AI_AGENT_WS_URL}/ws_swarm?user_name=${userName}`);
     swarmState.ws = ws;
     renderSwarmStatus('подключение…');
     ws.onopen = () => renderSwarmStatus('');
