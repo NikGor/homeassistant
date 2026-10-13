@@ -354,6 +354,21 @@ function renderRightSidebar() {
     voiceExpanded.innerHTML = `<i data-lucide="audio-lines" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Voice Chat</span>`;
     rightSidebarExpandedMenu.appendChild(voiceExpanded);
 
+    const swarmCollapsed = document.createElement('a');
+    swarmCollapsed.href = "#";
+    swarmCollapsed.className = "sidebar-item text-gray-300";
+    swarmCollapsed.dataset.appCategory = 'swarm';
+    swarmCollapsed.title = "Рой агентов";
+    swarmCollapsed.innerHTML = `<i data-lucide="messages-square" class="w-6 h-6"></i>`;
+    rightSidebarCollapsedIcons.appendChild(swarmCollapsed);
+
+    const swarmExpanded = document.createElement('a');
+    swarmExpanded.href = "#";
+    swarmExpanded.className = "sidebar-item-expanded text-gray-300";
+    swarmExpanded.dataset.appCategory = 'swarm';
+    swarmExpanded.innerHTML = `<i data-lucide="messages-square" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Рой агентов</span>`;
+    rightSidebarExpandedMenu.appendChild(swarmExpanded);
+
     rightSidebarCollapsedIcons.innerHTML += '<hr class="border-t border-white/10 my-2">';
     rightSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
 
