@@ -7,7 +7,14 @@ from pydantic import BaseModel, Field
 SWARM_TEXT_MAX_LENGTH = 280
 
 SwarmMessageKind = Literal[
-    "user", "report", "action", "proposal", "alert", "system"
+    "user",
+    "report",
+    "action",
+    "proposal",
+    "alert",
+    "system",
+    "opinion",  # council member position during a discussion; wakes nobody
+    "decision",  # the single council answer to the user; may delegate via @mentions
 ]
 SwarmAgentRole = Literal["state", "action"]
 
