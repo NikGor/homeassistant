@@ -4,6 +4,7 @@
 
 const SWARM_RECONNECT_MS = 3000;
 const SWARM_MAX_MESSAGES = 200;
+const SWARM_GROUP_COLOR = '#adb5bd';
 
 const swarmState = {
     ws: null,
@@ -20,11 +21,23 @@ function swarmEscape(text) {
     return div.innerHTML;
 }
 
+// Group ID -> member agents, derived from SwarmAgentInfo.groups.
+function swarmGroups() {
+    const groups = {};
+    Object.values(swarmState.agents).forEach(agent => {
+        agent.groups.forEach(group => { (groups[group] = groups[group] || []).push(agent); });
+    });
+    return groups;
+}
+
 function swarmFormatText(text) {
+    const groups = swarmGroups();
     return swarmEscape(text).replace(/@([a-z][a-z0-9_]*)/gi, (match, id) => {
-        const agent = swarmState.agents[id.toLowerCase()];
-        if (!agent) return match;
-        return `<span class="swarm-mention" style="--agent-color:${agent.color}">${match}</span>`;
+        const key = id.toLowerCase();
+        const color = swarmState.agents[key] ? swarmState.agents[key].color
+            : groups[key] ? SWARM_GROUP_COLOR : null;
+        if (!color) return match;
+        return `<span class="swarm-mention" style="--agent-color:${color}">${match}</span>`;
     });
 }
 
@@ -42,14 +55,20 @@ function swarmSend(command) {
 
 function renderSwarmRoster() {
     const roster = document.getElementById('swarm-roster');
-    roster.innerHTML = Object.values(swarmState.agents).map(agent => `
+    const renderChip = agent => `
         <button class="swarm-agent ${agent.enabled ? '' : 'swarm-agent--off'}"
                 style="--agent-color:${agent.color}" data-agent-id="${agent.agent_id}"
                 title="${swarmEscape(agent.description)} — ${agent.enabled ? 'нажми, чтобы усыпить' : 'нажми, чтобы разбудить'}">
             <i data-lucide="${agent.icon}" class="w-4 h-4"></i>
             <span>@${agent.agent_id}</span>
             <span class="swarm-agent__role">${agent.role}</span>
-        </button>`).join('');
+        </button>`;
+    const solo = Object.values(swarmState.agents).filter(agent => !agent.groups.length);
+    const groups = Object.entries(swarmGroups()).map(([group, members]) => `
+        <div class="swarm-group" title="@${group} — участники отвечают по очереди">
+            <span class="swarm-group__name">@${group}</span>${members.map(renderChip).join('')}
+        </div>`);
+    roster.innerHTML = solo.map(renderChip).join('') + groups.join('');
     lucide.createIcons({ nodes: [roster] });
 }
 
@@ -101,7 +120,7 @@ function renderSwarmFeed() {
     const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
     feed.innerHTML = swarmState.messages.length
         ? swarmState.messages.map(renderSwarmMessage).join('')
-        : '<div class="swarm-empty">Рой молчит. Напиши @light, @climate или @football — или просто задай вопрос.</div>';
+        : '<div class="swarm-empty">Рой молчит. Напиши @light, @climate, @football, спроси совет у @council — или просто задай вопрос.</div>';
     lucide.createIcons({ nodes: [feed] });
     if (atBottom) feed.scrollTop = feed.scrollHeight;
 }
@@ -176,8 +195,14 @@ function updateSwarmSuggestions() {
     const input = document.getElementById('swarm-input');
     const box = document.getElementById('swarm-suggestions');
     const match = input.value.slice(0, input.selectionStart).match(/@([a-z0-9_]*)$/i);
+    const groupOptions = Object.entries(swarmGroups()).map(([group, members]) => ({
+        agent_id: group,
+        color: SWARM_GROUP_COLOR,
+        description: `группа: ${members.map(m => '@' + m.agent_id).join(', ')}`,
+    }));
     const options = match
-        ? Object.values(swarmState.agents).filter(a => a.agent_id.startsWith(match[1].toLowerCase()))
+        ? [...Object.values(swarmState.agents), ...groupOptions]
+            .filter(a => a.agent_id.startsWith(match[1].toLowerCase()))
         : [];
     box.innerHTML = options.map(agent => `
         <button type="button" class="swarm-suggestion" data-agent-id="${agent.agent_id}" style="--agent-color:${agent.color}">
