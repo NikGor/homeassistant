@@ -92,6 +92,10 @@ class SwarmAgentInfo(BaseModel):
     icon: str = Field(description="Lucide icon name")
     color: str = Field(description="Accent color as CSS hex, e.g. '#f5b301'")
     enabled: bool = Field(default=True, description="Whether the agent is awake")
+    groups: List[str] = Field(
+        default_factory=list,
+        description="Groups the agent belongs to; '@group' mentions wake all members",
+    )
 
 
 # --- WebSocket events, server -> client ---
