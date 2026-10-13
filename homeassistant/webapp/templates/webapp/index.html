@@ -171,6 +171,13 @@
             <div id="voice-assistant-root" class="h-full w-full"></div>
         </div>
 
+        <!--
+          ЭКРАН 5: РОЙ АГЕНТОВ (z-10, скрыт)
+        -->
+        <div id="swarm-view" class="view-screen z-10 hidden">
+            <div id="swarm-root" class="swarm"></div>
+        </div>
+
     </main>
 
     <!--
@@ -242,6 +249,9 @@
     </script>
     <script src="{% static_v 'webapp/js/voice/LiveSession.js' %}"></script>
     <script src="{% static_v 'webapp/js/voice/VoiceChat.js' %}"></script>
+
+    <!-- Swarm chat -->
+    <script src="{% static_v 'webapp/js/swarm/SwarmChat.js' %}"></script>
 
     <!-- Main Initialization -->
     <script src="{% static_v 'webapp/js/main.js' %}"></script>
