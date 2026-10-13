@@ -1407,3 +1407,13 @@ body.voice-mode .orb {
 .swarm-suggestion { padding: 0.4rem 0.6rem; border-radius: 0.5rem; text-align: left; font-size: 0.8125rem; color: var(--agent-color); }
 .swarm-suggestion span { margin-left: 0.375rem; color: rgba(255, 255, 255, 0.45); }
 .swarm-suggestion:hover { background: rgba(255, 255, 255, 0.08); }
+.swarm-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.2rem 0.3rem 0.2rem 0.6rem;
+    border-radius: 9999px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.swarm-group__name { font-size: 0.75rem; color: rgba(255, 255, 255, 0.55); }
