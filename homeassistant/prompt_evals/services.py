@@ -13,7 +13,7 @@ from django.db import transaction
 from django.db.models import Count, Q, Sum
 from pydantic import BaseModel, Field
 
-from homeassistant.prompt_evals.models import EvalCaseResult, EvalRun
+from homeassistant.prompt_evals.models import EvalCase, EvalCaseResult, EvalRun
 
 logger = logging.getLogger(__name__)
 
@@ -30,15 +30,29 @@ class AgentError(RuntimeError):
         self.status_code = status_code
 
 
-class AgentCatalog(BaseModel):
-    cases: list[EvalCaseInfo] = Field(description="Current case catalog")
+class Catalog(BaseModel):
+    cases: list[EvalCaseInfo] = Field(description="Enabled cases from the database")
     models: list[str] = Field(description="Models a run can use")
     default_model: str = Field(description="Default eval model")
     prompt_hashes: dict[str, str] = Field(description="Current prompt template hashes")
+    agent_error: str | None = Field(
+        default=None,
+        description="Set if the agent is not reachable; models and hashes are then empty",
+    )
 
 
 def parse_datetime(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value) if value else None
+
+
+def format_agent_detail(detail: Any) -> str:
+    """FastAPI error detail (text or a list of validation errors) as one line."""
+    if isinstance(detail, list):
+        return "; ".join(
+            f"{'.'.join(str(part) for part in error['loc'][1:])}: {error['msg']}"
+            for error in detail
+        )
+    return str(detail)
 
 
 def call_agent(
@@ -59,18 +73,42 @@ def call_agent(
         detail = (
             response.json().get("detail", response.text) if response.content else ""
         )
-        raise AgentError(str(detail), response.status_code)
+        raise AgentError(format_agent_detail(detail), response.status_code)
     return response.json()
 
 
-def get_agent_catalog() -> AgentCatalog:
-    models = call_agent("GET", "/evals/models")
-    return AgentCatalog(
-        cases=call_agent("GET", "/evals/cases"),
+def get_enabled_cases() -> list[EvalCaseInfo]:
+    return [
+        EvalCaseInfo.model_validate(case.to_info())
+        for case in EvalCase.objects.filter(enabled=True)
+    ]
+
+
+def get_catalog() -> Catalog:
+    """Cases from the database plus models and prompt hashes from the agent."""
+    cases = get_enabled_cases()
+    try:
+        models = call_agent("GET", "/evals/models")
+        prompt_hashes = call_agent("GET", "/evals/prompts")
+    except AgentError as error:
+        logger.error(f"prompt_evals_error_004: Agent catalog: \033[31m{error}\033[0m")
+        return Catalog(
+            cases=cases,
+            models=[],
+            default_model="",
+            prompt_hashes={},
+            agent_error=str(error),
+        )
+    return Catalog(
+        cases=cases,
         models=models["models"],
         default_model=models["default"],
-        prompt_hashes=call_agent("GET", "/evals/prompts"),
+        prompt_hashes=prompt_hashes,
     )
+
+
+def get_case_schema() -> dict:
+    return call_agent("GET", "/evals/schema")
 
 
 def start_agent_run(request: EvalRunRequest) -> dict:
@@ -284,7 +322,7 @@ def _prompt_status(case_statuses: list[str]) -> str:
     return "flaky" if "flaky" in known else "passed"
 
 
-def build_overview(catalog: AgentCatalog) -> list[dict]:
+def build_overview(catalog: Catalog) -> list[dict]:
     """Per prompt: latest status of each case and whether the prompt changed since."""
     latest = _latest_case_results([case.id for case in catalog.cases])
     cases_by_prompt: dict[str, list[EvalCaseInfo]] = defaultdict(list)

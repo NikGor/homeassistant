@@ -6,8 +6,8 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from homeassistant.prompt_evals import services, views
-from homeassistant.prompt_evals.models import EvalCaseResult, EvalRun
+from homeassistant.prompt_evals import case_services, services, views
+from homeassistant.prompt_evals.models import EvalCase, EvalCaseResult, EvalRun
 
 TOKEN = "test-token"
 
@@ -69,7 +69,7 @@ def make_result(
     }
 
 
-@mock.patch.object(views, "EVAL_PUBLISH_TOKEN", TOKEN)
+@mock.patch.object(views, "EVAL_API_TOKEN", TOKEN)
 class IngestTests(TestCase):
     def post(self, url: str, payload: dict, token: str = TOKEN):
         return self.client.post(
@@ -153,8 +153,8 @@ class OverviewTests(TestCase):
                 ),
             )
 
-    def catalog(self, cmd_hash: str = "h1") -> services.AgentCatalog:
-        return services.AgentCatalog(
+    def catalog(self, cmd_hash: str = "h1") -> services.Catalog:
+        return services.Catalog(
             cases=[
                 make_case("routing.greeting", ["cmd_prompt"]),
                 make_case("tools.note", ["cmd_prompt"]),
@@ -219,7 +219,7 @@ class UiApiTests(TestCase):
     def test_requires_login(self):
         self.client.logout()
         response = self.client.get(reverse("prompt_evals_runs"))
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 401)
 
     @mock.patch.object(services, "call_agent")
     def test_start_run_forces_ui_trigger(self, call_agent):
@@ -274,3 +274,160 @@ class UiApiTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 422)
+
+
+def make_draft(case_id: str = "routing.greeting", **changes) -> dict:
+    draft = {
+        "id": case_id,
+        "name": "Приветствие",
+        "description": "На приветствие агент отвечает сразу.",
+        "suite": case_id.split(".")[0],
+        "extra_prompts": [],
+        "tags": ["smalltalk"],
+        "input": "Привет!",
+        "response_format": "plain",
+        "stage": "stage1",
+        "judge": False,
+        "expect": {"action_type": "final_response"},
+    }
+    return {**draft, **changes}
+
+
+def fake_validate(method: str, path: str, payload: dict | None = None) -> dict:
+    """Agent stand-in for POST /evals/cases/validate."""
+    if "unknown_tool" in json.dumps(payload):
+        raise services.AgentError(
+            "routing.greeting: unknown tools ['unknown_tool']", 422
+        )
+    info = {key: value for key, value in payload.items() if key != "extra_prompts"}
+    return {**info, "prompts": ["cmd_prompt"] + payload["extra_prompts"]}
+
+
+@mock.patch.object(services, "call_agent", side_effect=fake_validate)
+class CaseApiTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("niko", password="pw")
+        self.client.force_login(self.user)
+
+    def send(self, method: str, url: str, payload: dict):
+        return getattr(self.client, method)(
+            url, data=json.dumps(payload), content_type="application/json"
+        )
+
+    def test_create_stores_case_and_first_revision(self, _agent):
+        response = self.send("post", reverse("prompt_evals_cases"), make_draft())
+        self.assertEqual(response.status_code, 201)
+        case = EvalCase.objects.get(case_id="routing.greeting")
+        self.assertEqual(
+            (case.prompts, case.revision, case.updated_by), (["cmd_prompt"], 1, "niko")
+        )
+        self.assertEqual(case.revisions.count(), 1)
+
+    def test_invalid_case_is_rejected_with_agent_message(self, _agent):
+        draft = make_draft(expect={"tools_called": ["unknown_tool"]})
+        response = self.send("post", reverse("prompt_evals_cases"), draft)
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("unknown_tool", response.json()["error"])
+        self.assertFalse(EvalCase.objects.exists())
+
+    def test_duplicate_id_is_409(self, _agent):
+        self.send("post", reverse("prompt_evals_cases"), make_draft())
+        self.assertEqual(
+            self.send("post", reverse("prompt_evals_cases"), make_draft()).status_code,
+            409,
+        )
+
+    def test_update_adds_revision_only_on_change(self, _agent):
+        self.send("post", reverse("prompt_evals_cases"), make_draft())
+        url = reverse("prompt_evals_case", args=["routing.greeting"])
+        self.send("put", url, make_draft())
+        self.assertEqual(EvalCase.objects.get().revision, 1)
+        response = self.send(
+            "put", url, make_draft(input="Здравствуй!", extra_prompts=["persona_bro"])
+        )
+        case = EvalCase.objects.get()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            (case.revision, case.input, case.prompts),
+            (2, "Здравствуй!", ["cmd_prompt", "persona_bro"]),
+        )
+        revisions = self.client.get(
+            reverse("prompt_evals_case_revisions", args=["routing.greeting"])
+        ).json()["revisions"]
+        self.assertEqual([r["revision"] for r in revisions], [2, 1])
+        self.assertEqual(revisions[1]["data"]["input"], "Привет!")
+
+    def test_id_cannot_change(self, _agent):
+        self.send("post", reverse("prompt_evals_cases"), make_draft())
+        url = reverse("prompt_evals_case", args=["routing.greeting"])
+        self.assertEqual(
+            self.send("put", url, make_draft("routing.hello")).status_code, 422
+        )
+
+    def test_disable_hides_case_from_agent_catalog(self, _agent):
+        self.send("post", reverse("prompt_evals_cases"), make_draft())
+        self.send(
+            "post",
+            reverse("prompt_evals_cases"),
+            make_draft("routing.time", input="Который час?"),
+        )
+        self.send(
+            "post",
+            reverse("prompt_evals_case_enabled", args=["routing.time"]),
+            {"enabled": False},
+        )
+        drafts = self.client.get(
+            reverse("prompt_evals_cases"), {"format": "draft"}
+        ).json()["cases"]
+        self.assertEqual([d["id"] for d in drafts], ["routing.greeting"])
+        self.assertNotIn("prompts", drafts[0])
+        all_cases = self.client.get(
+            reverse("prompt_evals_cases"), {"include_disabled": "1"}
+        ).json()["cases"]
+        self.assertEqual(len(all_cases), 2)
+        self.assertEqual(EvalCase.objects.get(case_id="routing.time").revision, 2)
+
+    @mock.patch.object(views, "EVAL_API_TOKEN", TOKEN)
+    def test_service_token_can_edit_and_start_as_claude(self, agent):
+        self.client.logout()
+        auth = {"HTTP_AUTHORIZATION": f"Bearer {TOKEN}"}
+        response = self.client.post(
+            reverse("prompt_evals_cases"),
+            data=json.dumps(make_draft()),
+            content_type="application/json",
+            **auth,
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(EvalCase.objects.get().updated_by, "service")
+        agent.side_effect = None
+        agent.return_value = {"run_id": "r1", "total_attempts": 1}
+        response = self.client.post(
+            reverse("prompt_evals_start"),
+            data=json.dumps({"models": ["m"], "reason": "check"}),
+            content_type="application/json",
+            **auth,
+        )
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(agent.call_args.args[2]["triggered_by"], "claude")
+
+    def test_session_post_without_csrf_token_is_rejected(self, _agent):
+        client = self.client_class(enforce_csrf_checks=True)
+        client.force_login(self.user)
+        response = client.post(
+            reverse("prompt_evals_cases"),
+            data=json.dumps(make_draft()),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+
+class FormatAgentDetailTests(TestCase):
+    def test_validation_list_becomes_one_line(self):
+        detail = [
+            {"loc": ["body", "id"], "msg": "String should match pattern"},
+            {"loc": ["body", "expect", "min_ui_items"], "msg": "bad int"},
+        ]
+        self.assertEqual(
+            services.format_agent_detail(detail),
+            "id: String should match pattern; expect.min_ui_items: bad int",
+        )
