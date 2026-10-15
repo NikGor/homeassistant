@@ -88,28 +88,29 @@ def get_enabled_cases() -> list[EvalCaseInfo]:
     ]
 
 
-def get_catalog() -> Catalog:
-    """Cases from the database plus models and prompt hashes from the agent."""
-    cases = get_enabled_cases()
+def _agent_part(path: str, default: Any, errors: list[str]) -> Any:
     try:
-        models = call_agent("GET", "/evals/models")
-        prompt_hashes = call_agent("GET", "/evals/prompts")
-        prompt_descriptions = call_agent("GET", "/evals/prompt-descriptions")
+        return call_agent("GET", path)
     except AgentError as error:
-        logger.error(f"prompt_evals_error_004: Agent catalog: \033[31m{error}\033[0m")
-        return Catalog(
-            cases=cases,
-            models=[],
-            default_model="",
-            prompt_hashes={},
-            agent_error=str(error),
-        )
+        logger.error(f"prompt_evals_error_004: Agent {path}: \033[31m{error}\033[0m")
+        errors.append(f"{path}: {error}")
+        return default
+
+
+def get_catalog() -> Catalog:
+    """Cases from the database plus models, prompt hashes and descriptions from the agent.
+
+    Each agent part is fetched on its own: one missing endpoint (an older agent)
+    must not hide the model list."""
+    errors: list[str] = []
+    models = _agent_part("/evals/models", {"models": [], "default": ""}, errors)
     return Catalog(
-        cases=cases,
+        cases=get_enabled_cases(),
         models=models["models"],
         default_model=models["default"],
-        prompt_hashes=prompt_hashes,
-        prompt_descriptions=prompt_descriptions,
+        prompt_hashes=_agent_part("/evals/prompts", {}, errors),
+        prompt_descriptions=_agent_part("/evals/prompt-descriptions", {}, errors),
+        agent_error="; ".join(errors) or None,
     )
 
 

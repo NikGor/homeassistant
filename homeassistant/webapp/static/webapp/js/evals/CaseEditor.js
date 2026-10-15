@@ -15,6 +15,7 @@ const peCases = {
     filter: '',
     showDisabled: false,
     editor: null,   // {mode: 'create'|'edit', draft, revision, error, revisions, saving}
+    runModel: '',   // model for "Сохранить и прогнать"; default model if empty
 };
 
 function peEmptyDraft(suite = '') {
@@ -201,7 +202,13 @@ function peRenderEditor() {
         </section>
         <div class="pe-launch__footer">
             <button type="button" class="pe-btn pe-btn--ghost" data-action="case-close">Отмена</button>
-            <button type="button" class="pe-btn" data-action="case-save" data-run="1" ${editor.saving ? 'disabled' : ''}><i data-lucide="play" class="w-4 h-4"></i> Сохранить и прогнать</button>
+            ${peState.catalog && peState.catalog.models.length ? `
+            <label class="pe-field pe-field--inline">Прогнать на
+                <select class="pe-input" data-action="case-run-model">
+                    ${peState.catalog.models.map(m => `<option ${m === peCaseRunModel() ? 'selected' : ''}>${peEscape(m)}</option>`).join('')}
+                </select></label>
+            <button type="button" class="pe-btn" data-action="case-save" data-run="1" ${editor.saving ? 'disabled' : ''}><i data-lucide="play" class="w-4 h-4"></i> Сохранить и прогнать</button>`
+            : '<span class="pe-muted">Прогон недоступен: агент не отдал список моделей</span>'}
             <button type="submit" class="pe-btn" ${editor.saving ? 'disabled' : ''}><i data-lucide="save" class="w-4 h-4"></i> Сохранить</button>
         </div>
     </form>`;
@@ -225,6 +232,10 @@ function peOpenCaseEditor(caseId, duplicate = false) {
     peSwitchTab('cases');
 }
 
+function peCaseRunModel() {
+    return peCases.runModel || peState.catalog.default_model;
+}
+
 async function peSaveCase(runAfter) {
     const editor = peCases.editor;
     const draft = peCleanDraft(editor.draft);
@@ -241,7 +252,7 @@ async function peSaveCase(runAfter) {
             await peLoadCatalog();
             const run = await peFetch('/runs/start/', {
                 method: 'POST',
-                body: JSON.stringify({ case_ids: [saved.id], models: [peState.catalog.default_model], reason: `Проверка кейса ${saved.id} r${saved.revision}` }),
+                body: JSON.stringify({ case_ids: [saved.id], models: [peCaseRunModel()], reason: `Проверка кейса ${saved.id} r${saved.revision}` }),
             });
             peConnectRun(run.run_id);
             peSwitchTab('run');
@@ -304,6 +315,10 @@ async function peCasesClick(target, action) {
 }
 
 function peCasesChange(target, action) {
+    if (action === 'case-run-model') {
+        peCases.runModel = target.value;
+        return true;
+    }
     if (action === 'case-show-disabled') {
         peCases.showDisabled = target.checked;
         peRenderBody();

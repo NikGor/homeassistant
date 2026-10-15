@@ -1546,6 +1546,9 @@ body.voice-mode .orb {
 .pe-input { padding: 0.45rem 0.65rem; border-radius: 0.5rem; background: rgba(0, 0, 0, 0.25); color: #fff; border: 1px solid var(--pe-line); outline: none; font-size: 0.875rem; }
 .pe-input:focus { border-color: rgba(103, 232, 249, 0.6); }
 .pe-input--short { width: 7rem; }
+.pe-field--inline { flex-direction: row; align-items: center; gap: 0.5rem; }
+.pe-selected-models { margin-bottom: 0.6rem; }
+.pe-error-inline { color: var(--pe-failed); font-size: 0.8rem; }
 .pe-launch__footer { display: flex; align-items: center; justify-content: flex-end; gap: 1rem; position: sticky; bottom: 0; z-index: 2; padding: 0.6rem 0.25rem; background: rgba(10, 12, 18, 0.94); backdrop-filter: blur(8px); border-top: 1px solid var(--pe-line); }
 
 /* Run view */

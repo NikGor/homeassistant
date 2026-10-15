@@ -118,8 +118,8 @@ function peSetError(error) {
 
 async function peLoadCatalog() {
     peState.catalog = await peFetch('/catalog/');
-    if (peState.catalog.agent_error) peSetError(`Агент недоступен: ${peState.catalog.agent_error}`);
-    if (!peState.launch.models.size) peState.launch.models.add(peState.catalog.default_model);
+    if (peState.catalog.agent_error) console.error('[PromptEvals] agent catalog:', peState.catalog.agent_error);
+    if (!peState.launch.models.size && peState.catalog.default_model) peState.launch.models.add(peState.catalog.default_model);
     if (!peState.launch.judgeModel) peState.launch.judgeModel = peState.catalog.default_model;
 }
 
@@ -361,12 +361,24 @@ async function peRenderLaunch() {
             </div>
         </section>
         <section class="pe-section">
-            <div class="pe-section__title">Модели <span class="pe-muted">${[...launch.models].map(peEscape).join(', ') || 'не выбраны'}</span></div>
+            <div class="pe-section__title">На каких моделях прогнать
+                <span class="pe-muted">каждый кейс запускается на каждой выбранной модели</span></div>
+            ${peState.catalog.models.length ? `
+            <div class="pe-quick pe-selected-models">
+                ${launch.models.size ? [...launch.models].map(m => `
+                <button type="button" class="pe-chip pe-chip--btn pe-chip--on" data-action="remove-model" data-model="${peEscape(m)}" title="Убрать модель">
+                    ${peEscape(m)}${m === peState.catalog.default_model ? ' · по умолчанию' : ''} ✕</button>`).join('')
+                : '<span class="pe-error-inline">Модель не выбрана — отметьте хотя бы одну ниже</span>'}
+            </div>
             <input class="pe-input" data-action="model-filter" placeholder="Фильтр моделей…" value="${peEscape(launch.modelFilter)}">
             <div class="pe-models">
                 ${models.map(m => `
-                <label class="pe-check"><input type="checkbox" data-action="toggle-model" data-model="${peEscape(m)}" ${launch.models.has(m) ? 'checked' : ''}> ${peEscape(m)}</label>`).join('')}
-            </div>
+                <label class="pe-check"><input type="checkbox" data-action="toggle-model" data-model="${peEscape(m)}" ${launch.models.has(m) ? 'checked' : ''}> ${peEscape(m)}</label>`).join('')
+                || '<span class="pe-muted">Нет моделей по фильтру</span>'}
+            </div>` : `
+            <div class="pe-error-line">Список моделей не загрузился: агент не ответил.
+                ${peState.catalog.agent_error ? `<div class="pe-muted">${peEscape(peState.catalog.agent_error)}</div>` : ''}
+                Проверьте, что агент запущен и собран с последним кодом, затем нажмите ⟳ вверху.</div>`}
         </section>
         <section class="pe-section pe-section--row">
             <label class="pe-field">Повторов
@@ -388,8 +400,9 @@ async function peRenderLaunch() {
             </label>
         </section>
         <div class="pe-launch__footer">
-            <span id="pe-estimate" class="pe-muted">${estimate.attempts} попыток · ~${peFormatTokens(estimate.tokens)} токенов</span>
-            <button type="submit" class="pe-btn" ${peIsRunActive() ? 'disabled title="Дождитесь окончания текущего прогона"' : ''}>
+            <span id="pe-estimate" class="pe-muted">${launch.caseIds.size} кейсов × ${launch.models.size} моделей × ${launch.repeats} = ${estimate.attempts} попыток · ~${peFormatTokens(estimate.tokens)} токенов</span>
+            <button type="submit" class="pe-btn" ${peIsRunActive() ? 'disabled title="Дождитесь окончания текущего прогона"'
+                : !launch.models.size || !launch.caseIds.size ? 'disabled title="Выберите кейсы и модель"' : ''}>
                 <i data-lucide="play" class="w-4 h-4"></i> Запустить
             </button>
         </div>
@@ -679,6 +692,9 @@ async function peHandleClick(e) {
             const cases = peChipCases(target.dataset.kind, target.dataset.value);
             const select = peChipState(cases) !== 'on';
             cases.forEach(c => { if (select) launch.caseIds.add(c.id); else launch.caseIds.delete(c.id); });
+            peRenderBody();
+        } else if (action === 'remove-model') {
+            launch.models.delete(target.dataset.model);
             peRenderBody();
         } else if (action === 'select-all') {
             peState.catalog.cases.forEach(c => launch.caseIds.add(c.id));

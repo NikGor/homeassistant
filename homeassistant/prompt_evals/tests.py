@@ -434,3 +434,23 @@ class FormatAgentDetailTests(TestCase):
             services.format_agent_detail(detail),
             "id: String should match pattern; expect.min_ui_items: bad int",
         )
+
+
+class CatalogTests(TestCase):
+    def test_missing_optional_endpoint_keeps_models(self):
+        def agent(method: str, path: str, payload: dict | None = None):
+            if path == "/evals/prompt-descriptions":
+                raise services.AgentError("Not Found", 404)
+            return (
+                {"models": ["gpt-a", "gpt-b"], "default": "gpt-a"}
+                if path == "/evals/models"
+                else {"cmd_prompt": "h"}
+            )
+
+        with mock.patch.object(services, "call_agent", side_effect=agent):
+            catalog = services.get_catalog()
+        self.assertEqual(
+            (catalog.models, catalog.default_model), (["gpt-a", "gpt-b"], "gpt-a")
+        )
+        self.assertEqual(catalog.prompt_hashes, {"cmd_prompt": "h"})
+        self.assertIn("/evals/prompt-descriptions", catalog.agent_error)
