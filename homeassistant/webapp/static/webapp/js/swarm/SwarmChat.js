@@ -282,6 +282,7 @@ function showSwarmView() {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
+    if (typeof window.hidePromptsView === 'function') window.hidePromptsView();
     document.getElementById('swarm-view').classList.remove('hidden');
     document.body.classList.remove('voice-mode');
     if (typeof window.stopVoiceSession === 'function') window.stopVoiceSession();

@@ -369,6 +369,21 @@ function renderRightSidebar() {
     swarmExpanded.innerHTML = `<i data-lucide="messages-square" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Рой агентов</span>`;
     rightSidebarExpandedMenu.appendChild(swarmExpanded);
 
+    const promptsCollapsed = document.createElement('a');
+    promptsCollapsed.href = "#";
+    promptsCollapsed.className = "sidebar-item text-gray-300";
+    promptsCollapsed.dataset.appCategory = 'prompts';
+    promptsCollapsed.title = "Промпты";
+    promptsCollapsed.innerHTML = `<i data-lucide="flask-conical" class="w-6 h-6"></i>`;
+    rightSidebarCollapsedIcons.appendChild(promptsCollapsed);
+
+    const promptsExpanded = document.createElement('a');
+    promptsExpanded.href = "#";
+    promptsExpanded.className = "sidebar-item-expanded text-gray-300";
+    promptsExpanded.dataset.appCategory = 'prompts';
+    promptsExpanded.innerHTML = `<i data-lucide="flask-conical" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Промпты</span>`;
+    rightSidebarExpandedMenu.appendChild(promptsExpanded);
+
     rightSidebarCollapsedIcons.innerHTML += '<hr class="border-t border-white/10 my-2">';
     rightSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
 

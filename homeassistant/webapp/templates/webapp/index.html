@@ -178,6 +178,13 @@
             <div id="swarm-root" class="swarm"></div>
         </div>
 
+        <!--
+          ЭКРАН 6: ТЕСТЫ ПРОМПТОВ (z-10, скрыт)
+        -->
+        <div id="prompts-view" class="view-screen z-10 hidden">
+            <div id="prompts-root" class="pe"></div>
+        </div>
+
     </main>
 
     <!--
@@ -252,6 +259,9 @@
 
     <!-- Swarm chat -->
     <script src="{% static_v 'webapp/js/swarm/SwarmChat.js' %}"></script>
+
+    <!-- Prompt test suite -->
+    <script src="{% static_v 'webapp/js/evals/PromptEvals.js' %}"></script>
 
     <!-- Main Initialization -->
     <script src="{% static_v 'webapp/js/main.js' %}"></script>
