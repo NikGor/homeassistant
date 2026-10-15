@@ -254,6 +254,19 @@ class UiApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 409)
 
+    @mock.patch.object(services, "call_agent")
+    def test_start_run_without_reason_uses_default(self, call_agent):
+        call_agent.return_value = {"run_id": "r10", "total_attempts": 1}
+        response = self.client.post(
+            reverse("prompt_evals_start"),
+            data=json.dumps({"models": ["gpt-a"], "reason": "  ", "case_ids": ["x"]}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(
+            call_agent.call_args.args[2]["reason"], views.DEFAULT_UI_REASON
+        )
+
     def test_start_run_validates_request(self):
         response = self.client.post(
             reverse("prompt_evals_start"),

@@ -279,6 +279,22 @@ async function peRenderOverview() {
 
 // --- Launch ---
 
+// 'on' if all cases of the chip are selected, 'partial' if some, 'off' if none.
+function peChipState(cases) {
+    const selected = cases.filter(c => peState.launch.caseIds.has(c.id)).length;
+    if (!selected) return 'off';
+    return selected === cases.length ? 'on' : 'partial';
+}
+
+function peChipCases(kind, value) {
+    return peState.catalog.cases.filter(c => (kind === 'prompt' ? c.prompts : c.tags).includes(value));
+}
+
+function peChip(kind, value) {
+    const state = peChipState(peChipCases(kind, value));
+    return `<button type="button" class="pe-chip pe-chip--btn pe-chip--${state}" data-action="toggle-chip" data-kind="${kind}" data-value="${peEscape(value)}" aria-pressed="${state === 'on'}">${peEscape(value)}</button>`;
+}
+
 function peEstimate() {
     const cases = peState.catalog.cases.filter(c => peState.launch.caseIds.has(c.id));
     const perModel = cases.reduce((sum, c) => sum + PE_TOKENS_PER_ATTEMPT[c.stage], 0);
@@ -298,15 +314,19 @@ async function peRenderLaunch() {
     return `
     <form id="pe-launch-form" class="pe-launch">
         <section class="pe-section">
-            <div class="pe-section__title">Кейсы <span class="pe-muted">${launch.caseIds.size} выбрано</span></div>
+            <div class="pe-section__title">Кейсы <span class="pe-muted">${launch.caseIds.size} из ${peState.catalog.cases.length} выбрано</span>
+                <span class="pe-section__actions">
+                    <button type="button" class="pe-btn pe-btn--ghost pe-btn--small" data-action="select-all">Выбрать все</button>
+                    <button type="button" class="pe-btn pe-btn--ghost pe-btn--small" data-action="select-none" ${launch.caseIds.size ? '' : 'disabled'}>Снять все</button>
+                </span>
+            </div>
             <div class="pe-quick">
                 <span class="pe-muted">Промпт:</span>
-                ${prompts.map(p => `<button type="button" class="pe-chip pe-chip--btn" data-action="select-prompt" data-prompt="${peEscape(p)}">${peEscape(p)}</button>`).join('')}
+                ${prompts.map(p => peChip('prompt', p)).join('')}
             </div>
             <div class="pe-quick">
                 <span class="pe-muted">Тег:</span>
-                ${tags.map(t => `<button type="button" class="pe-chip pe-chip--btn" data-action="select-tag" data-tag="${peEscape(t)}">${peEscape(t)}</button>`).join('')}
-                <button type="button" class="pe-chip pe-chip--btn" data-action="select-none">снять всё</button>
+                ${tags.map(t => peChip('tag', t)).join('')}
             </div>
             <div class="pe-suites">
                 ${Object.entries(bySuite).map(([suite, cases]) => {
@@ -343,8 +363,8 @@ async function peRenderLaunch() {
             </label>
         </section>
         <section class="pe-section">
-            <label class="pe-field pe-field--wide">Зачем запуск (обязательно)
-                <input class="pe-input" data-action="reason" required minlength="3" placeholder="Например: после правки format_ui_answer — погода через weather_card" value="${peEscape(launch.reason)}">
+            <label class="pe-field pe-field--wide">Зачем запуск (необязательно)
+                <input class="pe-input" data-action="reason" placeholder="Например: после правки format_ui_answer — погода через weather_card" value="${peEscape(launch.reason)}">
             </label>
             <label class="pe-field">JIRA
                 <input class="pe-input pe-input--short" data-action="jira" placeholder="ARCHIE-…" value="${peEscape(launch.jira)}">
@@ -367,7 +387,6 @@ function pePrefill(caseIds) {
 async function peStartRun() {
     const launch = peState.launch;
     if (!launch.caseIds.size || !launch.models.size) { peSetError('Выберите кейсы и модели'); return; }
-    if (launch.reason.trim().length < 3) { peSetError('Укажите, зачем запуск'); return; }
     const run = await peFetch('/runs/start/', {
         method: 'POST',
         body: JSON.stringify({
@@ -400,7 +419,7 @@ function peRunHeader(view) {
     <div class="pe-run-head">
         <div class="pe-run-head__top">
             ${peStatusPill(run.status)}
-            <span class="pe-run-head__reason">${peEscape(run.reason)}</span>
+            <span class="pe-run-head__reason">${run.reason ? peEscape(run.reason) : '<span class="pe-muted">без описания</span>'}</span>
             ${run.jira_key ? `<a class="pe-chip" href="${PE_JIRA_URL}${peEscape(run.jira_key)}" target="_blank" rel="noopener">${peEscape(run.jira_key)}</a>` : ''}
             ${peIsRunActive() && view === peState.view ? `<button class="pe-btn pe-btn--danger" data-action="cancel" data-run="${run.run_id}"><i data-lucide="square" class="w-4 h-4"></i> Остановить</button>` : ''}
         </div>
@@ -633,11 +652,13 @@ async function peHandleClick(e) {
             await peOpenStoredRun(target.dataset.run);
         } else if (action === 'prefill') {
             pePrefill(target.dataset.cases.split(','));
-        } else if (action === 'select-prompt' || action === 'select-tag') {
-            if (!peState.catalog) await peLoadCatalog();
-            peState.catalog.cases
-                .filter(c => action === 'select-prompt' ? c.prompts.includes(target.dataset.prompt) : c.tags.includes(target.dataset.tag))
-                .forEach(c => launch.caseIds.add(c.id));
+        } else if (action === 'toggle-chip') {
+            const cases = peChipCases(target.dataset.kind, target.dataset.value);
+            const select = peChipState(cases) !== 'on';
+            cases.forEach(c => { if (select) launch.caseIds.add(c.id); else launch.caseIds.delete(c.id); });
+            peRenderBody();
+        } else if (action === 'select-all') {
+            peState.catalog.cases.forEach(c => launch.caseIds.add(c.id));
             peRenderBody();
         } else if (action === 'select-none') {
             launch.caseIds.clear();

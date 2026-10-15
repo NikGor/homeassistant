@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 EVAL_PUBLISH_TOKEN = os.getenv("EVAL_PUBLISH_TOKEN", "")
 RUN_LIST_LIMIT = 100
+DEFAULT_UI_REASON = "Запуск из UI без описания"
 
 _run_update_adapter: TypeAdapter[EvalSnapshotEvent | EvalRunInfo] = TypeAdapter(
     EvalSnapshotEvent | EvalRunInfo
@@ -118,8 +119,10 @@ def get_result_output(request: HttpRequest, result_id: int) -> JsonResponse:
 def start_run(request: HttpRequest) -> JsonResponse:
     """UI -> agent: start a run; the agent then reports progress to this app."""
     try:
+        payload = json.loads(request.body)
+        reason = str(payload.get("reason") or "").strip() or DEFAULT_UI_REASON
         run_request = EvalRunRequest.model_validate(
-            {**json.loads(request.body), "triggered_by": "ui"}
+            {**payload, "reason": reason, "triggered_by": "ui"}
         )
     except (ValidationError, json.JSONDecodeError) as error:
         return JsonResponse({"error": str(error)}, status=422)
