@@ -15,7 +15,7 @@ const PE_TABS = [
     { id: 'compare', label: 'Сравнение', icon: 'git-compare' },
 ];
 const PE_STATUS_LABELS = {
-    passed: 'проходит', failed: 'падает', flaky: 'нестабилен', never: 'не запускался',
+    passed: 'проходит', failed: 'падает', flaky: 'нестабилен', mixed: 'зависит от модели', never: 'не запускался',
     error: 'ошибка', queued: 'в очереди', running: 'идёт', completed: 'завершён',
     cancelled: 'отменён',
 };
@@ -58,6 +58,18 @@ function peFormatTokens(tokens) {
     return tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : String(tokens || 0);
 }
 
+// Russian plural: pePlural(4, ['кейс', 'кейса', 'кейсов']) -> '4 кейса'
+function pePlural(count, forms) {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    const form = mod10 === 1 && mod100 !== 11 ? forms[0]
+        : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? forms[1] : forms[2];
+    return `${count} ${form}`;
+}
+const PE_CASE_FORMS = ['кейс', 'кейса', 'кейсов'];
+const PE_MODEL_FORMS = ['модель', 'модели', 'моделей'];
+const PE_ATTEMPT_FORMS = ['попытка', 'попытки', 'попыток'];
+
 function peMean(values) {
     return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
 }
@@ -87,6 +99,17 @@ function pePromptTitle(prompt, extra = '') {
     const description = pePromptDescription(prompt);
     return `<div class="pe-group__title"><span class="pe-group__name">${peEscape(prompt)}</span>${extra}
         ${description ? `<span class="pe-group__desc">${peEscape(description)}</span>` : ''}</div>`;
+}
+
+// Case status over several models: flaky = one model both passes and fails,
+// mixed = models disagree.
+function peCaseStatus(results) {
+    if (!results.length) return 'never';
+    const byModel = {};
+    results.forEach(r => { (byModel[r.model] = byModel[r.model] || []).push(r.status); });
+    const statuses = new Set(Object.values(byModel).map(peAttemptsStatus));
+    if (statuses.has('flaky')) return 'flaky';
+    return statuses.size === 1 ? [...statuses][0] : 'mixed';
 }
 
 function peAttemptsStatus(statuses) {
@@ -250,7 +273,7 @@ async function peRenderOverview() {
     if (!peState.overview) await peLoadOverview();
     if (!peState.overview.length) return '<div class="pe-empty">Каталог кейсов пуст</div>';
     return `<div class="pe-overview">${peState.overview.map(item => {
-        const counts = { passed: 0, flaky: 0, failed: 0, never: 0 };
+        const counts = { passed: 0, mixed: 0, flaky: 0, failed: 0, never: 0 };
         item.cases.forEach(c => { counts[c.status] += 1; });
         const open = peState.openDetails.has(`prompt:${item.prompt}`);
         return `
@@ -264,7 +287,8 @@ async function peRenderOverview() {
                 ${item.changed_since_run ? '<span class="pe-badge pe-badge--warn" title="Шаблон изменён после последнего прогона">изменён</span>' : ''}
                 <span class="pe-prompt__counts">
                     ${counts.passed ? `<span class="pe-count pe-count--passed">${counts.passed}</span>` : ''}
-                    ${counts.flaky ? `<span class="pe-count pe-count--flaky">${counts.flaky}</span>` : ''}
+                    ${counts.mixed ? `<span class="pe-count pe-count--mixed" title="зависит от модели">${counts.mixed}</span>` : ''}
+                    ${counts.flaky ? `<span class="pe-count pe-count--flaky" title="нестабилен">${counts.flaky}</span>` : ''}
                     ${counts.failed ? `<span class="pe-count pe-count--failed">${counts.failed}</span>` : ''}
                     ${counts.never ? `<span class="pe-count pe-count--never">${counts.never}</span>` : ''}
                 </span>
@@ -400,7 +424,7 @@ async function peRenderLaunch() {
             </label>
         </section>
         <div class="pe-launch__footer">
-            <span id="pe-estimate" class="pe-muted">${launch.caseIds.size} кейсов × ${launch.models.size} моделей × ${launch.repeats} = ${estimate.attempts} попыток · ~${peFormatTokens(estimate.tokens)} токенов</span>
+            <span id="pe-estimate" class="pe-muted">${pePlural(launch.caseIds.size, PE_CASE_FORMS)} × ${pePlural(launch.models.size, PE_MODEL_FORMS)} × ${launch.repeats} = ${pePlural(estimate.attempts, PE_ATTEMPT_FORMS)} · ~${peFormatTokens(estimate.tokens)} токенов</span>
             <button type="submit" class="pe-btn" ${peIsRunActive() ? 'disabled title="Дождитесь окончания текущего прогона"'
                 : !launch.models.size || !launch.caseIds.size ? 'disabled title="Выберите кейсы и модель"' : ''}>
                 <i data-lucide="play" class="w-4 h-4"></i> Запустить
@@ -437,6 +461,52 @@ async function peStartRun() {
 
 // --- Run view (live or stored) ---
 
+// Failed or errored attempts of a run -> cases and models to run again.
+// A run is cases x models, so combinations that passed may run again too.
+function peFailedSelection(view) {
+    const failed = view.results.filter(r => r.status !== 'passed');
+    const enabled = new Set((peState.catalog ? peState.catalog.cases : []).map(c => c.id));
+    const caseIds = [...new Set(failed.map(r => r.case_id))];
+    return {
+        caseIds: caseIds.filter(id => enabled.has(id)),
+        skipped: caseIds.filter(id => !enabled.has(id)),
+        models: [...new Set(failed.map(r => r.model))],
+    };
+}
+
+function peRerunButton(view, compact = false) {
+    if (['queued', 'running'].includes(view.run.status) || !view.results.some(r => r.status !== 'passed')) return '';
+    const { caseIds, models, skipped } = peFailedSelection(view);
+    if (!caseIds.length) return '<span class="pe-muted">упавшие кейсы отключены</span>';
+    const label = `${pePlural(caseIds.length, PE_CASE_FORMS)} × ${pePlural(models.length, PE_MODEL_FORMS)}`;
+    const title = `Перезапустить: ${caseIds.join(', ')} на ${models.join(', ')}` + (skipped.length ? `. Пропущены отключённые: ${skipped.join(', ')}` : '');
+    return `<button class="pe-btn ${compact ? 'pe-btn--small' : ''}" data-action="rerun-failed" data-run="${view.run.run_id}" title="${peEscape(title)}">
+        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Перезапустить упавшие (${label})</button>`;
+}
+
+async function peRerunFailed(runId) {
+    if (!peState.catalog) await peLoadCatalog();
+    const view = peState.view && peState.view.run.run_id === runId ? peState.view : await peFetch(`/runs/${runId}/`);
+    const { caseIds, models } = peFailedSelection(view);
+    if (!caseIds.length) { peSetError('Нечего перезапускать: упавших включённых кейсов нет'); return; }
+    const run = view.run;
+    const started = await peFetch('/runs/start/', {
+        method: 'POST',
+        body: JSON.stringify({
+            case_ids: caseIds,
+            models,
+            repeats: run.repeats || 1,
+            judge: Boolean(run.judge_model),
+            judge_model: run.judge_model || null,
+            reason: `Перезапуск упавших из ${run.run_id}${run.reason ? `: ${run.reason}` : ''}`,
+            jira_key: run.jira_key || null,
+        }),
+    });
+    peState.openDetails.clear();
+    peConnectRun(started.run_id);
+    peSwitchTab('run');
+}
+
 function peRunHeader(view) {
     const run = view.run;
     const done = run.done_attempts;
@@ -452,6 +522,7 @@ function peRunHeader(view) {
             <span class="pe-run-head__reason">${run.reason ? peEscape(run.reason) : '<span class="pe-muted">без описания</span>'}</span>
             ${run.jira_key ? `<a class="pe-chip" href="${PE_JIRA_URL}${peEscape(run.jira_key)}" target="_blank" rel="noopener">${peEscape(run.jira_key)}</a>` : ''}
             ${peIsRunActive() && view === peState.view ? `<button class="pe-btn pe-btn--danger" data-action="cancel" data-run="${run.run_id}"><i data-lucide="square" class="w-4 h-4"></i> Остановить</button>` : ''}
+            ${peIsRunActive() ? '' : `<span class="pe-run-head__actions">${peRerunButton(view)}</span>`}
         </div>
         <div class="pe-progress"><div class="pe-progress__bar" style="width:${percent}%"></div></div>
         <div class="pe-run-head__stats">
@@ -491,7 +562,7 @@ function peRenderCaseRow(view, testCase) {
     const results = view.results.filter(r => r.case_id === testCase.id);
     const models = view.run.models || [...new Set(results.map(r => r.model))];
     const repeats = view.run.repeats || 1;
-    const status = peAttemptsStatus(results.map(r => r.status));
+    const status = peCaseStatus(results);
     const isRunning = Object.values(view.running).some(ref => ref.case_id === testCase.id);
     const open = peState.openDetails.has(`case:${testCase.id}`);
     const cells = models.map(model => {
@@ -600,7 +671,9 @@ async function peRenderHistory() {
                 <td>${run.models.map(m => `<span class="pe-chip">${peEscape(m)}</span>`).join(' ')}${run.repeats > 1 ? ` ×${run.repeats}` : ''}</td>
                 <td><div class="pe-mini-bar"><div style="width:${passedShare}%"></div></div>
                     <span class="pe-muted">${run.passed}/${total}</span></td>
-                <td>${peStatusPill(run.status)}</td>
+                <td>${peStatusPill(run.status)}
+                    ${run.failed + run.errors > 0 && !['queued', 'running'].includes(run.status) && !peIsRunActive()
+                        ? `<button class="pe-icon-btn" data-action="rerun-failed" data-run="${run.run_id}" title="Перезапустить упавшие (${run.failed + run.errors} попыток)"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>` : ''}</td>
             </tr>`;
         }).join('')}</tbody>
     </table></div>` : '<div class="pe-empty">Прогонов пока нет</div>'}`;
@@ -693,6 +766,8 @@ async function peHandleClick(e) {
             const select = peChipState(cases) !== 'on';
             cases.forEach(c => { if (select) launch.caseIds.add(c.id); else launch.caseIds.delete(c.id); });
             peRenderBody();
+        } else if (action === 'rerun-failed') {
+            await peRerunFailed(target.dataset.run);
         } else if (action === 'remove-model') {
             launch.models.delete(target.dataset.model);
             peRenderBody();

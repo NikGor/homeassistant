@@ -1488,6 +1488,7 @@ body.voice-mode .orb {
 .pe-pill--passed, .pe-pill--completed { color: var(--pe-passed); background: rgba(34, 197, 94, 0.12); }
 .pe-pill--failed { color: var(--pe-failed); background: rgba(239, 68, 68, 0.12); }
 .pe-pill--flaky { color: var(--pe-flaky); background: rgba(234, 179, 8, 0.12); }
+.pe-pill--mixed { color: rgb(196, 181, 253); background: rgba(139, 92, 246, 0.14); }
 .pe-pill--error, .pe-pill--cancelled { color: var(--pe-error); background: rgba(249, 115, 22, 0.12); }
 .pe-pill--running, .pe-pill--queued { color: var(--pe-running); background: rgba(34, 211, 238, 0.12); }
 .pe-badge { padding: 0.05rem 0.45rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 500; }
@@ -1503,6 +1504,7 @@ body.voice-mode .orb {
 .pe-count--passed { color: var(--pe-passed); background: rgba(34, 197, 94, 0.12); }
 .pe-count--failed { color: var(--pe-failed); background: rgba(239, 68, 68, 0.12); }
 .pe-count--flaky { color: var(--pe-flaky); background: rgba(234, 179, 8, 0.12); }
+.pe-count--mixed { color: rgb(196, 181, 253); background: rgba(139, 92, 246, 0.14); }
 .pe-count--error { color: var(--pe-error); background: rgba(249, 115, 22, 0.12); }
 .pe-count--never { color: var(--pe-muted); background: var(--pe-surface); }
 
@@ -1512,6 +1514,7 @@ body.voice-mode .orb {
 .pe-prompt--passed { --pe-status: var(--pe-passed); }
 .pe-prompt--failed { --pe-status: var(--pe-failed); }
 .pe-prompt--flaky { --pe-status: var(--pe-flaky); }
+.pe-prompt--mixed { --pe-status: rgb(196, 181, 253); }
 .pe-prompt__head { display: flex; align-items: center; gap: 0.6rem; width: 100%; padding: 0.7rem 0.9rem; text-align: left; }
 .pe-prompt__dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--pe-status, var(--pe-muted)); flex-shrink: 0; }
 .pe-prompt__title { display: flex; flex-direction: column; min-width: 0; gap: 0.1rem; }
@@ -1555,6 +1558,7 @@ body.voice-mode .orb {
 .pe-run-head { padding: 0.9rem; border-radius: 0.75rem; background: var(--pe-surface); margin-bottom: 1rem; }
 .pe-run-head__top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
 .pe-run-head__reason { font-weight: 600; }
+.pe-run-head__actions { margin-left: auto; }
 .pe-run-head__stats { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.9rem; margin-top: 0.5rem; }
 .pe-progress { height: 0.4rem; margin-top: 0.75rem; border-radius: 9999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
 .pe-progress__bar { height: 100%; background: linear-gradient(90deg, rgb(34, 211, 238), rgb(134, 239, 172)); transition: width 0.4s ease; }
