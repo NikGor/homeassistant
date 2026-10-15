@@ -78,6 +78,17 @@ function pePrimaryPrompt(testCase) {
     return testCase.prompts[testCase.prompts.length - 1];
 }
 
+function pePromptDescription(prompt) {
+    return (peState.catalog && peState.catalog.prompt_descriptions[prompt]) || '';
+}
+
+// Group heading: prompt name and what the prompt is responsible for.
+function pePromptTitle(prompt, extra = '') {
+    const description = pePromptDescription(prompt);
+    return `<div class="pe-group__title"><span class="pe-group__name">${peEscape(prompt)}</span>${extra}
+        ${description ? `<span class="pe-group__desc">${peEscape(description)}</span>` : ''}</div>`;
+}
+
 function peAttemptsStatus(statuses) {
     if (!statuses.length) return 'never';
     const passed = statuses.filter(s => s === 'passed').length;
@@ -246,7 +257,10 @@ async function peRenderOverview() {
         <div class="pe-prompt pe-prompt--${item.status}">
             <button class="pe-prompt__head" data-action="toggle" data-key="prompt:${peEscape(item.prompt)}">
                 <span class="pe-prompt__dot"></span>
-                <span class="pe-prompt__name">${peEscape(item.prompt)}</span>
+                <span class="pe-prompt__title">
+                    <span class="pe-prompt__name">${peEscape(item.prompt)}</span>
+                    ${item.description ? `<span class="pe-prompt__desc">${peEscape(item.description)}</span>` : ''}
+                </span>
                 ${item.changed_since_run ? '<span class="pe-badge pe-badge--warn" title="Шаблон изменён после последнего прогона">изменён</span>' : ''}
                 <span class="pe-prompt__counts">
                     ${counts.passed ? `<span class="pe-count pe-count--passed">${counts.passed}</span>` : ''}
@@ -513,6 +527,7 @@ function peCasesForView(view) {
 }
 
 async function peRenderRun() {
+    if (!peState.catalog) await peLoadCatalog();
     if (!peState.view) {
         return '<div class="pe-empty">Нет активного прогона. Запустите его на вкладке «Запуск» или откройте из «Истории».</div>';
     }
@@ -523,7 +538,7 @@ async function peRenderRun() {
     <div class="pe-run-body">
         ${Object.entries(groups).map(([prompt, cases]) => `
         <div class="pe-group">
-            <div class="pe-group__title">${peEscape(prompt)}</div>
+            ${pePromptTitle(prompt)}
             ${cases.map(c => peRenderCaseRow(view, c)).join('')}
         </div>`).join('')}
     </div>`;
@@ -581,6 +596,7 @@ async function peRenderHistory() {
 // --- Compare ---
 
 async function peRenderCompare() {
+    if (!peState.catalog) await peLoadCatalog();
     const runIds = [...peState.selectedRuns];
     if (!runIds.length) return '<div class="pe-empty">Отметьте прогоны во вкладке «История». Один прогон с несколькими моделями тоже можно сравнить.</div>';
     const details = await Promise.all(runIds.map(id => peFetch(`/runs/${id}/`)));
@@ -621,7 +637,7 @@ async function peRenderCompare() {
             <div class="pe-muted">${peFormatDate(col.run.created_at)} · ${peEscape(col.run.reason.slice(0, 40))}</div></th>`).join('')}</tr></thead>
         <tbody>
         ${Object.entries(groups).map(([prompt, cases]) => `
-            <tr class="pe-table__group"><td colspan="${columns.length + 1}">${peEscape(prompt)}</td></tr>
+            <tr class="pe-table__group"><td colspan="${columns.length + 1}">${pePromptTitle(prompt)}</td></tr>
             ${cases.map(c => {
                 const cells = columns.map(col => cell(col, c.id));
                 const differs = new Set(cells.map(x => x.key).filter(k => k !== '—')).size > 1;

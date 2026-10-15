@@ -163,6 +163,7 @@ class OverviewTests(TestCase):
             models=["gpt-a"],
             default_model="gpt-a",
             prompt_hashes={"cmd_prompt": cmd_hash, "format_ui_answer": "h2"},
+            prompt_descriptions={"cmd_prompt": "Stage 1: routing"},
         )
 
     def test_statuses_per_case_and_prompt(self):
@@ -183,6 +184,8 @@ class OverviewTests(TestCase):
         self.assertEqual(services._prompt_status(["passed", "never"]), "passed")
         self.assertEqual(overview["format_ui_answer"]["status"], "never")
         self.assertFalse(overview["cmd_prompt"]["changed_since_run"])
+        self.assertEqual(overview["cmd_prompt"]["description"], "Stage 1: routing")
+        self.assertEqual(overview["format_ui_answer"]["description"], "")
 
     def test_changed_prompt_is_flagged(self):
         overview = {

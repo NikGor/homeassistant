@@ -77,8 +77,7 @@ function peCaseMatches(testCase) {
 
 function peRenderCaseList() {
     const visible = peCases.list.filter(c => (peCases.showDisabled || c.enabled) && peCaseMatches(c));
-    const bySuite = {};
-    visible.forEach(c => { (bySuite[c.suite] = bySuite[c.suite] || []).push(c); });
+    const byPrompt = peGroupByPrompt(visible);
     const disabledCount = peCases.list.filter(c => !c.enabled).length;
     return `
     <div class="pe-history__toolbar">
@@ -86,16 +85,16 @@ function peRenderCaseList() {
         <label class="pe-check"><input type="checkbox" data-action="case-show-disabled" ${peCases.showDisabled ? 'checked' : ''}> отключённые (${disabledCount})</label>
         <button class="pe-btn" data-action="case-new"><i data-lucide="plus" class="w-4 h-4"></i> Новый кейс</button>
     </div>
-    ${Object.entries(bySuite).map(([suite, cases]) => `
+    ${Object.entries(byPrompt).sort(([a], [b]) => a.localeCompare(b)).map(([prompt, cases]) => `
     <div class="pe-group">
-        <div class="pe-group__title">${peEscape(suite)} <span class="pe-muted">${cases.length}</span></div>
+        ${pePromptTitle(prompt, ` <span class="pe-muted">${cases.length}</span>`)}
         ${cases.map(c => `
         <div class="pe-case-row ${c.enabled ? '' : 'pe-case-row--disabled'}">
             <div class="pe-case-row__main">
                 <div class="pe-case-row__name">${peEscape(c.name)} <span class="pe-muted">${peEscape(c.id)} · r${c.revision}</span>
                     ${c.enabled ? '' : '<span class="pe-badge pe-badge--warn">отключён</span>'}</div>
                 <div class="pe-case-row__desc">${peEscape(c.description)}</div>
-                <div class="pe-muted">«${peEscape(c.input)}» · ${peEscape(c.stage)} · ${peEscape(c.response_format)}${c.judge ? ' · judge' : ''}
+                <div class="pe-muted">«${peEscape(c.input)}» · ${peEscape(c.suite)} · ${peEscape(c.stage)} · ${peEscape(c.response_format)}${c.judge ? ' · judge' : ''}
                     · ${c.prompts.map(peEscape).join(', ')}${c.tags.length ? ` · #${c.tags.map(peEscape).join(' #')}` : ''}
                     · ${peEscape(c.updated_by || '—')}, ${peFormatDate(c.updated_at)}</div>
             </div>
@@ -210,6 +209,7 @@ function peRenderEditor() {
 
 async function peRenderCases() {
     if (!peCases.list || !peCases.schema) await peLoadCases();
+    if (!peState.catalog) await peLoadCatalog();
     return peCases.editor ? peRenderEditor() : peRenderCaseList();
 }
 

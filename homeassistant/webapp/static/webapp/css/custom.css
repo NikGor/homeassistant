@@ -1514,7 +1514,9 @@ body.voice-mode .orb {
 .pe-prompt--flaky { --pe-status: var(--pe-flaky); }
 .pe-prompt__head { display: flex; align-items: center; gap: 0.6rem; width: 100%; padding: 0.7rem 0.9rem; text-align: left; }
 .pe-prompt__dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--pe-status, var(--pe-muted)); flex-shrink: 0; }
+.pe-prompt__title { display: flex; flex-direction: column; min-width: 0; gap: 0.1rem; }
 .pe-prompt__name { font-weight: 600; font-family: ui-monospace, monospace; }
+.pe-prompt__desc { font-size: 0.78rem; color: rgba(255, 255, 255, 0.6); }
 .pe-prompt__counts { display: flex; gap: 0.25rem; margin-left: auto; }
 .pe-prompt__meta { color: var(--pe-muted); font-size: 0.75rem; min-width: 7rem; text-align: right; }
 .pe-prompt__cases { padding: 0 0.9rem 0.9rem; display: flex; flex-direction: column; gap: 0.4rem; }
@@ -1554,7 +1556,9 @@ body.voice-mode .orb {
 .pe-progress { height: 0.4rem; margin-top: 0.75rem; border-radius: 9999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
 .pe-progress__bar { height: 100%; background: linear-gradient(90deg, rgb(34, 211, 238), rgb(134, 239, 172)); transition: width 0.4s ease; }
 .pe-group { margin-bottom: 1rem; }
-.pe-group__title { font-family: ui-monospace, monospace; font-size: 0.75rem; color: var(--pe-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.pe-group__title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.6rem; margin-bottom: 0.4rem; }
+.pe-group__name { font-family: ui-monospace, monospace; font-size: 0.75rem; color: rgba(255, 255, 255, 0.75); text-transform: uppercase; letter-spacing: 0.04em; }
+.pe-group__desc { font-size: 0.78rem; color: var(--pe-muted); text-transform: none; letter-spacing: 0; font-family: inherit; }
 .pe-case { border-radius: 0.6rem; background: var(--pe-surface); margin-bottom: 0.35rem; }
 .pe-case--running { box-shadow: 0 0 0 1px rgba(103, 232, 249, 0.35); }
 .pe-case__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; width: 100%; padding: 0.55rem 0.75rem; text-align: left; }

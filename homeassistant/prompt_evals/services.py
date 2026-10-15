@@ -35,6 +35,10 @@ class Catalog(BaseModel):
     models: list[str] = Field(description="Models a run can use")
     default_model: str = Field(description="Default eval model")
     prompt_hashes: dict[str, str] = Field(description="Current prompt template hashes")
+    prompt_descriptions: dict[str, str] = Field(
+        default_factory=dict,
+        description="Prompt template name -> what it is responsible for",
+    )
     agent_error: str | None = Field(
         default=None,
         description="Set if the agent is not reachable; models and hashes are then empty",
@@ -90,6 +94,7 @@ def get_catalog() -> Catalog:
     try:
         models = call_agent("GET", "/evals/models")
         prompt_hashes = call_agent("GET", "/evals/prompts")
+        prompt_descriptions = call_agent("GET", "/evals/prompt-descriptions")
     except AgentError as error:
         logger.error(f"prompt_evals_error_004: Agent catalog: \033[31m{error}\033[0m")
         return Catalog(
@@ -104,6 +109,7 @@ def get_catalog() -> Catalog:
         models=models["models"],
         default_model=models["default"],
         prompt_hashes=prompt_hashes,
+        prompt_descriptions=prompt_descriptions,
     )
 
 
@@ -360,6 +366,7 @@ def build_overview(catalog: Catalog) -> list[dict]:
         overview.append(
             {
                 "prompt": prompt,
+                "description": catalog.prompt_descriptions.get(prompt, ""),
                 "status": _prompt_status([case["status"] for case in cases]),
                 "cases": cases,
                 "last_run_id": last_run.run_id if last_run else None,
