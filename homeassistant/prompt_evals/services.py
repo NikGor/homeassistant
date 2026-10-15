@@ -311,22 +311,33 @@ def _latest_case_results(case_ids: list[str]) -> dict[str, list[EvalCaseResult]]
     return latest
 
 
-def _case_status(results: list[EvalCaseResult]) -> str:
-    if not results:
-        return "never"
-    passed = sum(result.status == "passed" for result in results)
-    if passed == len(results):
+def _attempts_status(statuses: list[str]) -> str:
+    passed = statuses.count("passed")
+    if passed == len(statuses):
         return "passed"
     return "failed" if passed == 0 else "flaky"
 
 
-def _prompt_status(case_statuses: list[str]) -> str:
-    known = [status for status in case_statuses if status != "never"]
-    if not known:
+def _case_status(results: list[EvalCaseResult]) -> str:
+    """flaky: one model both passes and fails; mixed: models disagree."""
+    if not results:
         return "never"
-    if "failed" in known:
-        return "failed"
-    return "flaky" if "flaky" in known else "passed"
+    by_model: dict[str, list[str]] = defaultdict(list)
+    for result in results:
+        by_model[result.model].append(result.status)
+    model_statuses = {_attempts_status(statuses) for statuses in by_model.values()}
+    if "flaky" in model_statuses:
+        return "flaky"
+    return model_statuses.pop() if len(model_statuses) == 1 else "mixed"
+
+
+# Worst first: the prompt shows its worst case status
+_PROMPT_STATUS_ORDER = ["failed", "mixed", "flaky", "passed"]
+
+
+def _prompt_status(case_statuses: list[str]) -> str:
+    known = set(case_statuses) - {"never"}
+    return next((status for status in _PROMPT_STATUS_ORDER if status in known), "never")
 
 
 def build_overview(catalog: Catalog) -> list[dict]:

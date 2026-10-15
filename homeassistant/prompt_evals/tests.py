@@ -454,3 +454,22 @@ class CatalogTests(TestCase):
         )
         self.assertEqual(catalog.prompt_hashes, {"cmd_prompt": "h"})
         self.assertIn("/evals/prompt-descriptions", catalog.agent_error)
+
+
+class StatusTests(TestCase):
+    def results(self, *pairs: tuple[str, str]) -> list:
+        return [EvalCaseResult(model=model, status=status) for model, status in pairs]
+
+    def test_models_disagree_is_mixed_not_flaky(self):
+        self.assertEqual(
+            services._case_status(self.results(("a", "passed"), ("b", "failed"))),
+            "mixed",
+        )
+
+    def test_same_model_both_outcomes_is_flaky(self):
+        results = self.results(("a", "passed"), ("a", "failed"), ("b", "passed"))
+        self.assertEqual(services._case_status(results), "flaky")
+
+    def test_prompt_shows_worst_status(self):
+        self.assertEqual(services._prompt_status(["passed", "mixed", "flaky"]), "mixed")
+        self.assertEqual(services._prompt_status(["never"]), "never")
