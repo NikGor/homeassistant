@@ -250,8 +250,9 @@ const IntegratedChatAssistant = () => {
                 text = content.level2_answer.text.text;
             } else if (content.level3_answer?.text?.text) {
                 text = content.level3_answer.text.text;
-            } else if (content.ui_answer?.text?.text) {
-                text = content.ui_answer.text.text;
+            } else if (content.ui_answer?.intro_text?.text) {
+                // ARCHIE-210: UIAnswer carries its text in intro_text, not text
+                text = content.ui_answer.intro_text.text;
             }
             return text ? `${role}: ${text}` : null;
         }).filter(Boolean).join('\n');
