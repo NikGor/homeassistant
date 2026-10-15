@@ -1510,6 +1510,8 @@ body.voice-mode .orb {
 
 /* Overview */
 .pe-overview { display: flex; flex-direction: column; gap: 0.5rem; }
+.pe-overview__toolbar { display: flex; justify-content: flex-end; margin-bottom: 0.75rem; }
+.pe-prompt__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .pe-prompt { border-radius: 0.75rem; background: var(--pe-surface); box-shadow: inset 3px 0 0 var(--pe-status, var(--pe-line)); }
 .pe-prompt--passed { --pe-status: var(--pe-passed); }
 .pe-prompt--failed { --pe-status: var(--pe-failed); }

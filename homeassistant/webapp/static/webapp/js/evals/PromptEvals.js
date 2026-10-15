@@ -269,10 +269,50 @@ function peStatusPill(status) {
 
 // --- Overview ---
 
+const PE_FAILING_STATUSES = new Set(['failed', 'flaky', 'mixed']);
+
+// Overview cases whose latest results have failures -> cases and failing models.
+function peOverviewFailing(prompt = null) {
+    const cases = new Map();
+    peState.overview.filter(item => !prompt || item.prompt === prompt).forEach(item => {
+        item.cases.filter(c => PE_FAILING_STATUSES.has(c.status)).forEach(c => cases.set(c.case.id, c));
+    });
+    const models = new Set();
+    cases.forEach(c => Object.entries(c.models).forEach(([model, r]) => { if (r.passed < r.total) models.add(model); }));
+    return { caseIds: [...cases.keys()], models: [...models] };
+}
+
+function peOverviewRerunButton(prompt = null) {
+    if (peIsRunActive()) return '';
+    const { caseIds, models } = peOverviewFailing(prompt);
+    if (!caseIds.length) return '';
+    return `<button class="pe-btn ${prompt ? 'pe-btn--ghost' : ''}" data-action="rerun-overview" ${prompt ? `data-prompt="${peEscape(prompt)}"` : ''}
+        title="${peEscape(`${caseIds.join(', ')} на ${models.join(', ')}`)}">
+        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Перезапустить упавшие${prompt ? ' промпта' : ''} (${pePlural(caseIds.length, PE_CASE_FORMS)} × ${pePlural(models.length, PE_MODEL_FORMS)})</button>`;
+}
+
+async function peRerunOverview(prompt) {
+    const { caseIds, models } = peOverviewFailing(prompt);
+    if (!caseIds.length) return;
+    const run = await peFetch('/runs/start/', {
+        method: 'POST',
+        body: JSON.stringify({
+            case_ids: caseIds,
+            models,
+            repeats: 1,
+            reason: prompt ? `Перезапуск упавших кейсов промпта ${prompt}` : 'Перезапуск упавших кейсов из обзора',
+        }),
+    });
+    peState.openDetails.clear();
+    peConnectRun(run.run_id);
+    peSwitchTab('run');
+}
+
 async function peRenderOverview() {
     if (!peState.overview) await peLoadOverview();
     if (!peState.overview.length) return '<div class="pe-empty">Каталог кейсов пуст</div>';
-    return `<div class="pe-overview">${peState.overview.map(item => {
+    const toolbar = peOverviewRerunButton();
+    return `${toolbar ? `<div class="pe-overview__toolbar">${toolbar}</div>` : ''}<div class="pe-overview">${peState.overview.map(item => {
         const counts = { passed: 0, mixed: 0, flaky: 0, failed: 0, never: 0 };
         item.cases.forEach(c => { counts[c.status] += 1; });
         const open = peState.openDetails.has(`prompt:${item.prompt}`);
@@ -310,9 +350,12 @@ async function peRenderOverview() {
                     <button class="pe-icon-btn" data-action="case-edit" data-case="${peEscape(c.case.id)}" title="Редактировать кейс"><i data-lucide="pencil" class="w-4 h-4"></i></button>
                     <button class="pe-icon-btn" data-action="prefill" data-cases="${peEscape(c.case.id)}" title="Запустить кейс"><i data-lucide="play" class="w-4 h-4"></i></button>
                 </div>`).join('')}
-                <button class="pe-btn pe-btn--ghost" data-action="prefill" data-cases="${peEscape(item.cases.map(c => c.case.id).join(','))}">
-                    <i data-lucide="play" class="w-4 h-4"></i> Запустить все кейсы промпта
-                </button>
+                <div class="pe-prompt__actions">
+                    <button class="pe-btn pe-btn--ghost" data-action="prefill" data-cases="${peEscape(item.cases.map(c => c.case.id).join(','))}">
+                        <i data-lucide="play" class="w-4 h-4"></i> Запустить все кейсы промпта
+                    </button>
+                    ${peOverviewRerunButton(item.prompt)}
+                </div>
             </div>` : ''}
         </div>`;
     }).join('')}</div>`;
@@ -766,6 +809,8 @@ async function peHandleClick(e) {
             const select = peChipState(cases) !== 'on';
             cases.forEach(c => { if (select) launch.caseIds.add(c.id); else launch.caseIds.delete(c.id); });
             peRenderBody();
+        } else if (action === 'rerun-overview') {
+            await peRerunOverview(target.dataset.prompt || null);
         } else if (action === 'rerun-failed') {
             await peRerunFailed(target.dataset.run);
         } else if (action === 'remove-model') {
