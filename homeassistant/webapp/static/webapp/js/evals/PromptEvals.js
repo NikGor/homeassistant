@@ -8,6 +8,7 @@ const PE_JIRA_URL = 'https://badich.atlassian.net/browse/';
 const PE_TOKENS_PER_ATTEMPT = { stage1: 8000, full: 20000 };
 const PE_TABS = [
     { id: 'overview', label: 'Обзор', icon: 'layout-list' },
+    { id: 'cases', label: 'Кейсы', icon: 'file-pen-line' },
     { id: 'launch', label: 'Запуск', icon: 'play' },
     { id: 'run', label: 'Прогон', icon: 'activity' },
     { id: 'history', label: 'История', icon: 'history' },
@@ -106,6 +107,7 @@ function peSetError(error) {
 
 async function peLoadCatalog() {
     peState.catalog = await peFetch('/catalog/');
+    if (peState.catalog.agent_error) peSetError(`Агент недоступен: ${peState.catalog.agent_error}`);
     if (!peState.launch.models.size) peState.launch.models.add(peState.catalog.default_model);
     if (!peState.launch.judgeModel) peState.launch.judgeModel = peState.catalog.default_model;
 }
@@ -216,7 +218,7 @@ function peSwitchTab(tab) {
 async function peRenderBody() {
     const body = document.getElementById('pe-body');
     if (!body) return;
-    const renderers = { overview: peRenderOverview, launch: peRenderLaunch, run: peRenderRun, history: peRenderHistory, compare: peRenderCompare };
+    const renderers = { overview: peRenderOverview, cases: peRenderCases, launch: peRenderLaunch, run: peRenderRun, history: peRenderHistory, compare: peRenderCompare };
     try {
         body.innerHTML = await renderers[peState.tab]();
         peSetError(null);
@@ -267,6 +269,7 @@ async function peRenderOverview() {
                     <div class="pe-case-row__models">${Object.entries(c.models).map(([model, r]) =>
                         `<span class="pe-chip" title="${peEscape(model)}">${peEscape(model)}: ${r.passed}/${r.total}</span>`).join('')}</div>
                     ${c.run_id ? `<button class="pe-icon-btn" data-action="open-run" data-run="${c.run_id}" title="Открыть прогон"><i data-lucide="external-link" class="w-4 h-4"></i></button>` : ''}
+                    <button class="pe-icon-btn" data-action="case-edit" data-case="${peEscape(c.case.id)}" title="Редактировать кейс"><i data-lucide="pencil" class="w-4 h-4"></i></button>
                     <button class="pe-icon-btn" data-action="prefill" data-cases="${peEscape(c.case.id)}" title="Запустить кейс"><i data-lucide="play" class="w-4 h-4"></i></button>
                 </div>`).join('')}
                 <button class="pe-btn pe-btn--ghost" data-action="prefill" data-cases="${peEscape(item.cases.map(c => c.case.id).join(','))}">
@@ -622,7 +625,10 @@ async function peRenderCompare() {
             ${cases.map(c => {
                 const cells = columns.map(col => cell(col, c.id));
                 const differs = new Set(cells.map(x => x.key).filter(k => k !== '—')).size > 1;
-                return `<tr class="${differs ? 'pe-row--diff' : ''}"><td title="${peEscape(c.description)}">${peEscape(c.name)} <span class="pe-muted">${peEscape(c.id)}</span></td>${cells.map(x => x.html).join('')}</tr>`;
+                const versions = new Set(details.map(d => d.cases.find(x => x.id === c.id)).filter(Boolean)
+                    .map(x => JSON.stringify([x.input, x.response_format, x.stage, x.expect])));
+                const changedCase = versions.size > 1 ? '<span class="pe-badge pe-badge--warn" title="Запрос или проверки кейса отличаются между прогонами">кейс менялся</span>' : '';
+                return `<tr class="${differs ? 'pe-row--diff' : ''}"><td title="${peEscape(c.description)}">${peEscape(c.name)} <span class="pe-muted">${peEscape(c.id)}</span> ${changedCase}</td>${cells.map(x => x.html).join('')}</tr>`;
             }).join('')}`).join('')}
         <tr class="pe-table__summary"><td>Проходит</td>${summary.map(s => `<td>${s.rate}</td>`).join('')}</tr>
         <tr class="pe-table__summary"><td>Judge (среднее)</td>${summary.map(s => `<td>${s.judge}</td>`).join('')}</tr>
@@ -640,6 +646,7 @@ async function peHandleClick(e) {
     const action = target.dataset.action;
     const launch = peState.launch;
     try {
+        if (await peCasesClick(target, action)) return;
         if (action === 'tab') {
             peSwitchTab(target.dataset.tab);
         } else if (action === 'toggle') {
@@ -682,6 +689,7 @@ async function peHandleClick(e) {
 function peHandleChange(e) {
     const target = e.target;
     const action = target.dataset.action;
+    if (peCasesChange(target, action)) return;
     const launch = peState.launch;
     if (action === 'toggle-case') {
         if (target.checked) launch.caseIds.add(target.dataset.case); else launch.caseIds.delete(target.dataset.case);
@@ -716,6 +724,7 @@ function peHandleChange(e) {
 function peHandleInput(e) {
     const target = e.target;
     const action = target.dataset.action;
+    if (peCasesInput(target, action)) return;
     if (action === 'reason') peState.launch.reason = target.value;
     else if (action === 'jira') peState.launch.jira = target.value;
     else if (action === 'model-filter') {
@@ -749,7 +758,8 @@ function initPromptEvals() {
     root.addEventListener('input', peHandleInput);
     root.addEventListener('submit', (e) => {
         e.preventDefault();
-        peStartRun().catch(peSetError);
+        if (e.target.dataset.form === 'case') peSaveCase(false);
+        else peStartRun().catch(peSetError);
     });
     // Elapsed time and ETA tick while a run is live
     setInterval(() => {
