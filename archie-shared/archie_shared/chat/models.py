@@ -82,6 +82,31 @@ class PipelineTrace(BaseModel):
     )
 
 
+ResponseFormat = Literal[
+    "plain",
+    "markdown",
+    "html",
+    "ssml",
+    "gemini_tts",
+    "json",
+    "csv",
+    "xml",
+    "yaml",
+    "prompt",
+    "python",
+    "bash",
+    "sql",
+    "regex",
+    "dockerfile",
+    "makefile",
+    "level2_answer",
+    "level3_answer",
+    "ui_answer",
+    "dashboard",
+    "widget",
+]
+
+
 class ChatMessage(BaseModel):
     """Individual chat message in a conversation"""
 
@@ -90,6 +115,10 @@ class ChatMessage(BaseModel):
     )
     role: Literal["user", "assistant", "system"] = Field(
         description="Role of the message sender"
+    )
+    response_format: Optional[ResponseFormat] = Field(
+        default=None,
+        description="Format the assistant message was requested in; Content does not keep it",
     )
     content: Content = Field(description="Structured content of the message")
     created_at: datetime = Field(
@@ -182,29 +211,7 @@ class ChatRequest(BaseModel):
     """Request to send a chat message"""
 
     user_name: Optional[str] = Field(description="Name of the user sending the request")
-    response_format: Literal[
-        "plain",
-        "markdown",
-        "html",
-        "ssml",
-        "gemini_tts",
-        "json",
-        "csv",
-        "xml",
-        "yaml",
-        "prompt",
-        "python",
-        "bash",
-        "sql",
-        "regex",
-        "dockerfile",
-        "makefile",
-        "level2_answer",
-        "level3_answer",
-        "ui_answer",
-        "dashboard",
-        "widget",
-    ] = Field(default="plain", description="Format of response expected from the agent")
+    response_format: ResponseFormat = Field(default="plain", description="Format of response expected from the agent")
     input: str = Field(description="Text content of the request")
     conversation_id: Optional[str] = Field(
         default=None, description="ID of the conversation"

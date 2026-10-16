@@ -8,6 +8,8 @@ from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from archie_shared.chat.models import ResponseFormat
+
 MonitorGrade = Literal["red", "orange", "green"]
 MonitorCriterion = Literal[
     "helpfulness", "correctness", "tool_choice", "skill_usage", "format_fit"
@@ -69,6 +71,9 @@ class MonitorMessage(BaseModel):
     role: Literal["user", "assistant"] = Field(description="Message author")
     content_json: str = Field(
         description="Stored Content as JSON; may be an older Content schema"
+    )
+    response_format: Optional[ResponseFormat] = Field(
+        default=None, description="Requested response format, if stored (assistant only)"
     )
     created_at: str = Field(description="ISO 8601 timestamp")
 
