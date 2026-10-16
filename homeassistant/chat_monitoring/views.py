@@ -6,12 +6,14 @@ UI (session): summary, graded conversations, run start and progress.
 
 import json
 import logging
+from datetime import datetime, timedelta
 
 from archie_shared.monitoring.models import (MONITOR_MAX_CONVERSATIONS,
                                              MonitorRunInfo, MonitorRunRequest,
                                              MonitorTurnEvaluation)
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from pydantic import ValidationError
 
@@ -76,6 +78,24 @@ def ingest_evaluation(request: HttpRequest) -> JsonResponse:
 @require_GET
 def get_summary(request: HttpRequest) -> JsonResponse:
     return JsonResponse(services.get_summary())
+
+
+@api_view
+@require_GET
+def get_rule_stats(request: HttpRequest) -> JsonResponse:
+    """?since=<ISO datetime> or ?days=N (default 7): grades per spec rule."""
+    since = request.GET.get("since")
+    try:
+        start = (
+            datetime.fromisoformat(since)
+            if since
+            else timezone.now() - timedelta(days=int(request.GET.get("days", 7)))
+        )
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=422)
+    if timezone.is_naive(start):
+        start = timezone.make_aware(start)
+    return JsonResponse(services.rule_stats(start))
 
 
 @api_view

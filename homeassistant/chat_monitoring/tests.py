@@ -104,6 +104,15 @@ class AgentApiTest(TestCase):
         message = response.json()["conversations"][0]["messages"][1]
         self.assertEqual(json.loads(message["content_json"])["text"], "old")
 
+    def test_pending_passes_stored_response_format(self):
+        conversation = make_conversation("fmt", turns=1)
+        Message.objects.filter(conversation=conversation, role="assistant").update(
+            response_format="markdown"
+        )
+        response = self.client.get(reverse("chat_monitoring_pending"), **self.auth)
+        messages = response.json()["conversations"][0]["messages"]
+        self.assertEqual([m["response_format"] for m in messages], [None, "markdown"])
+
     def test_pending_respects_limit_and_filter(self):
         make_conversation("a", turns=1, start_minutes_ago=30)
         make_conversation("b", turns=1, start_minutes_ago=20)
@@ -219,6 +228,37 @@ class UiApiTest(TestCase):
         turn = detail["messages"][1]["evaluation"]
         self.assertEqual(len(turn["rules"]), 4)
         self.assertEqual(turn["spec_versions"], {"format_ui_answer": "abc"})
+
+    def test_rule_stats_count_grades_by_version_since_a_time(self):
+        def rules_payload(message_id: str, grade: str, version: str) -> dict:
+            payload = make_evaluation(message_id, grade)
+            payload["rules"] = [
+                {"spec": "format_ui_answer", "rule_id": "ui_map", "text": "Map", "grade": grade},
+                {"spec": "format_ui_answer", "rule_id": "ui_tables", "text": "Tables"},
+            ]
+            payload["spec_versions"] = {"format_ui_answer": version}
+            return payload
+
+        services.store_evaluation(
+            services.MonitorTurnEvaluation.model_validate(rules_payload("pending-a0", "red", "v1"))
+        )
+        old = make_conversation("old", turns=1, start_minutes_ago=60 * 24 * 10)
+        services.store_evaluation(
+            services.MonitorTurnEvaluation.model_validate(rules_payload("old-a0", "red", "v0"))
+        )
+        url = reverse("chat_monitoring_rules")
+
+        week = self.client.get(url).json()
+        since_now = self.client.get(url, {"since": timezone.now().isoformat()}).json()
+
+        ui_map = next(r for r in week["rules"] if r["rule_id"] == "ui_map")
+        self.assertEqual((ui_map["red"], ui_map["applicable"]), (1, 1))
+        self.assertEqual(ui_map["versions"], {"v1": {"red": 1, "orange": 0, "green": 0, "not_applicable": 0}})
+        self.assertEqual(ui_map["examples"][0]["message_id"], "pending-a0")
+        tables = next(r for r in week["rules"] if r["rule_id"] == "ui_tables")
+        self.assertEqual((tables["not_applicable"], tables["applicable"]), (1, 0))
+        self.assertEqual(since_now["rules"], [])
+        self.assertIsNotNone(old)
 
     def test_conversation_list_filters_by_grade(self):
         url = reverse("chat_monitoring_conversations")

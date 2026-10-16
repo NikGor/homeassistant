@@ -81,6 +81,7 @@ def _to_monitor_conversation(conversation: Conversation) -> MonitorConversation:
                 message_id=message.message_id,
                 role=message.role,
                 content_json=json.dumps(stored_content(message), ensure_ascii=False),
+                response_format=message.response_format,
                 created_at=message.created_at.isoformat(),
             )
             for message in messages
@@ -395,6 +396,62 @@ def get_conversation_detail(conversation: Conversation) -> dict:
             for message in messages
         ],
     }
+
+
+RULE_EXAMPLES = 5
+
+
+def rule_stats(since: datetime) -> dict:
+    """Grades per judged rule over turns created since `since` (the autofix loop
+    picks rules to fix and checks earlier fixes by the turns after a deploy)."""
+    stats: dict[str, dict] = {}
+    evaluations = (
+        TurnEvaluation.objects.filter(message__created_at__gte=since)
+        .exclude(rules=[])
+        .select_related("message")
+        .order_by("-message__created_at")
+    )
+    for evaluation in evaluations:
+        for rule in evaluation.rules:
+            key = f"{rule['spec']}:{rule['rule_id']}"
+            entry = stats.setdefault(
+                key,
+                {
+                    "key": key,
+                    "spec": rule["spec"],
+                    "rule_id": rule["rule_id"],
+                    "text": rule["text"],
+                    "red": 0,
+                    "orange": 0,
+                    "green": 0,
+                    "not_applicable": 0,
+                    "versions": {},
+                    "examples": [],
+                },
+            )
+            grade = rule.get("grade") or "not_applicable"
+            entry[grade] += 1
+            version = evaluation.spec_versions.get(rule["spec"], "")
+            by_version = entry["versions"].setdefault(
+                version, {"red": 0, "orange": 0, "green": 0, "not_applicable": 0}
+            )
+            by_version[grade] += 1
+            if grade in ("red", "orange") and len(entry["examples"]) < RULE_EXAMPLES:
+                entry["examples"].append(
+                    {
+                        "message_id": evaluation.message_id,
+                        "conversation_id": evaluation.conversation_id,
+                        "grade": grade,
+                        "reason": rule.get("reason"),
+                        "created_at": evaluation.message.created_at.isoformat(),
+                    }
+                )
+    rules = sorted(
+        stats.values(), key=lambda entry: (-entry["red"], -entry["orange"], entry["key"])
+    )
+    for entry in rules:
+        entry["applicable"] = entry["red"] + entry["orange"] + entry["green"]
+    return {"since": since.isoformat(), "turns": evaluations.count(), "rules": rules}
 
 
 def mark_reviewed(conversation: Conversation, actor: str) -> int:
