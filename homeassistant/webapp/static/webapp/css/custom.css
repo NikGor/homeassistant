@@ -1699,3 +1699,14 @@ body.voice-mode .orb {
 }
 .cm-reasons { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: -0.25rem 0 1rem; }
 .cm-reason__count { margin-left: 0.25rem; opacity: 0.65; }
+.cm-dot--pending { background: transparent; box-shadow: inset 0 0 0 2px var(--pe-muted); }
+.cm-conv--pending { --pe-status: var(--pe-line); }
+.cm-count--pending { color: var(--pe-muted); background: var(--pe-surface); box-shadow: inset 0 0 0 1px var(--pe-line); }
+.cm-conv__row { display: flex; align-items: center; gap: 0.5rem; padding-right: 0.75rem; }
+.cm-conv__row > .pe-prompt__head { flex: 1; min-width: 0; }
+.cm-conv__judge { flex-shrink: 0; }
+.cm-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.3rem; margin-top: 1rem; }
+.cm-page { min-width: 2rem; padding: 0.3rem 0.55rem; border-radius: 0.5rem; color: rgba(255, 255, 255, 0.75); background: var(--pe-surface); }
+.cm-page:hover:not(:disabled) { background: rgba(34, 211, 238, 0.14); }
+.cm-page:disabled { opacity: 0.35; cursor: default; }
+.cm-page--on { color: #04262c; font-weight: 600; background: rgb(34, 211, 238); }

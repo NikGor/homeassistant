@@ -6,7 +6,7 @@
 const CM_API = '/chat-monitoring/api';
 const CM_POLL_MS = 2000;
 const CM_GRADES = ['red', 'orange', 'green'];
-const CM_GRADE_LABELS = { red: 'Плохо', orange: 'Есть замечания', green: 'Хорошо' };
+const CM_GRADE_LABELS = { red: 'Плохо', orange: 'Есть замечания', green: 'Хорошо', pending: 'Не оценено' };
 const CM_CRITERIA_LABELS = {
     helpfulness: 'Полезность',
     correctness: 'Корректность',
@@ -43,15 +43,19 @@ const CM_REASON_LABELS = {
     too_long: 'Слишком длинно',
     wrong_format: 'Не тот формат',
 };
-const CM_RUN_SIZES = [10, 20, 50, 100, 200];
+// The API judges at most 200 conversations per run, so 200 means «all pending»
+const CM_RUN_ALL = 200;
+const CM_RUN_SIZES = [10, 20, 50, 100, CM_RUN_ALL];
+const CM_PAGE_WINDOW = 2;
 const CM_TEXT_PREVIEW = 600;
 
 const cmState = {
     active: false,
     summary: null,
     conversations: [],
-    hasMore: false,
     page: 1,
+    pages: 1,
+    total: 0,
     filter: { grade: '', unreviewed: false, reason: '' },
     open: new Map(),      // conversation_id -> detail (null while loading)
     expandedText: new Set(),
@@ -93,20 +97,23 @@ async function cmLoadSummary() {
     cmState.summary = await cmFetch('/summary/');
 }
 
-async function cmLoadConversations(reset = true) {
-    if (reset) cmState.page = 1;
-    const params = new URLSearchParams({ page: cmState.page });
+async function cmLoadConversations(page = 1) {
+    const params = new URLSearchParams({ page });
     if (cmState.filter.grade) params.set('grade', cmState.filter.grade);
     if (cmState.filter.reason) params.set('reason', cmState.filter.reason);
     if (cmState.filter.unreviewed) params.set('unreviewed', '1');
     const data = await cmFetch(`/conversations/?${params}`);
-    cmState.conversations = reset ? data.conversations : cmState.conversations.concat(data.conversations);
-    cmState.hasMore = data.has_more;
+    cmState.conversations = data.conversations;
+    cmState.page = data.page;
+    cmState.pages = data.pages;
+    cmState.total = data.total;
 }
 
 async function cmRefresh() {
     try {
-        await Promise.all([cmLoadSummary(), cmLoadConversations()]);
+        // Stay on the current page; opened details are stale after a run
+        cmState.open.clear();
+        await Promise.all([cmLoadSummary(), cmLoadConversations(cmState.page)]);
         cmState.error = null;
     } catch (error) {
         cmState.error = error.message;
@@ -143,12 +150,13 @@ async function cmMarkReviewed(conversationId) {
 
 // --- Runs ---
 
-async function cmStartRun() {
+// conversationId set: judge only that conversation's pending turns
+async function cmStartRun(conversationId = null) {
+    const body = conversationId
+        ? { conversation_ids: [conversationId], max_conversations: 1 }
+        : { max_conversations: cmState.runSize };
     try {
-        cmState.run = await cmFetch('/runs/start/', {
-            method: 'POST',
-            body: JSON.stringify({ max_conversations: cmState.runSize }),
-        });
+        cmState.run = await cmFetch('/runs/start/', { method: 'POST', body: JSON.stringify(body) });
         cmState.error = null;
         cmRender();
         cmPollRun();
@@ -234,7 +242,7 @@ function cmRenderRunBox() {
     }
     const summary = cmState.summary;
     const options = CM_RUN_SIZES.map(size =>
-        `<option value="${size}" ${size === cmState.runSize ? 'selected' : ''}>${size}</option>`).join('');
+        `<option value="${size}" ${size === cmState.runSize ? 'selected' : ''}>${size === CM_RUN_ALL ? 'все' : size}</option>`).join('');
     const last = run && run.status !== 'running'
         ? `<div class="pe-muted">Последний прогон: ${peFormatDate(run.finished_at || run.created_at)} · ${run.done_turns} оценено
             ${run.errors ? `· ошибок: ${run.errors}` : ''} · $${(run.total_cost || 0).toFixed(4)}${run.error ? ` · ${peEscape(run.error)}` : ''}</div>`
@@ -253,7 +261,7 @@ function cmRenderRunBox() {
 }
 
 function cmRenderFilters() {
-    const chips = [['', 'Все'], ...CM_GRADES.map(grade => [grade, CM_GRADE_LABELS[grade]])].map(([grade, label]) =>
+    const chips = [['', 'Все'], ...[...CM_GRADES, 'pending'].map(grade => [grade, CM_GRADE_LABELS[grade]])].map(([grade, label]) =>
         `<button class="pe-chip pe-chip--btn ${cmState.filter.grade === grade ? 'pe-chip--on' : ''}" data-cm-grade="${grade}">${label}</button>`).join('');
     return `
         <div class="cm-filters">
@@ -318,41 +326,75 @@ function cmRenderMessage(message) {
 }
 
 function cmRenderConversation(conversation) {
-    const isOpen = cmState.open.has(conversation.conversation_id);
-    const detail = cmState.open.get(conversation.conversation_id);
+    const id = conversation.conversation_id;
+    const isOpen = cmState.open.has(id);
+    const detail = cmState.open.get(id);
     const counts = CM_GRADES.filter(grade => conversation[grade])
-        .map(grade => `<span class="cm-count cm-count--${grade}">${conversation[grade]}</span>`).join('');
+        .map(grade => `<span class="cm-count cm-count--${grade}" title="${CM_GRADE_LABELS[grade]}">${conversation[grade]}</span>`).join('');
+    const pending = conversation.pending
+        ? `<span class="cm-count cm-count--pending" title="Не оценено">${conversation.pending}</span>` : '';
+    const evaluated = conversation.last_evaluated_at
+        ? `оценено ${peFormatDate(conversation.last_evaluated_at)}` : 'не оценено';
+    const running = cmState.run && cmState.run.status === 'running';
+    const judge = conversation.pending
+        ? `<button class="pe-btn pe-btn--small cm-conv__judge" data-cm-judge="${peEscape(id)}" ${running ? 'disabled' : ''}
+              title="Оценить ${pePlural(conversation.pending, CM_TURN_FORMS)} этой беседы"><i data-lucide="play" class="w-4 h-4"></i> Оценить</button>`
+        : '';
     let body = '';
     if (isOpen) {
         body = detail
             ? `<div class="cm-thread">${detail.messages.map(cmRenderMessage).join('')}
-                ${conversation.unreviewed ? `<button class="pe-btn pe-btn--small" data-cm-review="${peEscape(conversation.conversation_id)}">
+                ${conversation.unreviewed ? `<button class="pe-btn pe-btn--small" data-cm-review="${peEscape(id)}">
                     <i data-lucide="check" class="w-4 h-4"></i> Отметить просмотренным</button>` : ''}</div>`
             : '<div class="pe-muted cm-thread">Загрузка…</div>';
     }
     return `
         <div class="pe-prompt cm-conv cm-conv--${conversation.grade}">
-            <button class="pe-prompt__head" data-cm-open="${peEscape(conversation.conversation_id)}">
-                ${cmGradeDot(conversation.grade)}
-                <span class="pe-prompt__title">
-                    <span class="cm-conv__title">${peEscape(conversation.title)}</span>
-                    <span class="pe-prompt__desc">${peFormatDate(conversation.created_at)} · оценено ${peFormatDate(conversation.last_evaluated_at)}</span>
-                </span>
-                <span class="pe-prompt__counts">${counts}
-                    ${conversation.unreviewed ? '<span class="pe-badge pe-badge--warn">новое</span>' : ''}</span>
-                <i data-lucide="${isOpen ? 'chevron-up' : 'chevron-down'}" class="w-4 h-4"></i>
-            </button>
+            <div class="cm-conv__row">
+                <button class="pe-prompt__head" data-cm-open="${peEscape(id)}">
+                    ${cmGradeDot(conversation.grade)}
+                    <span class="pe-prompt__title">
+                        <span class="cm-conv__title">${peEscape(conversation.title)}</span>
+                        <span class="pe-prompt__desc">${peFormatDate(conversation.last_message_at)} · ${evaluated}</span>
+                    </span>
+                    <span class="pe-prompt__counts">${counts}${pending}
+                        ${conversation.unreviewed ? '<span class="pe-badge pe-badge--warn">новое</span>' : ''}</span>
+                    <i data-lucide="${isOpen ? 'chevron-up' : 'chevron-down'}" class="w-4 h-4"></i>
+                </button>
+                ${judge}
+            </div>
             ${body}
+        </div>`;
+}
+
+function cmRenderPagination() {
+    if (cmState.pages <= 1) return '';
+    const pages = new Set([1, cmState.pages]);
+    for (let page = cmState.page - CM_PAGE_WINDOW; page <= cmState.page + CM_PAGE_WINDOW; page += 1) {
+        if (page >= 1 && page <= cmState.pages) pages.add(page);
+    }
+    let previous = 0;
+    const items = [...pages].sort((a, b) => a - b).map(page => {
+        const gap = page - previous > 1 ? '<span class="pe-muted">…</span>' : '';
+        previous = page;
+        return `${gap}<button class="cm-page ${page === cmState.page ? 'cm-page--on' : ''}" data-cm-page="${page}">${page}</button>`;
+    }).join('');
+    return `
+        <div class="cm-pagination">
+            <button class="cm-page" data-cm-page="${cmState.page - 1}" ${cmState.page === 1 ? 'disabled' : ''}>‹</button>
+            ${items}
+            <button class="cm-page" data-cm-page="${cmState.page + 1}" ${cmState.page === cmState.pages ? 'disabled' : ''}>›</button>
+            <span class="pe-muted">${pePlural(cmState.total, CM_CONVERSATION_FORMS)}</span>
         </div>`;
 }
 
 function cmRenderList() {
     if (!cmState.conversations.length) {
-        return '<div class="pe-empty">Нет оценённых бесед под этот фильтр. Запустите оценку, чтобы судья прошёл по новым беседам.</div>';
+        return '<div class="pe-empty">Нет бесед под этот фильтр.</div>';
     }
     return `
         <div class="pe-overview">${cmState.conversations.map(cmRenderConversation).join('')}</div>
-        ${cmState.hasMore ? '<button class="pe-btn pe-btn--ghost" id="cm-more">Показать ещё</button>' : ''}`;
+        ${cmRenderPagination()}`;
 }
 
 function cmRender() {
@@ -378,10 +420,13 @@ function cmHandleClick(event) {
     const target = event.target.closest('button, [data-cm-grade], [data-cm-reason]');
     if (!target) return;
     if (target.id === 'cm-run-start') cmStartRun();
-    else if (target.id === 'cm-more') {
-        cmState.page += 1;
-        cmLoadConversations(false).then(cmRender).catch(cmSetError);
-    } else if (target.dataset.cmReason) {
+    else if (target.dataset.cmPage) {
+        cmState.open.clear();
+        cmLoadConversations(Number(target.dataset.cmPage)).then(() => {
+            cmRender();
+            document.querySelector('#monitoring-root .pe__body').scrollTop = 0;
+        }).catch(cmSetError);
+    } else if (target.dataset.cmJudge) cmStartRun(target.dataset.cmJudge); else if (target.dataset.cmReason) {
         const reason = target.dataset.cmReason;
         cmState.filter.reason = cmState.filter.reason === reason ? '' : reason;
         cmLoadConversations().then(cmRender).catch(cmSetError);
