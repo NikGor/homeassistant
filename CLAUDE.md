@@ -16,6 +16,7 @@ Modular Django 5.2 smart home dashboard. `webapp` is the central hub; specialize
 | `/weather/` | weather | OpenWeatherMap API, 10-min caching, `WeatherService` |
 | `/camera/` | camera | — |
 | `/api/` | api | — |
+| `/chat-monitoring/` | chat_monitoring | LLM-judge grades of assistant turns (`MonitorRun`, `TurnEvaluation`); the agent runs the judge, UI tab «Мониторинг чатов» |
 | — | ha_mcp | `HomeAssistantMCPClient` — Home Assistant MCP server client, feeds real device state to `climate`/`light` dashboard tiles |
 
 ---
