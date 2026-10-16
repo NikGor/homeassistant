@@ -1715,3 +1715,4 @@ body.voice-mode .orb {
 .cm-rule { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; align-items: baseline; font-size: 0.8rem; }
 .cm-rule__text { color: rgba(255, 255, 255, 0.85); }
 .cm-rules > .cm-link { align-self: flex-start; margin-top: 0.3rem; }
+.cm-rule__reason { color: var(--cm-orange); }

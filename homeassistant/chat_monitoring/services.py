@@ -29,11 +29,13 @@ TOP_REASONS = 12
 def reasons_field(evaluation: MonitorTurnEvaluation) -> str:
     """Broken rule keys ('spec:rule_id') and older criterion reason codes, wrapped
     in commas, so ',key,' matches one key exactly."""
-    keys = [
-        f"{rule.spec}:{rule.rule_id}"
-        for rule in evaluation.rules
-        if rule.grade in ("red", "orange")
-    ] + [score.reason for score in evaluation.criteria if score.reason]
+    broken = [rule for rule in evaluation.rules if rule.grade in ("red", "orange")]
+    keys = (
+        [f"{rule.spec}:{rule.rule_id}" for rule in broken]
+        # Outcome checks also say why they failed, e.g. helpless_refusal
+        + [rule.reason for rule in broken if rule.reason]
+        + [score.reason for score in evaluation.criteria if score.reason]
+    )
     return f",{','.join(keys)}," if keys else ""
 
 

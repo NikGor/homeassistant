@@ -190,7 +190,7 @@ class UiApiTest(TestCase):
         payload["criteria"] = []
         payload["rules"] = [
             {"spec": "format_ui_answer", "rule_id": "ui_map", "text": "Use a map", "grade": "red"},
-            {"spec": "goal", "rule_id": "solves_request", "text": "Solve it", "grade": "orange"},
+            {"spec": "outcome", "rule_id": "solves_request", "text": "Solve it", "grade": "orange", "reason": "needless_question"},
             {"spec": "format_ui_answer", "rule_id": "ui_tables", "text": "Tables", "grade": "green"},
             {"spec": "format_ui_answer", "rule_id": "ui_charts", "text": "Charts", "grade": None},
         ]
@@ -206,9 +206,13 @@ class UiApiTest(TestCase):
             reverse("chat_monitoring_conversation", args=["pending"])
         ).json()
 
-        self.assertEqual(evaluation.reasons, ",format_ui_answer:ui_map,goal:solves_request,")
         self.assertEqual(
-            summary["reasons"], {"format_ui_answer:ui_map": 1, "goal:solves_request": 1}
+            evaluation.reasons,
+            ",format_ui_answer:ui_map,outcome:solves_request,needless_question,",
+        )
+        self.assertEqual(
+            summary["reasons"],
+            {"format_ui_answer:ui_map": 1, "outcome:solves_request": 1, "needless_question": 1},
         )
         self.assertEqual(summary["reason_labels"]["format_ui_answer:ui_map"], "Use a map")
         self.assertEqual([c["conversation_id"] for c in filtered], ["pending"])

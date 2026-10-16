@@ -42,12 +42,14 @@ const CM_REASON_LABELS = {
     missing_quick_actions: 'Нет быстрых действий',
     too_long: 'Слишком длинно',
     wrong_format: 'Не тот формат',
+    rephrased_request: 'Пользователь повторил запрос',
+    user_correction: 'Пользователь указал на ошибку',
 };
 // The API judges at most 200 conversations per run, so 200 means «all pending»
 const CM_RUN_ALL = 200;
 const CM_RUN_SIZES = [10, 20, 50, 100, CM_RUN_ALL];
 // Prompt specs a turn is judged against (agent app/monitoring/spec_rules.py)
-const CM_SPEC_LABELS = { goal: 'Цель запроса', cmd_prompt: 'Stage 1 · инструменты', assistant_prompt: 'Общие правила' };
+const CM_SPEC_LABELS = { outcome: 'Результат', goal: 'Цель запроса', cmd_prompt: 'Stage 1 · инструменты', assistant_prompt: 'Общие правила' };
 const CM_RULE_GRADE_ORDER = { red: 0, orange: 1, green: 2 };
 const CM_LABEL_CHARS = 70;
 const CM_PAGE_WINDOW = 2;
@@ -321,7 +323,8 @@ function cmRenderRule(rule) {
     return `
         <div class="cm-rule" title="${peEscape(rule.spec)}:${peEscape(rule.rule_id)}${rule.probability != null ? ` · p=${rule.probability}` : ''}">
             ${cmGradeDot(rule.grade)}
-            <span class="cm-rule__text">${peEscape(cmShorten(rule.text, 220))}</span>
+            <span class="cm-rule__text">${peEscape(cmShorten(rule.text, 220))}${rule.reason
+                ? ` <span class="cm-rule__reason">— ${peEscape(cmReasonLabel(rule.reason))}</span>` : ''}</span>
         </div>`;
 }
 
