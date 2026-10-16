@@ -170,6 +170,9 @@ class Message(models.Model):
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     previous_message_id = models.CharField(max_length=255, null=True, blank=True)
     model = models.TextField(null=True, blank=True)
+    # Requested format of an assistant message: Content does not keep it, and chat
+    # monitoring judges the message by that format's prompt spec (ARCHIE-213)
+    response_format = models.CharField(max_length=32, null=True, blank=True)
 
     # LLM Trace fields - expanded set
     llm_model = models.TextField(null=True, blank=True)

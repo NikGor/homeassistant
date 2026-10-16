@@ -497,7 +497,9 @@ const IntegratedChatAssistant = () => {
                 created_at: result.created_at || new Date().toISOString(),
                 llm_trace: llmTrace,
                 pipeline_steps: pipeline_steps || [],
-                pipeline_trace: result.pipeline_trace || null
+                pipeline_trace: result.pipeline_trace || null,
+                // Saved with the message: chat monitoring judges it by this format (ARCHIE-213)
+                response_format: result.response_format || null
             };
 
             console.log('ChatAssistant: assistantMessage', assistantMessage);
@@ -678,7 +680,9 @@ const IntegratedChatAssistant = () => {
                 created_at: result.created_at || new Date().toISOString(),
                 llm_trace: llmTrace,
                 pipeline_steps: pipeline_steps || [],
-                pipeline_trace: result.pipeline_trace || null
+                pipeline_trace: result.pipeline_trace || null,
+                // Saved with the message: chat monitoring judges it by this format (ARCHIE-213)
+                response_format: result.response_format || null
             };
 
             setMessages(prev => [...prev, assistantMessage]);
