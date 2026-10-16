@@ -1710,3 +1710,8 @@ body.voice-mode .orb {
 .cm-page:hover:not(:disabled) { background: rgba(34, 211, 238, 0.14); }
 .cm-page:disabled { opacity: 0.35; cursor: default; }
 .cm-page--on { color: #04262c; font-weight: 600; background: rgb(34, 211, 238); }
+.cm-rules { display: flex; flex-direction: column; gap: 0.2rem; }
+.cm-rules__spec { margin-top: 0.35rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--pe-muted); }
+.cm-rule { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; align-items: baseline; font-size: 0.8rem; }
+.cm-rule__text { color: rgba(255, 255, 255, 0.85); }
+.cm-rules > .cm-link { align-self: flex-start; margin-top: 0.3rem; }

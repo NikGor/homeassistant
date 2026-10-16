@@ -46,6 +46,10 @@ const CM_REASON_LABELS = {
 // The API judges at most 200 conversations per run, so 200 means «all pending»
 const CM_RUN_ALL = 200;
 const CM_RUN_SIZES = [10, 20, 50, 100, CM_RUN_ALL];
+// Prompt specs a turn is judged against (agent app/monitoring/spec_rules.py)
+const CM_SPEC_LABELS = { goal: 'Цель запроса', cmd_prompt: 'Stage 1 · инструменты', assistant_prompt: 'Общие правила' };
+const CM_RULE_GRADE_ORDER = { red: 0, orange: 1, green: 2 };
+const CM_LABEL_CHARS = 70;
 const CM_PAGE_WINDOW = 2;
 const CM_TEXT_PREVIEW = 600;
 
@@ -59,6 +63,7 @@ const cmState = {
     filter: { grade: '', unreviewed: false, reason: '' },
     open: new Map(),      // conversation_id -> detail (null while loading)
     expandedText: new Set(),
+    expandedRules: new Set(),   // message ids with all rules shown
     run: null,
     runSize: 20,
     pollTimer: null,
@@ -89,6 +94,7 @@ function cmGradeDot(grade) {
 }
 
 const CM_TURN_FORMS = ['реплика', 'реплики', 'реплик'];
+const CM_RULE_FORMS = ['правило', 'правила', 'правил'];
 const CM_CONVERSATION_FORMS = ['беседа', 'беседы', 'бесед'];
 
 // --- Data ---
@@ -198,7 +204,7 @@ function cmRenderHeader() {
     return `
         <div class="pe__header">
             <div class="pe__title"><i data-lucide="shield-check" class="w-5 h-5"></i> Мониторинг чатов</div>
-            <div class="pe-muted">Судья (TypeSafe Jev) оценивает ответы Archie: полезность, корректность, инструменты, скиллы, формат.</div>
+            <div class="pe-muted">Судья (TypeSafe Jev) проверяет каждый ответ Archie по правилам спецификаций его промптов.</div>
         </div>`;
 }
 
@@ -214,7 +220,19 @@ function cmRenderSummary() {
     return `<div class="cm-stats">${tiles}${cmRenderRunBox()}</div>${cmRenderReasons()}`;
 }
 
+function cmSpecLabel(spec) {
+    return CM_SPEC_LABELS[spec] || spec.replace(/^format_/, 'формат ');
+}
+
+function cmShorten(text, chars) {
+    const line = (text || '').split('\n')[0].replace(/\*\*/g, '');
+    return line.length > chars ? `${line.slice(0, chars)}…` : line;
+}
+
+// A reason is a broken rule key 'spec:rule_id' or an older criterion reason code
 function cmReasonLabel(code) {
+    const text = cmState.summary && (cmState.summary.reason_labels || {})[code];
+    if (text) return `${cmSpecLabel(code.split(':')[0])}: ${cmShorten(text, CM_LABEL_CHARS)}`;
     return CM_REASON_LABELS[code] || code;
 }
 
@@ -222,9 +240,10 @@ function cmRenderReasons() {
     const reasons = Object.entries(cmState.summary.reasons || {});
     if (!reasons.length) return '';
     const chips = reasons.map(([code, count]) => `
-        <button class="pe-chip pe-chip--btn ${cmState.filter.reason === code ? 'pe-chip--on' : ''}" data-cm-reason="${peEscape(code)}">
+        <button class="pe-chip pe-chip--btn ${cmState.filter.reason === code ? 'pe-chip--on' : ''}" data-cm-reason="${peEscape(code)}"
+            title="${peEscape((cmState.summary.reason_labels || {})[code] || code)}">
             ${peEscape(cmReasonLabel(code))} <span class="cm-reason__count">${count}</span></button>`).join('');
-    return `<div class="cm-reasons"><span class="pe-muted">Частые причины:</span> ${chips}</div>`;
+    return `<div class="cm-reasons"><span class="pe-muted">Частые нарушения:</span> ${chips}</div>`;
 }
 
 function cmRenderRunBox() {
@@ -280,13 +299,57 @@ function cmRenderToolCalls(evaluation) {
 }
 
 // Free-text summary from older LLM-judged turns; Jev turns list their reasons
+function cmBrokenRules(evaluation) {
+    return (evaluation.rules || [])
+        .filter(rule => rule.grade === 'red' || rule.grade === 'orange')
+        .sort((a, b) => CM_RULE_GRADE_ORDER[a.grade] - CM_RULE_GRADE_ORDER[b.grade]);
+}
+
 function cmEvaluationSummary(evaluation) {
     if (evaluation.summary) return evaluation.summary;
+    if ((evaluation.rules || []).length) {
+        const broken = cmBrokenRules(evaluation);
+        return broken.length
+            ? `Нарушено ${pePlural(broken.length, CM_RULE_FORMS)} из ${(evaluation.rules || []).filter(r => r.grade).length} применимых`
+            : 'Все применимые правила соблюдены';
+    }
     const reasons = evaluation.criteria.filter(item => item.reason).map(item => cmReasonLabel(item.reason));
     return reasons.length ? reasons.join(' · ') : CM_GRADE_LABELS[evaluation.grade];
 }
 
-function cmRenderEvaluation(evaluation) {
+function cmRenderRule(rule) {
+    return `
+        <div class="cm-rule" title="${peEscape(rule.spec)}:${peEscape(rule.rule_id)}${rule.probability != null ? ` · p=${rule.probability}` : ''}">
+            ${cmGradeDot(rule.grade)}
+            <span class="cm-rule__text">${peEscape(cmShorten(rule.text, 220))}</span>
+        </div>`;
+}
+
+// Rules grouped by spec: broken first; followed / not applicable on demand
+function cmRenderRules(evaluation, messageId) {
+    const rules = evaluation.rules || [];
+    if (!rules.length) return '';
+    const showAll = cmState.expandedRules.has(messageId);
+    const specs = [...new Set(rules.map(rule => rule.spec))];
+    const groups = specs.map(spec => {
+        const ofSpec = rules.filter(rule => rule.spec === spec);
+        const shown = showAll ? ofSpec : ofSpec.filter(rule => rule.grade === 'red' || rule.grade === 'orange');
+        if (!shown.length) return '';
+        const ordered = [...shown].sort((a, b) =>
+            (CM_RULE_GRADE_ORDER[a.grade] ?? 3) - (CM_RULE_GRADE_ORDER[b.grade] ?? 3));
+        return `<div class="cm-rules__spec">${peEscape(cmSpecLabel(spec))}</div>${ordered.map(cmRenderRule).join('')}`;
+    }).join('');
+    const followed = rules.filter(rule => rule.grade === 'green').length;
+    const notApplicable = rules.filter(rule => !rule.grade).length;
+    return `
+        <div class="cm-rules">${groups}
+            <button class="cm-link" data-cm-rules="${peEscape(messageId)}">${showAll
+                ? 'скрыть соблюдённые'
+                : `соблюдено ${followed} · не относится ${notApplicable} — показать все`}</button>
+        </div>`;
+}
+
+function cmRenderEvaluation(evaluation, messageId) {
     const criteria = evaluation.criteria.map(item => `
         <div class="cm-criterion">
             ${cmGradeDot(item.grade)}
@@ -302,6 +365,7 @@ function cmRenderEvaluation(evaluation) {
         <div class="cm-eval cm-eval--${evaluation.grade}">
             <div class="cm-eval__summary">${cmGradeDot(evaluation.grade)} ${peEscape(cmEvaluationSummary(evaluation))}</div>
             ${criteria ? `<div class="cm-criteria">${criteria}</div>` : ''}
+            ${cmRenderRules(evaluation, messageId)}
             <div class="cm-eval__row"><span class="pe-muted">Инструменты:</span> ${cmRenderToolCalls(evaluation)}</div>
             ${skills}
             <div class="pe-muted">${peEscape(evaluation.judge_model)} · ${peFormatDate(evaluation.evaluated_at)}${cost}
@@ -321,7 +385,7 @@ function cmRenderMessage(message) {
         <div class="cm-msg cm-msg--${message.role}">
             <div class="cm-msg__meta">${role} · ${peFormatDate(message.created_at)}</div>
             <div class="cm-msg__text">${peEscape(shown)}</div>${more}
-            ${message.evaluation ? cmRenderEvaluation(message.evaluation) : (message.role === 'assistant' ? '<div class="pe-muted">не оценено</div>' : '')}
+            ${message.evaluation ? cmRenderEvaluation(message.evaluation, message.message_id) : (message.role === 'assistant' ? '<div class="pe-muted">не оценено</div>' : '')}
         </div>`;
 }
 
@@ -436,7 +500,12 @@ function cmHandleClick(event) {
         cmLoadConversations().then(cmRender).catch(cmSetError);
     } else if (target.dataset.cmOpen) cmToggleConversation(target.dataset.cmOpen);
     else if (target.dataset.cmReview) cmMarkReviewed(target.dataset.cmReview);
-    else if (target.dataset.cmText) {
+    else if (target.dataset.cmRules) {
+        const id = target.dataset.cmRules;
+        if (cmState.expandedRules.has(id)) cmState.expandedRules.delete(id);
+        else cmState.expandedRules.add(id);
+        cmRender();
+    } else if (target.dataset.cmText) {
         const id = target.dataset.cmText;
         if (cmState.expandedText.has(id)) cmState.expandedText.delete(id);
         else cmState.expandedText.add(id);
