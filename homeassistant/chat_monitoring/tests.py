@@ -255,6 +255,7 @@ class UiApiTest(TestCase):
         self.assertEqual((ui_map["red"], ui_map["applicable"]), (1, 1))
         self.assertEqual(ui_map["versions"], {"v1": {"red": 1, "orange": 0, "green": 0, "not_applicable": 0}})
         self.assertEqual(ui_map["examples"][0]["message_id"], "pending-a0")
+        self.assertIn("model", ui_map["examples"][0])
         tables = next(r for r in week["rules"] if r["rule_id"] == "ui_tables")
         self.assertEqual((tables["not_applicable"], tables["applicable"]), (1, 0))
         self.assertEqual(since_now["rules"], [])

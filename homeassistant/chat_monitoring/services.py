@@ -443,6 +443,9 @@ def rule_stats(since: datetime) -> dict:
                         "conversation_id": evaluation.conversation_id,
                         "grade": grade,
                         "reason": rule.get("reason"),
+                        # "<command model>/<final output model>" the turn ran on
+                        "model": evaluation.message.model,
+                        "trace_id": evaluation.trace_id or None,
                         "created_at": evaluation.message.created_at.isoformat(),
                     }
                 )
