@@ -499,7 +499,8 @@ const IntegratedChatAssistant = () => {
                 pipeline_steps: pipeline_steps || [],
                 pipeline_trace: result.pipeline_trace || null,
                 // Saved with the message: chat monitoring judges it by this format (ARCHIE-213)
-                response_format: result.response_format || null
+                response_format: result.response_format || null,
+                model: result.model || null
             };
 
             console.log('ChatAssistant: assistantMessage', assistantMessage);
@@ -682,7 +683,8 @@ const IntegratedChatAssistant = () => {
                 pipeline_steps: pipeline_steps || [],
                 pipeline_trace: result.pipeline_trace || null,
                 // Saved with the message: chat monitoring judges it by this format (ARCHIE-213)
-                response_format: result.response_format || null
+                response_format: result.response_format || null,
+                model: result.model || null
             };
 
             setMessages(prev => [...prev, assistantMessage]);
