@@ -16,6 +16,18 @@ def to_float(value: Any) -> Optional[float]:
         return None
 
 
+def resolve_tool_name(name: str, tool_names: List[str]) -> str:
+    """
+    Map a bare tool name to the name the server exposes.
+
+    Newer Home Assistant versions prefix tools with their domain
+    (`homeassistant__GetLiveContext`, `intent__HassTurnOn`); older ones don't. # ARCHIE-214
+    """
+    if name in tool_names:
+        return name
+    return next((tool for tool in tool_names if tool.endswith(f"__{name}")), name)
+
+
 class HomeAssistantMCPClient:
     """Client for the Home Assistant MCP Server (Streamable HTTP transport)"""
 
@@ -56,6 +68,8 @@ class HomeAssistantMCPClient:
         ):
             async with ClientSession(read, write) as session:
                 await session.initialize()
+                tools = await session.list_tools()
+                name = resolve_tool_name(name, [tool.name for tool in tools.tools])
                 return await session.call_tool(name, arguments or {})
 
     def list_tools(self):
