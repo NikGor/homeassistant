@@ -27,9 +27,14 @@ TOP_REASONS = 12
 
 
 def reasons_field(evaluation: MonitorTurnEvaluation) -> str:
-    """Reason codes wrapped in commas, so ',code,' matches one code exactly."""
-    codes = [score.reason for score in evaluation.criteria if score.reason]
-    return f",{','.join(codes)}," if codes else ""
+    """Broken rule keys ('spec:rule_id') and older criterion reason codes, wrapped
+    in commas, so ',key,' matches one key exactly."""
+    keys = [
+        f"{rule.spec}:{rule.rule_id}"
+        for rule in evaluation.rules
+        if rule.grade in ("red", "orange")
+    ] + [score.reason for score in evaluation.criteria if score.reason]
+    return f",{','.join(keys)}," if keys else ""
 
 
 def stored_content(message: Message) -> dict:
@@ -123,6 +128,8 @@ def store_evaluation(evaluation: MonitorTurnEvaluation) -> TurnEvaluation:
             "grade": evaluation.grade,
             "summary": evaluation.summary,
             "criteria": [c.model_dump(mode="json") for c in evaluation.criteria],
+            "rules": [r.model_dump(mode="json") for r in evaluation.rules],
+            "spec_versions": evaluation.spec_versions,
             "trace_found": evaluation.trace_found,
             "trace_id": evaluation.trace_id or "",
             "tool_calls": [c.model_dump(mode="json") for c in evaluation.tool_calls],
@@ -204,7 +211,8 @@ def get_summary() -> dict:
                 total=Count("id")
             )
         },
-        "reasons": count_reasons(),
+        "reasons": (reasons := count_reasons()),
+        "reason_labels": reason_labels(list(reasons)),
         "pending_turns": pending.count(),
         "pending_conversations": pending.values("conversation_id").distinct().count(),
         "runs": [run_to_dict(run) for run in MonitorRun.objects.all()[:5]],
@@ -219,6 +227,30 @@ def count_reasons() -> dict[str, int]:
     ):
         counter.update(code for code in reasons.split(",") if code)
     return dict(counter.most_common(TOP_REASONS))
+
+
+def reason_labels(keys: list[str]) -> dict[str, str]:
+    """Rule key -> rule text, taken from the newest evaluation that broke it.
+    Older criterion reason codes have no text here; the UI labels them."""
+    labels = {}
+    for key in keys:
+        if ":" not in key:
+            continue
+        spec, rule_id = key.split(":", 1)
+        evaluation = (
+            TurnEvaluation.objects.filter(reasons__contains=f",{key},")
+            .order_by("-evaluated_at")
+            .first()
+        )
+        labels[key] = next(
+            (
+                rule["text"]
+                for rule in evaluation.rules
+                if rule["spec"] == spec and rule["rule_id"] == rule_id
+            ),
+            key,
+        )
+    return labels
 
 
 def _count_by_conversation(queryset: QuerySet) -> Coalesce:
@@ -323,6 +355,8 @@ def evaluation_to_dict(evaluation: TurnEvaluation) -> dict:
         "grade": evaluation.grade,
         "summary": evaluation.summary,
         "criteria": evaluation.criteria,
+        "rules": evaluation.rules,
+        "spec_versions": evaluation.spec_versions,
         "trace_found": evaluation.trace_found,
         "trace_id": evaluation.trace_id,
         "tool_calls": evaluation.tool_calls,

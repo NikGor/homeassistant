@@ -185,6 +185,37 @@ class UiApiTest(TestCase):
         self.assertEqual(filtered[0]["red"], 1)
         self.assertEqual(none, [])
 
+    def test_broken_spec_rules_are_stored_counted_and_filterable(self):
+        payload = make_evaluation("pending-a0", "red")
+        payload["criteria"] = []
+        payload["rules"] = [
+            {"spec": "format_ui_answer", "rule_id": "ui_map", "text": "Use a map", "grade": "red"},
+            {"spec": "goal", "rule_id": "solves_request", "text": "Solve it", "grade": "orange"},
+            {"spec": "format_ui_answer", "rule_id": "ui_tables", "text": "Tables", "grade": "green"},
+            {"spec": "format_ui_answer", "rule_id": "ui_charts", "text": "Charts", "grade": None},
+        ]
+        payload["spec_versions"] = {"format_ui_answer": "abc"}
+        services.store_evaluation(services.MonitorTurnEvaluation.model_validate(payload))
+
+        evaluation = TurnEvaluation.objects.get(message_id="pending-a0")
+        summary = self.client.get(reverse("chat_monitoring_summary")).json()
+        filtered = self.client.get(
+            reverse("chat_monitoring_conversations"), {"reason": "format_ui_answer:ui_map"}
+        ).json()["conversations"]
+        detail = self.client.get(
+            reverse("chat_monitoring_conversation", args=["pending"])
+        ).json()
+
+        self.assertEqual(evaluation.reasons, ",format_ui_answer:ui_map,goal:solves_request,")
+        self.assertEqual(
+            summary["reasons"], {"format_ui_answer:ui_map": 1, "goal:solves_request": 1}
+        )
+        self.assertEqual(summary["reason_labels"]["format_ui_answer:ui_map"], "Use a map")
+        self.assertEqual([c["conversation_id"] for c in filtered], ["pending"])
+        turn = detail["messages"][1]["evaluation"]
+        self.assertEqual(len(turn["rules"]), 4)
+        self.assertEqual(turn["spec_versions"], {"format_ui_answer": "abc"})
+
     def test_conversation_list_filters_by_grade(self):
         url = reverse("chat_monitoring_conversations")
         red = self.client.get(url, {"grade": "red"}).json()["conversations"]
