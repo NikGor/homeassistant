@@ -4,7 +4,7 @@ Django keeps conversations and evaluations; the AI agent fetches turns that have
 no evaluation yet, judges them and sends one MonitorTurnEvaluation per turn back.
 """
 
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -108,6 +108,20 @@ class MonitorCriterionScore(BaseModel):
     comment: str = Field(default="", description="Free-text comment, if the judge writes one")
 
 
+class MonitorRuleScore(BaseModel):
+    """Grade for one prompt spec rule the turn had to follow"""
+
+    spec: str = Field(description="Prompt spec name, e.g. format_ui_answer; 'goal' for the request goal")
+    rule_id: str = Field(description="Rule id from the spec's rule catalog")
+    text: str = Field(description="Rule text as the model reads it")
+    grade: Optional[MonitorGrade] = Field(
+        default=None, description="green followed, orange partly, red broken; None if not applicable"
+    )
+    probability: Optional[float] = Field(
+        default=None, description="Judge probability of the chosen answer"
+    )
+
+
 class MonitorTurnEvaluation(BaseModel):
     """Judge result for one assistant turn"""
 
@@ -116,7 +130,15 @@ class MonitorTurnEvaluation(BaseModel):
     message_id: str = Field(description="Judged assistant message ID")
     grade: MonitorGrade = Field(description="Overall grade of the turn")
     summary: str = Field(default="", description="Free-text summary, if the judge writes one")
-    criteria: List[MonitorCriterionScore] = Field(description="Grade per criterion")
+    criteria: List[MonitorCriterionScore] = Field(
+        default_factory=list, description="Grade per generic criterion (older evaluations)"
+    )
+    rules: List[MonitorRuleScore] = Field(
+        default_factory=list, description="Grade per prompt spec rule"
+    )
+    spec_versions: Dict[str, str] = Field(
+        default_factory=dict, description="Spec name -> fingerprint of the judged spec version"
+    )
     trace_found: bool = Field(
         description="True if the Langfuse trace with tool calls was found"
     )
