@@ -5,7 +5,7 @@
 
 const PE_EXPECT_FIELDS = {
     stage1: ['action_type', 'tools_called'],
-    full: ['content_not_empty', 'max_total_tokens', 'max_latency_ms', 'text_contains'],
+    full: ['content_not_empty', 'max_total_tokens', 'max_latency_ms', 'text_contains', 'rules_followed'],
     ui_answer: ['min_ui_items', 'has_quick_actions', 'has_form', 'expected_item_types'],
 };
 
@@ -20,7 +20,7 @@ const peCases = {
 
 function peEmptyDraft(suite = '') {
     return {
-        id: suite ? `${suite}.` : '', name: '', description: '', suite, extra_prompts: [], tags: [],
+        id: suite ? `${suite}.` : '', name: '', description: '', suite, extra_prompts: [], tags: [], rules: [],
         input: '', response_format: 'ui_answer', stage: 'full', judge: false,
         expect: { content_not_empty: true },
     };
@@ -28,8 +28,9 @@ function peEmptyDraft(suite = '') {
 
 function peDraftFromCase(testCase) {
     const draft = {};
-    ['id', 'name', 'description', 'suite', 'extra_prompts', 'tags', 'input', 'response_format', 'stage', 'judge']
-        .forEach(key => { draft[key] = JSON.parse(JSON.stringify(testCase[key] ?? (key === 'extra_prompts' || key === 'tags' ? [] : ''))); });
+    const listFields = ['extra_prompts', 'tags', 'rules'];
+    ['id', 'name', 'description', 'suite', 'extra_prompts', 'tags', 'rules', 'input', 'response_format', 'stage', 'judge']
+        .forEach(key => { draft[key] = JSON.parse(JSON.stringify(testCase[key] ?? (listFields.includes(key) ? [] : ''))); });
     draft.expect = JSON.parse(JSON.stringify(testCase.expect || {}));
     return draft;
 }
@@ -72,7 +73,7 @@ function peInvalidateCatalog() {
 function peCaseMatches(testCase) {
     const query = peCases.filter.trim().toLowerCase();
     if (!query) return true;
-    return [testCase.id, testCase.name, testCase.description, testCase.input, ...testCase.tags, ...testCase.prompts]
+    return [testCase.id, testCase.name, testCase.description, testCase.input, ...testCase.tags, ...testCase.prompts, ...(testCase.rules || [])]
         .some(value => value.toLowerCase().includes(query));
 }
 
@@ -97,6 +98,7 @@ function peRenderCaseList() {
                 <div class="pe-case-row__desc">${peEscape(c.description)}</div>
                 <div class="pe-muted">«${peEscape(c.input)}» · ${peEscape(c.suite)} · ${peEscape(c.stage)} · ${peEscape(c.response_format)}${c.judge ? ' · judge' : ''}
                     · ${c.prompts.map(peEscape).join(', ')}${c.tags.length ? ` · #${c.tags.map(peEscape).join(' #')}` : ''}
+                    ${(c.rules || []).length ? `<br>правила: ${c.rules.map(peEscape).join(', ')}${c.expect.rules_followed ? ' (проверяет Jev)' : ''}` : ''}
                     · ${peEscape(c.updated_by || '—')}, ${peFormatDate(c.updated_at)}</div>
             </div>
             <button class="pe-icon-btn" data-action="case-edit" data-case="${peEscape(c.id)}" title="Редактировать"><i data-lucide="pencil" class="w-4 h-4"></i></button>
@@ -151,6 +153,7 @@ function peRenderEditor() {
             ${peTextField('Макс. токенов', 'expect.max_total_tokens', expect.max_total_tokens ?? '', { type: 'number', short: true, hint: 'промпт Stage 1 ≈ 8k' })}
             ${peTextField('Макс. время, мс', 'expect.max_latency_ms', expect.max_latency_ms ?? '', { type: 'number', short: true })}
             ${peTextField('Текст содержит', 'expect.text_contains', expect.text_contains ?? '', {})}
+            ${peCheckField('Jev проверяет защищаемые правила', 'expect.rules_followed', expect.rules_followed)}
         </div>
         ${isUi ? `
         <div class="pe-section--row">
@@ -193,6 +196,8 @@ function peRenderEditor() {
                 ${draft.stage === 'full' && isUi ? peCheckField('LLM-judge', 'judge', draft.judge) : ''}
                 ${peTextField('Теги', 'tags', draft.tags.join(', '), { placeholder: 'через запятую' })}
             </div>
+            <div class="pe-field">Защищаемые правила спецификаций <span class="pe-muted">по ним кейс выбирается для прогона после фикса правила; правила cmd_prompt проверяются tools / типом действия</span>
+                <div class="pe-quick">${peToggleChips('rules', (schema.rules || {})[draft.response_format] || [], draft.rules || [])}</div></div>
             <div class="pe-field">Дополнительные промпты <span class="pe-muted">cmd_prompt и format_* определяются автоматически</span>
                 <div class="pe-quick">${peToggleChips('extra_prompts', schema.prompts.filter(p => p !== 'cmd_prompt' && !p.startsWith('format_')), draft.extra_prompts)}</div></div>
         </section>
