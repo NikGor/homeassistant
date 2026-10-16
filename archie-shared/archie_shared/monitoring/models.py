@@ -46,6 +46,16 @@ MonitorReason = Literal[
     "too_long",
     "wrong_format",
 ]
+# Why an outcome check failed: the request goal or the user's next message
+MonitorOutcomeReason = Literal[
+    "helpless_refusal",
+    "needless_question",
+    "off_topic",
+    "partial_answer",
+    "ignored_context",
+    "rephrased_request",
+    "user_correction",
+]
 MonitorRunStatus = Literal["running", "completed", "failed"]
 MonitorTrigger = Literal["ui", "schedule", "claude", "cli"]
 
@@ -111,7 +121,9 @@ class MonitorCriterionScore(BaseModel):
 class MonitorRuleScore(BaseModel):
     """Grade for one prompt spec rule the turn had to follow"""
 
-    spec: str = Field(description="Prompt spec name, e.g. format_ui_answer; 'goal' for the request goal")
+    spec: str = Field(
+        description="Prompt spec name, e.g. format_ui_answer; 'outcome' for checks of the result"
+    )
     rule_id: str = Field(description="Rule id from the spec's rule catalog")
     text: str = Field(description="Rule text as the model reads it")
     grade: Optional[MonitorGrade] = Field(
@@ -119,6 +131,9 @@ class MonitorRuleScore(BaseModel):
     )
     probability: Optional[float] = Field(
         default=None, description="Judge probability of the chosen answer"
+    )
+    reason: Optional[MonitorOutcomeReason] = Field(
+        default=None, description="Why an outcome check is red / orange (outcome spec only)"
     )
 
 
