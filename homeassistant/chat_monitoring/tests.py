@@ -191,7 +191,37 @@ class UiApiTest(TestCase):
         everything = self.client.get(url).json()["conversations"]
         self.assertEqual([c["conversation_id"] for c in red], ["red"])
         self.assertEqual(red[0]["unreviewed"], 1)
-        self.assertEqual({c["conversation_id"] for c in everything}, {"red", "green"})
+        self.assertEqual(
+            {c["conversation_id"] for c in everything}, {"red", "green", "pending"}
+        )
+
+    def test_conversation_list_shows_pending_conversations(self):
+        url = reverse("chat_monitoring_conversations")
+        pending = self.client.get(url, {"grade": "pending"}).json()["conversations"]
+        red = self.client.get(url, {"grade": "red"}).json()["conversations"]
+
+        self.assertEqual([c["conversation_id"] for c in pending], ["pending"])
+        self.assertEqual((pending[0]["grade"], pending[0]["pending"]), ("pending", 1))
+        self.assertIsNone(pending[0]["last_evaluated_at"])
+        # Two judged turns and two messages each must not inflate the counts
+        self.assertEqual((red[0]["red"], red[0]["green"], red[0]["pending"]), (1, 1, 0))
+
+    def test_conversation_list_orders_by_last_message_and_pages(self):
+        for index in range(25):
+            make_conversation(f"bulk{index:02}", turns=1, start_minutes_ago=200 + index)
+        make_conversation("newest", turns=1, start_minutes_ago=1)
+        url = reverse("chat_monitoring_conversations")
+
+        first = self.client.get(url).json()
+        last = self.client.get(url, {"page": 2}).json()
+        beyond = self.client.get(url, {"page": 9}).json()
+
+        self.assertEqual(first["conversations"][0]["conversation_id"], "newest")
+        self.assertEqual((first["total"], first["pages"], first["page"]), (29, 2, 1))
+        self.assertEqual(len(first["conversations"]), 20)
+        self.assertEqual(len(last["conversations"]), 9)
+        self.assertEqual(last["conversations"][-1]["conversation_id"], "bulk24")
+        self.assertEqual(beyond["page"], 2)
 
     def test_review_marks_only_problem_turns(self):
         url = reverse("chat_monitoring_review", args=["red"])

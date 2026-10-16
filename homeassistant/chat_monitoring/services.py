@@ -8,7 +8,8 @@ from archie_shared.monitoring.models import (MonitorConversation,
                                              MonitorPendingBatch,
                                              MonitorRunInfo, MonitorRunRequest,
                                              MonitorTurnEvaluation)
-from django.db.models import Count, Max, Min, Q, QuerySet
+from django.db.models import Count, Max, Min, OuterRef, Q, QuerySet, Subquery
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from homeassistant.ai_assistant.models import Conversation, Message
@@ -21,7 +22,7 @@ GRADE_ORDER = ["red", "orange", "green"]
 # A running run the agent has not updated for this long is treated as lost
 # (agent restart or crash); it no longer blocks the UI.
 STALE_RUN_AFTER = timedelta(minutes=10)
-CONVERSATION_PAGE_SIZE = 50
+CONVERSATION_PAGE_SIZE = 20
 TOP_REASONS = 12
 
 
@@ -220,12 +221,58 @@ def count_reasons() -> dict[str, int]:
     return dict(counter.most_common(TOP_REASONS))
 
 
+def _count_by_conversation(queryset: QuerySet) -> Coalesce:
+    """Per-conversation row count as a subquery; separate subqueries keep the
+    message and evaluation counts from multiplying each other in one join."""
+    counted = (
+        queryset.filter(conversation_id=OuterRef("conversation_id"))
+        .order_by()
+        .values("conversation_id")
+        .annotate(total=Count("pk"))
+        .values("total")
+    )
+    return Coalesce(Subquery(counted[:1]), 0)
+
+
+def _listed_conversations() -> QuerySet[Conversation]:
+    """Every conversation with an assistant turn, with grade and pending counts."""
+    evaluations = TurnEvaluation.objects.all()
+    return (
+        Conversation.objects.filter(messages__role="assistant")
+        .distinct()
+        .annotate(
+            red=_count_by_conversation(evaluations.filter(grade="red")),
+            orange=_count_by_conversation(evaluations.filter(grade="orange")),
+            green=_count_by_conversation(evaluations.filter(grade="green")),
+            unreviewed=_count_by_conversation(
+                evaluations.filter(reviewed_at__isnull=True).exclude(grade="green")
+            ),
+            pending=_count_by_conversation(pending_messages()),
+            last_message_at=Subquery(
+                Message.objects.filter(conversation_id=OuterRef("conversation_id"))
+                .order_by("-created_at")
+                .values("created_at")[:1]
+            ),
+            last_evaluated_at=Subquery(
+                evaluations.filter(conversation_id=OuterRef("conversation_id"))
+                .order_by("-evaluated_at")
+                .values("evaluated_at")[:1]
+            ),
+        )
+    )
+
+
+def conversation_grade(red: int, orange: int, green: int) -> str:
+    """Worst grade of the judged turns; 'pending' if no turn is judged yet."""
+    return worst_grade(red, orange) if red + orange + green else "pending"
+
+
 def list_conversations(
     grade: str | None, unreviewed: bool, page: int, reason: str | None = None
 ) -> dict:
-    queryset = _graded_conversations()
+    """All conversations, newest activity first, one page at a time."""
+    queryset = _listed_conversations()
     if reason:
-        # Subquery keeps the grade counts of the annotation intact
         queryset = queryset.filter(
             conversation_id__in=TurnEvaluation.objects.filter(
                 reasons__contains=f",{reason},"
@@ -236,27 +283,39 @@ def list_conversations(
     elif grade == "orange":
         queryset = queryset.filter(red=0, orange__gt=0)
     elif grade == "green":
-        queryset = queryset.filter(red=0, orange=0)
+        queryset = queryset.filter(red=0, orange=0, green__gt=0)
+    elif grade == "pending":
+        queryset = queryset.filter(pending__gt=0)
     if unreviewed:
         queryset = queryset.filter(unreviewed__gt=0)
-    queryset = queryset.order_by("-last_evaluated_at")
+    total = queryset.count()
+    pages = max(1, -(-total // CONVERSATION_PAGE_SIZE))
+    page = min(page, pages)
     start = (page - 1) * CONVERSATION_PAGE_SIZE
-    rows = queryset[start : start + CONVERSATION_PAGE_SIZE + 1]
+    rows = queryset.order_by("-last_message_at")[start : start + CONVERSATION_PAGE_SIZE]
     items = [
         {
             "conversation_id": conversation.conversation_id,
             "title": conversation.title,
             "created_at": conversation.created_at.isoformat(),
-            "grade": worst_grade(conversation.red, conversation.orange),
+            "last_message_at": conversation.last_message_at.isoformat(),
+            "grade": conversation_grade(
+                conversation.red, conversation.orange, conversation.green
+            ),
             "red": conversation.red,
             "orange": conversation.orange,
             "green": conversation.green,
+            "pending": conversation.pending,
             "unreviewed": conversation.unreviewed,
-            "last_evaluated_at": conversation.last_evaluated_at.isoformat(),
+            "last_evaluated_at": (
+                conversation.last_evaluated_at.isoformat()
+                if conversation.last_evaluated_at
+                else None
+            ),
         }
-        for conversation in rows[:CONVERSATION_PAGE_SIZE]
+        for conversation in rows
     ]
-    return {"conversations": items, "has_more": len(rows) > CONVERSATION_PAGE_SIZE}
+    return {"conversations": items, "page": page, "pages": pages, "total": total}
 
 
 def evaluation_to_dict(evaluation: TurnEvaluation) -> dict:
