@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "homeassistant.voice_assistant",
     "homeassistant.spotify",
     "homeassistant.prompt_evals",
+    "homeassistant.chat_monitoring",
 ]
 
 MIDDLEWARE = [

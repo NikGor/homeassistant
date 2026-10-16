@@ -30,4 +30,5 @@ urlpatterns = [
     path("voice/", include("homeassistant.voice_assistant.urls")),
     path("spotify/", include("homeassistant.spotify.urls")),
     path("prompt-evals/", include("homeassistant.prompt_evals.urls")),
+    path("chat-monitoring/", include("homeassistant.chat_monitoring.urls")),
 ]

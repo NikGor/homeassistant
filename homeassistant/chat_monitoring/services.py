@@ -1,0 +1,282 @@
+import json
+import logging
+from datetime import datetime, timedelta
+
+from archie_shared.monitoring.models import (MonitorConversation,
+                                             MonitorMessage,
+                                             MonitorPendingBatch,
+                                             MonitorRunInfo, MonitorRunRequest,
+                                             MonitorTurnEvaluation)
+from django.db.models import Count, Max, Min, Q, QuerySet
+from django.utils import timezone
+
+from homeassistant.ai_assistant.models import Conversation, Message
+from homeassistant.chat_monitoring.models import MonitorRun, TurnEvaluation
+from homeassistant.prompt_evals.services import call_agent
+
+logger = logging.getLogger(__name__)
+
+GRADE_ORDER = ["red", "orange", "green"]
+# A running run the agent has not updated for this long is treated as lost
+# (agent restart or crash); it no longer blocks the UI.
+STALE_RUN_AFTER = timedelta(minutes=10)
+CONVERSATION_PAGE_SIZE = 50
+
+
+def stored_content(message: Message) -> dict:
+    """Message.content as a dict; early messages (Nov 2025) stored it as a JSON string."""
+    content = message.content or {}
+    return json.loads(content) if isinstance(content, str) else content
+
+
+def pending_messages() -> QuerySet[Message]:
+    return Message.objects.filter(role="assistant", evaluation__isnull=True)
+
+
+def get_pending_batch(
+    max_conversations: int, conversation_ids: list[str]
+) -> MonitorPendingBatch:
+    """Conversations with unjudged assistant turns, oldest pending turn first."""
+    pending = pending_messages()
+    if conversation_ids:
+        pending = pending.filter(conversation_id__in=conversation_ids)
+    selected = (
+        pending.values("conversation_id")
+        .annotate(first_pending=Min("created_at"))
+        .order_by("first_pending")[:max_conversations]
+    )
+    selected_ids = [row["conversation_id"] for row in selected]
+    conversations = Conversation.objects.filter(
+        conversation_id__in=selected_ids
+    ).prefetch_related("messages__evaluation")
+    by_id = {conversation.conversation_id: conversation for conversation in conversations}
+    return MonitorPendingBatch(
+        conversations=[_to_monitor_conversation(by_id[cid]) for cid in selected_ids]
+    )
+
+
+def _to_monitor_conversation(conversation: Conversation) -> MonitorConversation:
+    messages = sorted(conversation.messages.all(), key=lambda m: m.created_at)
+    return MonitorConversation(
+        conversation_id=conversation.conversation_id,
+        title=conversation.title,
+        messages=[
+            MonitorMessage(
+                message_id=message.message_id,
+                role=message.role,
+                content_json=json.dumps(stored_content(message), ensure_ascii=False),
+                created_at=message.created_at.isoformat(),
+            )
+            for message in messages
+        ],
+        pending_message_ids=[
+            message.message_id
+            for message in messages
+            if message.role == "assistant" and not hasattr(message, "evaluation")
+        ],
+    )
+
+
+def store_run(info: MonitorRunInfo) -> MonitorRun:
+    run, _ = MonitorRun.objects.update_or_create(
+        run_id=info.run_id,
+        defaults={
+            "status": info.status,
+            "triggered_by": info.request.triggered_by,
+            "judge_model": info.judge_model,
+            "request": info.request.model_dump(mode="json"),
+            "conversations": info.conversations,
+            "total_turns": info.total_turns,
+            "done_turns": info.done_turns,
+            "red": info.red,
+            "orange": info.orange,
+            "green": info.green,
+            "errors": info.errors,
+            "total_cost": info.total_cost,
+            "error": info.error or "",
+            "created_at": datetime.fromisoformat(info.created_at),
+            "finished_at": (
+                datetime.fromisoformat(info.finished_at) if info.finished_at else None
+            ),
+        },
+    )
+    return run
+
+
+def store_evaluation(evaluation: MonitorTurnEvaluation) -> TurnEvaluation:
+    """Insert or replace the evaluation of one message (safe to resend)."""
+    message = Message.objects.get(message_id=evaluation.message_id)
+    stored, _ = TurnEvaluation.objects.update_or_create(
+        message=message,
+        defaults={
+            "conversation_id": message.conversation_id,
+            "run": MonitorRun.objects.filter(run_id=evaluation.run_id).first(),
+            "grade": evaluation.grade,
+            "summary": evaluation.summary,
+            "criteria": [c.model_dump(mode="json") for c in evaluation.criteria],
+            "trace_found": evaluation.trace_found,
+            "trace_id": evaluation.trace_id or "",
+            "tool_calls": [c.model_dump(mode="json") for c in evaluation.tool_calls],
+            "skills_loaded": evaluation.skills_loaded,
+            "judge_model": evaluation.judge_model,
+            "judge_cost": evaluation.judge_cost,
+            "evaluated_at": datetime.fromisoformat(evaluation.evaluated_at),
+            "reviewed_at": None,
+            "reviewed_by": "",
+        },
+    )
+    return stored
+
+
+def start_agent_run(request: MonitorRunRequest) -> dict:
+    return call_agent("POST", "/monitoring/runs", request.model_dump(mode="json"))
+
+
+def run_to_dict(run: MonitorRun) -> dict:
+    status = run.status
+    if status == "running" and timezone.now() - run.updated_at > STALE_RUN_AFTER:
+        status = "stale"
+    return {
+        "run_id": run.run_id,
+        "status": status,
+        "triggered_by": run.triggered_by,
+        "judge_model": run.judge_model,
+        "conversations": run.conversations,
+        "total_turns": run.total_turns,
+        "done_turns": run.done_turns,
+        "red": run.red,
+        "orange": run.orange,
+        "green": run.green,
+        "errors": run.errors,
+        "total_cost": run.total_cost,
+        "error": run.error,
+        "created_at": run.created_at.isoformat(),
+        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+    }
+
+
+def get_active_run() -> MonitorRun | None:
+    run = MonitorRun.objects.filter(status="running").first()
+    if run and timezone.now() - run.updated_at > STALE_RUN_AFTER:
+        return None
+    return run
+
+
+def worst_grade(red: int, orange: int) -> str:
+    return "red" if red else "orange" if orange else "green"
+
+
+def _graded_conversations() -> QuerySet[Conversation]:
+    return Conversation.objects.annotate(
+        red=Count("evaluations", filter=Q(evaluations__grade="red")),
+        orange=Count("evaluations", filter=Q(evaluations__grade="orange")),
+        green=Count("evaluations", filter=Q(evaluations__grade="green")),
+        unreviewed=Count(
+            "evaluations",
+            filter=Q(evaluations__reviewed_at__isnull=True)
+            & ~Q(evaluations__grade="green"),
+        ),
+        last_evaluated_at=Max("evaluations__evaluated_at"),
+    ).filter(last_evaluated_at__isnull=False)
+
+
+def get_summary() -> dict:
+    """Conversation counts per worst grade, pending work and recent runs."""
+    counts = {grade: 0 for grade in GRADE_ORDER}
+    for row in _graded_conversations().values("red", "orange"):
+        counts[worst_grade(row["red"], row["orange"])] += 1
+    pending = pending_messages()
+    return {
+        "conversations": counts,
+        "turns": {
+            row["grade"]: row["total"]
+            for row in TurnEvaluation.objects.values("grade").annotate(
+                total=Count("id")
+            )
+        },
+        "pending_turns": pending.count(),
+        "pending_conversations": pending.values("conversation_id").distinct().count(),
+        "runs": [run_to_dict(run) for run in MonitorRun.objects.all()[:5]],
+    }
+
+
+def list_conversations(grade: str | None, unreviewed: bool, page: int) -> dict:
+    queryset = _graded_conversations()
+    if grade == "red":
+        queryset = queryset.filter(red__gt=0)
+    elif grade == "orange":
+        queryset = queryset.filter(red=0, orange__gt=0)
+    elif grade == "green":
+        queryset = queryset.filter(red=0, orange=0)
+    if unreviewed:
+        queryset = queryset.filter(unreviewed__gt=0)
+    queryset = queryset.order_by("-last_evaluated_at")
+    start = (page - 1) * CONVERSATION_PAGE_SIZE
+    rows = queryset[start : start + CONVERSATION_PAGE_SIZE + 1]
+    items = [
+        {
+            "conversation_id": conversation.conversation_id,
+            "title": conversation.title,
+            "created_at": conversation.created_at.isoformat(),
+            "grade": worst_grade(conversation.red, conversation.orange),
+            "red": conversation.red,
+            "orange": conversation.orange,
+            "green": conversation.green,
+            "unreviewed": conversation.unreviewed,
+            "last_evaluated_at": conversation.last_evaluated_at.isoformat(),
+        }
+        for conversation in rows[:CONVERSATION_PAGE_SIZE]
+    ]
+    return {"conversations": items, "has_more": len(rows) > CONVERSATION_PAGE_SIZE}
+
+
+def evaluation_to_dict(evaluation: TurnEvaluation) -> dict:
+    return {
+        "grade": evaluation.grade,
+        "summary": evaluation.summary,
+        "criteria": evaluation.criteria,
+        "trace_found": evaluation.trace_found,
+        "trace_id": evaluation.trace_id,
+        "tool_calls": evaluation.tool_calls,
+        "skills_loaded": evaluation.skills_loaded,
+        "judge_model": evaluation.judge_model,
+        "judge_cost": evaluation.judge_cost,
+        "evaluated_at": evaluation.evaluated_at.isoformat(),
+        "reviewed_at": (
+            evaluation.reviewed_at.isoformat() if evaluation.reviewed_at else None
+        ),
+        "reviewed_by": evaluation.reviewed_by,
+    }
+
+
+def get_conversation_detail(conversation: Conversation) -> dict:
+    messages = conversation.messages.select_related("evaluation").order_by("created_at")
+    return {
+        "conversation_id": conversation.conversation_id,
+        "title": conversation.title,
+        "created_at": conversation.created_at.isoformat(),
+        "messages": [
+            {
+                "message_id": message.message_id,
+                "role": message.role,
+                "created_at": message.created_at.isoformat(),
+                "content_format": stored_content(message).get("content_format", "plain"),
+                "text": conversation.extract_text_from_content(stored_content(message)),
+                "evaluation": (
+                    evaluation_to_dict(message.evaluation)
+                    if hasattr(message, "evaluation")
+                    else None
+                ),
+            }
+            for message in messages
+        ],
+    }
+
+
+def mark_reviewed(conversation: Conversation, actor: str) -> int:
+    """Mark all red and orange turns of a conversation as reviewed."""
+    return (
+        conversation.evaluations.filter(reviewed_at__isnull=True)
+        .exclude(grade="green")
+        .update(reviewed_at=timezone.now(), reviewed_by=actor)
+    )
