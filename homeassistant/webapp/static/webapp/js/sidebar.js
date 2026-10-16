@@ -384,6 +384,21 @@ function renderRightSidebar() {
     promptsExpanded.innerHTML = `<i data-lucide="flask-conical" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Промпты</span>`;
     rightSidebarExpandedMenu.appendChild(promptsExpanded);
 
+    const monitoringCollapsed = document.createElement('a');
+    monitoringCollapsed.href = "#";
+    monitoringCollapsed.className = "sidebar-item text-gray-300";
+    monitoringCollapsed.dataset.appCategory = 'monitoring';
+    monitoringCollapsed.title = "Мониторинг чатов";
+    monitoringCollapsed.innerHTML = `<i data-lucide="shield-check" class="w-6 h-6"></i>`;
+    rightSidebarCollapsedIcons.appendChild(monitoringCollapsed);
+
+    const monitoringExpanded = document.createElement('a');
+    monitoringExpanded.href = "#";
+    monitoringExpanded.className = "sidebar-item-expanded text-gray-300";
+    monitoringExpanded.dataset.appCategory = 'monitoring';
+    monitoringExpanded.innerHTML = `<i data-lucide="shield-check" class="w-5 h-5 flex-shrink-0"></i><span class="sidebar-text ml-4 font-medium">Мониторинг чатов</span>`;
+    rightSidebarExpandedMenu.appendChild(monitoringExpanded);
+
     rightSidebarCollapsedIcons.innerHTML += '<hr class="border-t border-white/10 my-2">';
     rightSidebarExpandedMenu.innerHTML += '<hr class="border-t border-white/10 my-2">';
 

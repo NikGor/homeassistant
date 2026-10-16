@@ -283,6 +283,7 @@ function showSwarmView() {
         if (el) el.classList.add('hidden');
     });
     if (typeof window.hidePromptsView === 'function') window.hidePromptsView();
+    if (typeof window.hideMonitoringView === 'function') window.hideMonitoringView();
     document.getElementById('swarm-view').classList.remove('hidden');
     document.body.classList.remove('voice-mode');
     if (typeof window.stopVoiceSession === 'function') window.stopVoiceSession();
