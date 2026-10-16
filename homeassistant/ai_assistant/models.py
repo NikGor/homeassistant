@@ -80,12 +80,12 @@ class Conversation(models.Model):
         lines = []
         for msg in self.messages.all().order_by("created_at"):
             role_label = "User" if msg.role == "user" else "Assistant"
-            text_content = self._extract_text_from_content(msg.content)
+            text_content = self.extract_text_from_content(msg.content)
             if text_content:
                 lines.append(f"{role_label}: {text_content}")
         return "\n".join(lines)
 
-    def _extract_text_from_content(self, content: dict) -> Optional[str]:
+    def extract_text_from_content(self, content: dict) -> Optional[str]:
         """Extract text from Content, skipping buttons and images."""
         if isinstance(content, str):
             import json
@@ -334,48 +334,3 @@ class MessageFile(models.Model):
 
     def __str__(self):
         return f"file {self.name} for {self.message_id} ({self.size} bytes)"
-
-
-class ConversationFlag(models.Model):
-    """Flag raised by the Conversation-Monitor / Monitor-Analyzer LLM-judge
-    agent for an unsatisfactory AI response.
-
-    Written directly via SQL by an external process (the monitor-analyzer
-    agent in the archie-ai-agent repo), not through this app's ORM/API.
-    conversation_id/message_id are intentionally plain (not ForeignKey) since
-    the writer has no reliable transactional guarantee against this DB.
-    """
-
-    SEVERITY_LOW = "low"
-    SEVERITY_MEDIUM = "medium"
-    SEVERITY_CRITICAL = "critical"
-    SEVERITY_CHOICES = [
-        (SEVERITY_LOW, "Low"),
-        (SEVERITY_MEDIUM, "Medium"),
-        (SEVERITY_CRITICAL, "Critical"),
-    ]
-
-    conversation_id = models.CharField(max_length=255, db_index=True)
-    message_id = models.CharField(max_length=255, db_index=True)
-    previous_message_id = models.CharField(max_length=255, null=True, blank=True)
-    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, db_index=True)
-    reason = models.TextField()
-    user_text = models.TextField(blank=True)
-    ai_text = models.TextField(blank=True)
-    jira_key = models.CharField(max_length=50, null=True, blank=True, db_index=True)
-    created_at = models.DateTimeField(db_index=True)
-    reviewed_at = models.DateTimeField(null=True, blank=True)
-    reviewed_by = models.CharField(max_length=255, null=True, blank=True)
-
-    class Meta:
-        db_table = "ai_assistant_conversationflag"
-        ordering = ["-created_at"]
-        indexes = [
-            models.Index(fields=["-created_at"]),
-            models.Index(fields=["severity"]),
-            models.Index(fields=["reviewed_at"]),
-            models.Index(fields=["conversation_id"]),
-        ]
-
-    def __str__(self):
-        return f"[{self.severity}] {self.message_id}"
