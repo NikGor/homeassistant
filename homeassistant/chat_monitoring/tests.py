@@ -167,6 +167,24 @@ class UiApiTest(TestCase):
         self.assertEqual(summary["pending_turns"], 1)
         self.assertEqual(summary["pending_conversations"], 1)
 
+    def test_reasons_are_counted_and_filter_conversations(self):
+        payload = make_evaluation("pending-a0", "red")
+        payload["criteria"][0]["reason"] = "helpless_refusal"
+        payload["criteria"].append(
+            {"criterion": "format_fit", "grade": "orange", "reason": "too_long", "score": 0.5}
+        )
+        services.store_evaluation(services.MonitorTurnEvaluation.model_validate(payload))
+
+        summary = self.client.get(reverse("chat_monitoring_summary")).json()
+        url = reverse("chat_monitoring_conversations")
+        filtered = self.client.get(url, {"reason": "too_long"}).json()["conversations"]
+        none = self.client.get(url, {"reason": "too"}).json()["conversations"]
+
+        self.assertEqual(summary["reasons"], {"helpless_refusal": 1, "too_long": 1})
+        self.assertEqual([c["conversation_id"] for c in filtered], ["pending"])
+        self.assertEqual(filtered[0]["red"], 1)
+        self.assertEqual(none, [])
+
     def test_conversation_list_filters_by_grade(self):
         url = reverse("chat_monitoring_conversations")
         red = self.client.get(url, {"grade": "red"}).json()["conversations"]

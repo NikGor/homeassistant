@@ -1,5 +1,6 @@
 import json
 import logging
+from collections import Counter
 from datetime import datetime, timedelta
 
 from archie_shared.monitoring.models import (MonitorConversation,
@@ -21,6 +22,13 @@ GRADE_ORDER = ["red", "orange", "green"]
 # (agent restart or crash); it no longer blocks the UI.
 STALE_RUN_AFTER = timedelta(minutes=10)
 CONVERSATION_PAGE_SIZE = 50
+TOP_REASONS = 12
+
+
+def reasons_field(evaluation: MonitorTurnEvaluation) -> str:
+    """Reason codes wrapped in commas, so ',code,' matches one code exactly."""
+    codes = [score.reason for score in evaluation.criteria if score.reason]
+    return f",{','.join(codes)}," if codes else ""
 
 
 def stored_content(message: Message) -> dict:
@@ -118,6 +126,7 @@ def store_evaluation(evaluation: MonitorTurnEvaluation) -> TurnEvaluation:
             "trace_id": evaluation.trace_id or "",
             "tool_calls": [c.model_dump(mode="json") for c in evaluation.tool_calls],
             "skills_loaded": evaluation.skills_loaded,
+            "reasons": reasons_field(evaluation),
             "judge_model": evaluation.judge_model,
             "judge_cost": evaluation.judge_cost,
             "evaluated_at": datetime.fromisoformat(evaluation.evaluated_at),
@@ -194,14 +203,34 @@ def get_summary() -> dict:
                 total=Count("id")
             )
         },
+        "reasons": count_reasons(),
         "pending_turns": pending.count(),
         "pending_conversations": pending.values("conversation_id").distinct().count(),
         "runs": [run_to_dict(run) for run in MonitorRun.objects.all()[:5]],
     }
 
 
-def list_conversations(grade: str | None, unreviewed: bool, page: int) -> dict:
+def count_reasons() -> dict[str, int]:
+    """Most frequent reason codes over all judged turns."""
+    counter: Counter[str] = Counter()
+    for reasons in TurnEvaluation.objects.exclude(reasons="").values_list(
+        "reasons", flat=True
+    ):
+        counter.update(code for code in reasons.split(",") if code)
+    return dict(counter.most_common(TOP_REASONS))
+
+
+def list_conversations(
+    grade: str | None, unreviewed: bool, page: int, reason: str | None = None
+) -> dict:
     queryset = _graded_conversations()
+    if reason:
+        # Subquery keeps the grade counts of the annotation intact
+        queryset = queryset.filter(
+            conversation_id__in=TurnEvaluation.objects.filter(
+                reasons__contains=f",{reason},"
+            ).values("conversation_id")
+        )
     if grade == "red":
         queryset = queryset.filter(red__gt=0)
     elif grade == "orange":

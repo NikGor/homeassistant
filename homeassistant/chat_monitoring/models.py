@@ -69,6 +69,12 @@ class TurnEvaluation(models.Model):
     trace_id = models.CharField(max_length=64, blank=True, default="")
     tool_calls = models.JSONField(default=list, help_text="List of MonitorToolCall")
     skills_loaded = models.JSONField(default=list)
+    reasons = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Reason codes of red/orange criteria as ',a,b,' for filtering",
+    )
     judge_model = models.CharField(max_length=128)
     judge_cost = models.FloatField(null=True, blank=True)
     evaluated_at = models.DateTimeField(db_index=True)

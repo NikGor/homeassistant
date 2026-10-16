@@ -86,6 +86,7 @@ def list_conversations(request: HttpRequest) -> JsonResponse:
             grade=request.GET.get("grade") or None,
             unreviewed=request.GET.get("unreviewed") == "1",
             page=max(int(request.GET.get("page", 1)), 1),
+            reason=request.GET.get("reason") or None,
         )
     )
 
