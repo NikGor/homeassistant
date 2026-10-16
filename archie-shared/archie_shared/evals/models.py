@@ -50,6 +50,13 @@ class EvalExpect(BaseModel):
     expected_item_types: Optional[List[str]] = Field(
         default=None, description="ui_answer item types that must appear (full only)"
     )
+    rules_followed: Optional[bool] = Field(
+        default=None,
+        description=(
+            "The monitoring judge must not grade any of the case's rules red "
+            "(full only; assistant_prompt and format_* rules)"
+        ),
+    )
 
 
 class EvalCaseInfo(BaseModel):
@@ -65,6 +72,10 @@ class EvalCaseInfo(BaseModel):
         description="Prompt templates the case tests, e.g. 'cmd_prompt', 'format_ui_answer'"
     )
     tags: List[str] = Field(default_factory=list, description="Free-form tags for selection")
+    rules: List[str] = Field(
+        default_factory=list,
+        description="Prompt spec rules the case protects, as 'spec:rule_id'",
+    )
     input: str = Field(description="User message sent to the agent")
     response_format: str = Field(description="ChatRequest.response_format for the case")
     stage: EvalStage = Field(description="stage1 = Stage 1 only, full = whole pipeline")
@@ -121,6 +132,9 @@ class EvalRunRequest(BaseModel):
     prompts: List[str] = Field(default_factory=list, description="Select cases by prompt")
     tags: List[str] = Field(default_factory=list, description="Select cases by tag")
     suites: List[str] = Field(default_factory=list, description="Select cases by suite")
+    rules: List[str] = Field(
+        default_factory=list, description="Select cases by protected rule 'spec:rule_id'"
+    )
     models: List[str] = Field(min_length=1, description="Models to run every case on")
     repeats: int = Field(
         default=1, ge=1, le=EVAL_MAX_REPEATS, description="Attempts per case and model"
