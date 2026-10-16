@@ -722,6 +722,7 @@ function setSelectedGenUILevel(level) {
 
 // Available response formats
 const RESPONSE_FORMATS = [
+    { value: "auto", label: "Auto" },
     { value: "plain", label: "Plain Text" },
     { value: "markdown", label: "Markdown" },
     { value: "html", label: "HTML" },

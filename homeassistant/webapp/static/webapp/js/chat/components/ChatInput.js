@@ -112,7 +112,9 @@ const ChatInput = ({
         return value;
     });
     const [selectedFormat, setSelectedFormat] = useState(() => {
-        const stored = localStorage.getItem('selectedResponseFormat') || 'ui_answer';
+        const saved = localStorage.getItem('selectedResponseFormat') || 'ui_answer';
+        const stored = ['plain', 'formatted', 'ui_answer', 'auto'].includes(saved) ? saved : 'ui_answer';
+        localStorage.setItem('selectedResponseFormat', stored);
         window.selectedResponseFormat = stored;
         return stored;
     });
@@ -149,10 +151,10 @@ const ChatInput = ({
     const MAX_HEIGHT = 200;
     
     const formats = [
+        { value: 'auto', label: 'Auto' },
         { value: 'plain', label: 'Plain Text' },
         { value: 'formatted', label: 'Formatted Text' },
-        { value: 'ui_answer', label: 'UI Answer' },
-        { value: 'voice_answer', label: 'Voice Answer' }
+        { value: 'ui_answer', label: 'UI Answer' }
     ];
     
     // All available models
@@ -712,7 +714,7 @@ const ChatInput = ({
             }, formats.map(format => 
                 React.createElement(MenuItem, {
                     key: format.value,
-                    icon: format.value === 'plain' ? 'file-text' : format.value === 'formatted' ? 'file-code' : format.value === 'voice_answer' ? 'mic' : 'layout-grid',
+                    icon: format.value === 'plain' ? 'file-text' : format.value === 'formatted' ? 'file-code' : format.value === 'auto' ? 'sparkles' : 'layout-grid',
                     label: format.label,
                     isActive: selectedFormat === format.value,
                     onClick: () => handleFormatSelect(format.value)

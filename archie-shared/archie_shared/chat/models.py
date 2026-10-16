@@ -70,6 +70,9 @@ class PipelineTrace(BaseModel):
     tool_execution: Optional[StepTrace] = Field(
         default=None, description="Tool execution stage trace"
     )
+    response_format: Optional[StepTrace] = Field(
+        default=None, description="Auto response format selection stage"
+    )
     create_output: Optional[StepTrace] = Field(
         default=None, description="Output generation stage trace"
     )
@@ -83,6 +86,7 @@ class PipelineTrace(BaseModel):
 
 
 ResponseFormat = Literal[
+    "auto",
     "plain",
     "markdown",
     "html",

@@ -259,7 +259,7 @@ const IntegratedChatAssistant = () => {
     };
 
     const sendMessageViaWebSocket = (payload, callbacks = {}) => {
-        const { onStreamDelta, onPlaceholder, onStreamReasoning, onStatus } = callbacks;
+        const { onStreamDelta, onPlaceholder, onStreamReasoning, onStatus, onResponseFormat } = callbacks;
         return new Promise((resolve, reject) => {
             const wsUrl = getWebSocketUrl();
             console.log('ChatAssistant: Opening WebSocket to', wsUrl);
@@ -292,6 +292,9 @@ const IntegratedChatAssistant = () => {
                             status: msg.status || 'running'
                         });
                         if (onStatus) onStatus({ message: msg.message || '', step: msg.step || '' });
+                        break;
+                    case 'response_format':
+                        if (onResponseFormat) onResponseFormat(msg.text);
                         break;
                     case 'stream_delta':
                     case 'stream_text':
@@ -450,6 +453,13 @@ const IntegratedChatAssistant = () => {
                 no_image: noImage,
                 persona: persona
             }, {
+                onResponseFormat: (format) => {
+                    setMessages(prev => prev.map(msg =>
+                        msg.message_id === streamingMsgId
+                            ? { ...msg, content: { ...msg.content, content_format: format } }
+                            : msg
+                    ));
+                },
                 onStreamDelta: (text) => {
                     setMessages(prev => prev.map(msg =>
                         msg.message_id === streamingMsgId
@@ -636,6 +646,13 @@ const IntegratedChatAssistant = () => {
                 no_image: noImage,
                 persona: persona
             }, {
+                onResponseFormat: (format) => {
+                    setMessages(prev => prev.map(msg =>
+                        msg.message_id === streamingMsgId
+                            ? { ...msg, content: { ...msg.content, content_format: format } }
+                            : msg
+                    ));
+                },
                 onStreamDelta: (text) => {
                     setMessages(prev => prev.map(msg =>
                         msg.message_id === streamingMsgId
