@@ -326,6 +326,19 @@ class CaseApiTests(TestCase):
         )
         self.assertEqual(case.revisions.count(), 1)
 
+    def test_case_rules_are_stored_and_kept_by_editors_without_rules(self, _agent):
+        rules = ["cmd_prompt:search_for_live_data"]
+        self.send("post", reverse("prompt_evals_cases"), make_draft(rules=rules))
+        url = reverse("prompt_evals_case", args=["routing.greeting"])
+        draft = make_draft(name="Renamed")
+        draft.pop("rules", None)
+        response = self.send("put", url, draft)
+
+        case = EvalCase.objects.get(case_id="routing.greeting")
+        self.assertEqual(response.json()["rules"], rules)
+        self.assertEqual((case.rules, case.name, case.revision), (rules, "Renamed", 2))
+        self.assertEqual(case.to_draft()["rules"], rules)
+
     def test_invalid_case_is_rejected_with_agent_message(self, _agent):
         draft = make_draft(expect={"tools_called": ["unknown_tool"]})
         response = self.send("post", reverse("prompt_evals_cases"), draft)

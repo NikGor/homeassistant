@@ -95,6 +95,10 @@ class EvalCase(models.Model):
     description = models.TextField()
     suite = models.CharField(max_length=64)
     tags = models.JSONField(default=list)
+    rules = models.JSONField(
+        default=list,
+        help_text="Prompt spec rules the case protects, as 'spec:rule_id' (ARCHIE-213)",
+    )
     extra_prompts = models.JSONField(default=list)
     prompts = models.JSONField(
         default=list,
@@ -124,6 +128,7 @@ class EvalCase(models.Model):
             "suite": self.suite,
             "extra_prompts": self.extra_prompts,
             "tags": self.tags,
+            "rules": self.rules,
             "input": self.input,
             "response_format": self.response_format,
             "stage": self.stage,

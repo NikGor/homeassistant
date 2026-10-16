@@ -32,6 +32,7 @@ def _apply(case: EvalCase, draft: dict, info: EvalCaseInfo) -> None:
     case.description = draft["description"]
     case.suite = draft["suite"]
     case.tags = draft.get("tags", [])
+    case.rules = draft.get("rules", [])
     case.extra_prompts = draft.get("extra_prompts", [])
     case.prompts = info.prompts
     case.input = draft["input"]
@@ -68,6 +69,8 @@ def create_case(draft: dict, author: str) -> EvalCase:
 
 def update_case(case: EvalCase, draft: dict, author: str) -> EvalCase:
     """Save a new revision; an unchanged draft keeps the current revision."""
+    # Editors that do not know rules yet must not erase them
+    draft = {"rules": case.rules, **draft}
     if draft.get("id") != case.case_id:
         raise CaseError("Case id cannot be changed; duplicate the case instead")
     info = validate_case(draft)
