@@ -113,7 +113,7 @@ const ChatInput = ({
     });
     const [selectedFormat, setSelectedFormat] = useState(() => {
         const saved = localStorage.getItem('selectedResponseFormat') || 'ui_answer';
-        const stored = ['plain', 'formatted', 'ui_answer', 'auto'].includes(saved) ? saved : 'ui_answer';
+        const stored = saved === 'voice_answer' ? 'ui_answer' : saved;
         localStorage.setItem('selectedResponseFormat', stored);
         window.selectedResponseFormat = stored;
         return stored;
