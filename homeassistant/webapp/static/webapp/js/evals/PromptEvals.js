@@ -45,7 +45,10 @@ function peEscape(text) {
 
 function peFormatDate(iso) {
     if (!iso) return '—';
-    return new Date(iso).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    // dd.mm.yyyy hh:mm regardless of the browser locale
+    return new Date(iso).toLocaleString('ru-RU', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    }).replace(',', '');
 }
 
 function peFormatDuration(ms) {
