@@ -12,6 +12,40 @@ MonitorGrade = Literal["red", "orange", "green"]
 MonitorCriterion = Literal[
     "helpfulness", "correctness", "tool_choice", "skill_usage", "format_fit"
 ]
+# Main reason of a red / orange criterion, picked from a fixed list by the judge
+MonitorReason = Literal[
+    # helpfulness
+    "helpless_refusal",
+    "needless_question",
+    "off_topic",
+    "partial_answer",
+    "ignored_context",
+    "wrong_language",
+    # correctness
+    "factual_error",
+    "invented_data",
+    "realtime_without_search",
+    "leaked_error",
+    "contradiction",
+    "wrong_action",
+    # tool_choice
+    "missing_tool",
+    "wrong_tool",
+    "bad_arguments",
+    "extra_tool",
+    "tool_error_ignored",
+    # skill_usage
+    "skill_not_loaded",
+    "wrong_skill",
+    "skill_not_followed",
+    # format_fit
+    "broken_ui",
+    "empty_response",
+    "wrong_element",
+    "missing_quick_actions",
+    "too_long",
+    "wrong_format",
+]
 MonitorRunStatus = Literal["running", "completed", "failed"]
 MonitorTrigger = Literal["ui", "schedule", "claude", "cli"]
 
@@ -65,7 +99,13 @@ class MonitorCriterionScore(BaseModel):
     grade: Optional[MonitorGrade] = Field(
         default=None, description="Grade; None if the criterion does not apply"
     )
-    comment: str = Field(description="Short reason for the grade")
+    reason: Optional[MonitorReason] = Field(
+        default=None, description="Main reason of a red / orange grade"
+    )
+    score: Optional[float] = Field(
+        default=None, description="Judge score 0 (red) .. 1 (green), if the judge gives one"
+    )
+    comment: str = Field(default="", description="Free-text comment, if the judge writes one")
 
 
 class MonitorTurnEvaluation(BaseModel):
@@ -75,7 +115,7 @@ class MonitorTurnEvaluation(BaseModel):
     conversation_id: str = Field(description="Conversation ID")
     message_id: str = Field(description="Judged assistant message ID")
     grade: MonitorGrade = Field(description="Overall grade of the turn")
-    summary: str = Field(description="One or two sentences on the main problem or why it is good")
+    summary: str = Field(default="", description="Free-text summary, if the judge writes one")
     criteria: List[MonitorCriterionScore] = Field(description="Grade per criterion")
     trace_found: bool = Field(
         description="True if the Langfuse trace with tool calls was found"
