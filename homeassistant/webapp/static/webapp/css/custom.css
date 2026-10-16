@@ -1697,3 +1697,5 @@ body.voice-mode .orb {
     .cm-criterion__comment { grid-column: 2; }
     .cm-check { margin-left: 0; }
 }
+.cm-reasons { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: -0.25rem 0 1rem; }
+.cm-reason__count { margin-left: 0.25rem; opacity: 0.65; }

@@ -14,6 +14,35 @@ const CM_CRITERIA_LABELS = {
     skill_usage: 'Скиллы',
     format_fit: 'Формат',
 };
+// Fixed reason codes (archie_shared MonitorReason) picked by the Jev judge
+const CM_REASON_LABELS = {
+    helpless_refusal: 'Беспомощный отказ',
+    needless_question: 'Лишний уточняющий вопрос',
+    off_topic: 'Ответ не на тот вопрос',
+    partial_answer: 'Ответил не на всё',
+    ignored_context: 'Не учёл контекст беседы',
+    wrong_language: 'Не тот язык',
+    factual_error: 'Фактическая ошибка',
+    invented_data: 'Выдуманные данные',
+    realtime_without_search: 'Актуальные данные без поиска',
+    leaked_error: 'Ошибка видна пользователю',
+    contradiction: 'Противоречие',
+    wrong_action: 'Не то действие',
+    missing_tool: 'Не вызван нужный инструмент',
+    wrong_tool: 'Не тот инструмент',
+    bad_arguments: 'Неверные аргументы',
+    extra_tool: 'Лишний вызов',
+    tool_error_ignored: 'Ошибка инструмента скрыта',
+    skill_not_loaded: 'Скилл не загружен',
+    wrong_skill: 'Не тот скилл',
+    skill_not_followed: 'Скилл не соблюдён',
+    broken_ui: 'Сломанный UI',
+    empty_response: 'Пустой ответ',
+    wrong_element: 'Не тот UI-элемент',
+    missing_quick_actions: 'Нет быстрых действий',
+    too_long: 'Слишком длинно',
+    wrong_format: 'Не тот формат',
+};
 const CM_RUN_SIZES = [10, 20, 50, 100, 200];
 const CM_TEXT_PREVIEW = 600;
 
@@ -23,7 +52,7 @@ const cmState = {
     conversations: [],
     hasMore: false,
     page: 1,
-    filter: { grade: '', unreviewed: false },
+    filter: { grade: '', unreviewed: false, reason: '' },
     open: new Map(),      // conversation_id -> detail (null while loading)
     expandedText: new Set(),
     run: null,
@@ -68,6 +97,7 @@ async function cmLoadConversations(reset = true) {
     if (reset) cmState.page = 1;
     const params = new URLSearchParams({ page: cmState.page });
     if (cmState.filter.grade) params.set('grade', cmState.filter.grade);
+    if (cmState.filter.reason) params.set('reason', cmState.filter.reason);
     if (cmState.filter.unreviewed) params.set('unreviewed', '1');
     const data = await cmFetch(`/conversations/?${params}`);
     cmState.conversations = reset ? data.conversations : cmState.conversations.concat(data.conversations);
@@ -160,7 +190,7 @@ function cmRenderHeader() {
     return `
         <div class="pe__header">
             <div class="pe__title"><i data-lucide="shield-check" class="w-5 h-5"></i> Мониторинг чатов</div>
-            <div class="pe-muted">LLM-судья оценивает ответы Archie: полезность, корректность, инструменты, скиллы, формат.</div>
+            <div class="pe-muted">Судья (TypeSafe Jev) оценивает ответы Archie: полезность, корректность, инструменты, скиллы, формат.</div>
         </div>`;
 }
 
@@ -173,7 +203,20 @@ function cmRenderSummary() {
             <span class="cm-stat__label">${cmGradeDot(grade)} ${CM_GRADE_LABELS[grade]}</span>
             <span class="pe-muted">${pePlural(summary.turns[grade] || 0, CM_TURN_FORMS)}</span>
         </button>`).join('');
-    return `<div class="cm-stats">${tiles}${cmRenderRunBox()}</div>`;
+    return `<div class="cm-stats">${tiles}${cmRenderRunBox()}</div>${cmRenderReasons()}`;
+}
+
+function cmReasonLabel(code) {
+    return CM_REASON_LABELS[code] || code;
+}
+
+function cmRenderReasons() {
+    const reasons = Object.entries(cmState.summary.reasons || {});
+    if (!reasons.length) return '';
+    const chips = reasons.map(([code, count]) => `
+        <button class="pe-chip pe-chip--btn ${cmState.filter.reason === code ? 'pe-chip--on' : ''}" data-cm-reason="${peEscape(code)}">
+            ${peEscape(cmReasonLabel(code))} <span class="cm-reason__count">${count}</span></button>`).join('');
+    return `<div class="cm-reasons"><span class="pe-muted">Частые причины:</span> ${chips}</div>`;
 }
 
 function cmRenderRunBox() {
@@ -228,12 +271,20 @@ function cmRenderToolCalls(evaluation) {
     }).join(' ');
 }
 
+// Free-text summary from older LLM-judged turns; Jev turns list their reasons
+function cmEvaluationSummary(evaluation) {
+    if (evaluation.summary) return evaluation.summary;
+    const reasons = evaluation.criteria.filter(item => item.reason).map(item => cmReasonLabel(item.reason));
+    return reasons.length ? reasons.join(' · ') : CM_GRADE_LABELS[evaluation.grade];
+}
+
 function cmRenderEvaluation(evaluation) {
     const criteria = evaluation.criteria.map(item => `
         <div class="cm-criterion">
             ${cmGradeDot(item.grade)}
             <span class="cm-criterion__name">${CM_CRITERIA_LABELS[item.criterion] || peEscape(item.criterion)}</span>
-            <span class="cm-criterion__comment">${peEscape(item.comment)}</span>
+            <span class="cm-criterion__comment">${item.grade === null ? '<span class="pe-muted">не применимо</span>'
+                : peEscape(item.reason ? cmReasonLabel(item.reason) : (item.comment || (item.grade === 'green' ? '' : '—')))}</span>
         </div>`).join('');
     const skills = evaluation.skills_loaded.length
         ? `<div class="cm-eval__row"><span class="pe-muted">Скиллы:</span> ${evaluation.skills_loaded.map(name => `<span class="pe-chip">${peEscape(name)}</span>`).join(' ')}</div>`
@@ -241,7 +292,7 @@ function cmRenderEvaluation(evaluation) {
     const cost = evaluation.judge_cost != null ? ` · $${evaluation.judge_cost.toFixed(5)}` : '';
     return `
         <div class="cm-eval cm-eval--${evaluation.grade}">
-            <div class="cm-eval__summary">${cmGradeDot(evaluation.grade)} ${peEscape(evaluation.summary)}</div>
+            <div class="cm-eval__summary">${cmGradeDot(evaluation.grade)} ${peEscape(cmEvaluationSummary(evaluation))}</div>
             ${criteria ? `<div class="cm-criteria">${criteria}</div>` : ''}
             <div class="cm-eval__row"><span class="pe-muted">Инструменты:</span> ${cmRenderToolCalls(evaluation)}</div>
             ${skills}
@@ -324,12 +375,16 @@ function cmRender() {
 // --- Events (delegated, bound once) ---
 
 function cmHandleClick(event) {
-    const target = event.target.closest('button, [data-cm-grade]');
+    const target = event.target.closest('button, [data-cm-grade], [data-cm-reason]');
     if (!target) return;
     if (target.id === 'cm-run-start') cmStartRun();
     else if (target.id === 'cm-more') {
         cmState.page += 1;
         cmLoadConversations(false).then(cmRender).catch(cmSetError);
+    } else if (target.dataset.cmReason) {
+        const reason = target.dataset.cmReason;
+        cmState.filter.reason = cmState.filter.reason === reason ? '' : reason;
+        cmLoadConversations().then(cmRender).catch(cmSetError);
     } else if (target.dataset.cmGrade !== undefined) {
         const grade = target.dataset.cmGrade;
         cmState.filter.grade = cmState.filter.grade === grade ? '' : grade;
