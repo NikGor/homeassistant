@@ -119,7 +119,7 @@ const ChatInput = ({
         return stored;
     });
     const [selectedCommandModel, setSelectedCommandModel] = useState(() => {
-        const stored = localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
+        const stored = localStorage.getItem('selectedCommandModel') || 'gpt-4.1';
         window.selectedCommandModel = stored;
         return stored;
     });
