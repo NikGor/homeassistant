@@ -606,34 +606,17 @@ function toggleRightSidebar(forceCollapse = false) {
     });
 }
 
-// Available AI models configuration
-const AI_MODELS = {
-    openai: [
-        "gpt-4.1",
-        "gpt-4.1-mini",
-        "gpt-4.1-nano",
-        "gpt-5.4",
-        "gpt-5.4-pro",
-        "gpt-5.4-mini",
-        "gpt-5.4-nano",
-        "gpt-5.6-luna",
-    ],
-    openrouter: [
-        // Google Gemini
-        "google/gemini-3.1-pro-preview",
-        "google/gemini-3-flash-preview",
-        "google/gemini-3.1-flash-lite-preview",
-        // Anthropic Claude
-        "anthropic/claude-opus-4.6",
-        "anthropic/claude-sonnet-4.6",
-        "anthropic/claude-opus-4.5",
-        "anthropic/claude-sonnet-4.5",
-        "anthropic/claude-haiku-4.5",
-        // xAI Grok
-        "x-ai/grok-4.20-beta",
-        "x-ai/grok-4.1-fast",
-    ],
-};
+// ARCHIE-227: use the same stage eligibility in settings and the chat input.
+function getAvailableModels(stage) {
+    return Object.values(AI_MODELS).flat().filter(model =>
+        AI_MODEL_CAPABILITIES[model]?.[stage] !== false
+    );
+}
+
+function getModelPriceLabel(model) {
+    const price = AI_MODEL_PRICES[model];
+    return price ? `Base USD / 1M tokens: input $${price.input}, output $${price.output}` : model;
+}
 
 // Gen UI Level configuration
 const GEN_UI_LEVELS = {
@@ -754,7 +737,10 @@ function getSelectedCommandModel() {
         }
         localStorage.setItem('commandModelDefaultMigrated', '1');
     }
-    return localStorage.getItem('selectedCommandModel') || 'gpt-4.1';
+    const stored = localStorage.getItem('selectedCommandModel');
+    const model = getAvailableModels('command').includes(stored) ? stored : 'gpt-4.1';
+    localStorage.setItem('selectedCommandModel', model);
+    return model;
 }
 
 // Set selected command model in localStorage
@@ -765,7 +751,11 @@ function setSelectedCommandModel(model) {
 
 // Get selected final output model from localStorage or default
 function getSelectedFinalOutputModel() {
-    return localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
+    const stored = localStorage.getItem('selectedFinalOutputModel');
+    const stage = ['auto', 'ui_answer', 'level2_answer', 'level3_answer', 'dashboard', 'widget'].includes(getSelectedResponseFormat()) ? 'final_ui' : 'final_plain';
+    const model = getAvailableModels(stage).includes(stored) ? stored : 'gpt-4.1';
+    localStorage.setItem('selectedFinalOutputModel', model);
+    return model;
 }
 
 // Set selected final output model in localStorage
