@@ -646,7 +646,7 @@ const GEN_UI_LEVELS = {
         responseFormats: ["plain"],
         fixedFormat: "plain",
         defaults: {
-            commandModel: "gpt-4.1-mini",
+            commandModel: "gpt-4.1",
             finalOutputModel: "gpt-4.1"
         }
     },
@@ -659,7 +659,7 @@ const GEN_UI_LEVELS = {
         responseFormats: [],
         fixedFormat: "level2_answer",
         defaults: {
-            commandModel: "gpt-4.1-mini",
+            commandModel: "gpt-4.1",
             finalOutputModel: "gpt-4.1"
         }
     },
@@ -672,7 +672,7 @@ const GEN_UI_LEVELS = {
         responseFormats: [],
         fixedFormat: "level3_answer",
         defaults: {
-            commandModel: "gpt-4.1-mini",
+            commandModel: "gpt-4.1",
             finalOutputModel: "gpt-4.1"
         }
     },
@@ -685,7 +685,7 @@ const GEN_UI_LEVELS = {
         responseFormats: ["ui_answer"],
         fixedFormat: "ui_answer",
         defaults: {
-            commandModel: "gpt-4.1-mini",
+            commandModel: "gpt-4.1",
             finalOutputModel: "gpt-4.1"
         }
     },
@@ -699,7 +699,7 @@ const GEN_UI_LEVELS = {
         fixedFormat: "ui_answer",
         comingSoon: true,
         defaults: {
-            commandModel: "gpt-4.1-mini",
+            commandModel: "gpt-4.1",
             finalOutputModel: "gpt-4.1"
         }
     }
@@ -747,7 +747,14 @@ const RESPONSE_FORMATS = [
 
 // Get selected command model from localStorage or default
 function getSelectedCommandModel() {
-    return localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
+    // ARCHIE-221: one-time switch of the old stored default gpt-4.1-mini to gpt-4.1
+    if (!localStorage.getItem('commandModelDefaultMigrated')) {
+        if (localStorage.getItem('selectedCommandModel') === 'gpt-4.1-mini') {
+            localStorage.setItem('selectedCommandModel', 'gpt-4.1');
+        }
+        localStorage.setItem('commandModelDefaultMigrated', '1');
+    }
+    return localStorage.getItem('selectedCommandModel') || 'gpt-4.1';
 }
 
 // Set selected command model in localStorage
