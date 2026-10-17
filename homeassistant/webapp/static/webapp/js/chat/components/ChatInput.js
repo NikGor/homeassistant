@@ -1,14 +1,7 @@
 // ChatInput - Advanced chat input component with settings and menus
 
-// Models that accept image input (mirrored in archie-ai-agent app/config.py VISION_MODELS)
-const VISION_MODELS = new Set([
-    'gpt-5.6-luna', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
-    'gpt-5.4', 'gpt-5.4-pro', 'gpt-5.4-mini', 'gpt-5.4-nano',
-    'google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview', 'google/gemini-3.1-flash-lite-preview',
-    'anthropic/claude-opus-4.6', 'anthropic/claude-sonnet-4.6',
-    'anthropic/claude-opus-4.5', 'anthropic/claude-sonnet-4.5', 'anthropic/claude-haiku-4.5',
-    'x-ai/grok-4.20-beta', 'x-ai/grok-4.1-fast',
-]);
+// Shared settings catalog from model-catalog.js (loaded before this script).
+const VISION_MODELS = new Set(AI_VISION_MODELS);
 const MAX_IMAGES = 4;
 const MAX_IMAGE_SIDE = 1568;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -119,12 +112,12 @@ const ChatInput = ({
         return stored;
     });
     const [selectedCommandModel, setSelectedCommandModel] = useState(() => {
-        const stored = localStorage.getItem('selectedCommandModel') || 'gpt-4.1';
+        const stored = getSelectedCommandModel();
         window.selectedCommandModel = stored;
         return stored;
     });
     const [selectedResponseModel, setSelectedResponseModel] = useState(() => {
-        const stored = localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
+        const stored = getSelectedFinalOutputModel();
         window.selectedFinalOutputModel = stored;
         return stored;
     });
@@ -157,29 +150,25 @@ const ChatInput = ({
         { value: 'ui_answer', label: 'UI Answer' }
     ];
     
-    // All available models
-    const openaiModels = [
-        'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
-        'gpt-5.4', 'gpt-5.4-pro', 'gpt-5.4-mini', 'gpt-5.4-nano',
-        'gpt-5.6-luna',
-    ];
-    const openrouterModels = [
-        'google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview', 'google/gemini-3.1-flash-lite-preview',
-        'anthropic/claude-opus-4.6', 'anthropic/claude-sonnet-4.6',
-        'anthropic/claude-opus-4.5', 'anthropic/claude-sonnet-4.5', 'anthropic/claude-haiku-4.5',
-        'x-ai/grok-4.20-beta', 'x-ai/grok-4.1-fast',
-    ];
-    const allModels = [...openaiModels, ...openrouterModels];
-    
-    // Models depend on response format
-    const getModelsForFormat = useCallback((_format) => {
+    // ARCHIE-227: settings and chat use one catalog, with stage-specific smoke results.
+    const getModelsForFormat = useCallback((format) => {
+        const stage = ['auto', 'ui_answer', 'level2_answer', 'level3_answer', 'dashboard', 'widget'].includes(format) ? 'final_ui' : 'final_plain';
         return {
-            command: allModels,
-            response: allModels
+            command: getAvailableModels('command'),
+            response: getAvailableModels(stage)
         };
     }, []);
-    
+
     const currentModels = getModelsForFormat(selectedFormat);
+
+    useEffect(() => {
+        if (!currentModels.response.includes(selectedResponseModel)) {
+            const model = currentModels.response[0];
+            setSelectedResponseModel(model);
+            localStorage.setItem('selectedFinalOutputModel', model);
+            window.selectedFinalOutputModel = model;
+        }
+    }, [selectedFormat, selectedResponseModel]);
 
     // Images are analyzed by the command model (Stage 1), so it decides availability
     const imagesSupported = VISION_MODELS.has(selectedCommandModel);
@@ -648,13 +637,14 @@ const ChatInput = ({
                 ]),
                 React.createElement('div', {
                     key: 'menu-content',
-                    className: 'p-2'
+                    className: 'p-2 max-h-[50vh] overflow-y-auto'
                 }, [
                     ...currentModels.command.map(model => 
                         React.createElement(MenuItem, {
                             key: model,
                             icon: 'cpu',
                             label: model,
+                            title: getModelPriceLabel(model),
                             isActive: selectedCommandModel === model,
                             onClick: () => handleCommandModelSelect(model)
                         })
@@ -681,13 +671,14 @@ const ChatInput = ({
                 ]),
                 React.createElement('div', {
                     key: 'menu-content',
-                    className: 'p-2'
+                    className: 'p-2 max-h-[50vh] overflow-y-auto'
                 }, [
                     ...currentModels.response.map(model => 
                         React.createElement(MenuItem, {
                             key: model,
                             icon: 'brain',
                             label: model,
+                            title: getModelPriceLabel(model),
                             isActive: selectedResponseModel === model,
                             onClick: () => handleResponseModelSelect(model)
                         })
