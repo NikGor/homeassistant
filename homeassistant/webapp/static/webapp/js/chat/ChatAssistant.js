@@ -390,7 +390,7 @@ const IntegratedChatAssistant = () => {
         setIsLoading(true);
 
         try {
-            const selectedCommandModel = window.selectedCommandModel || localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
+            const selectedCommandModel = window.selectedCommandModel || localStorage.getItem('selectedCommandModel') || 'gpt-4.1';
             const selectedFinalOutputModel = window.selectedFinalOutputModel || localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
             const demoMode = window.demoMode || localStorage.getItem('demoMode') === 'true';
             const noImage = window.noImage || localStorage.getItem('noImage') === 'true';
@@ -605,7 +605,7 @@ const IntegratedChatAssistant = () => {
         setIsLoading(true);
 
         try {
-            const selectedCommandModel = window.selectedCommandModel || localStorage.getItem('selectedCommandModel') || 'gpt-4.1-mini';
+            const selectedCommandModel = window.selectedCommandModel || localStorage.getItem('selectedCommandModel') || 'gpt-4.1';
             const selectedFinalOutputModel = window.selectedFinalOutputModel || localStorage.getItem('selectedFinalOutputModel') || 'gpt-4.1';
             const demoMode = window.demoMode || localStorage.getItem('demoMode') === 'true';
             const noImage = window.noImage || localStorage.getItem('noImage') === 'true';
